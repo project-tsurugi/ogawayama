@@ -117,7 +117,7 @@ public:
      * @param columns returns the type data
      * @return error code defined in error_code.h
      */
-    ErrorCode get_types(SetOfTypeData &&columns);
+    const SetOfTypeData& get_types() const noexcept { return columns_; }
     
 private:
     SetOfTypeData columns_;
