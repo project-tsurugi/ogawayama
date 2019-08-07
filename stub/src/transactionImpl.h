@@ -13,47 +13,35 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+#ifndef TRANSACTIONIMPL_H_
+#define TRANSACTIONIMPL_H_
 
-#ifndef STUB_H_
-#define STUB_H_
-
-#include <variant> 
-#include <vector> 
-
-#include "ogawayama/stub/api.h"
+#include "stubImpl.h"
 
 namespace ogawayama::stub {
 
-using value_type = std::variant<std::int16_t, std::int32_t, std::int64_t, float, double, std::string>;
-
 /**
- * @brief a holder of a set of row value
+ * @brief constructor of Connection::Impl class
  */
-class Row {
+class Transaction::Impl
+{
 public:
     /**
-     * @brief Construct a new object.
+     * @brief execute a query.
+     * @param query the SQL query string
+     * @param result_set returns a result set of the query
+     * @return true in error, otherwise false
      */
-    Row() = default;
+    ErrorCode execute_query(std::string query, std::unique_ptr<ResultSet> &result_set);
 
     /**
-     * @brief destructs this object.
+     * @brief execute a statement.
+     * @param statement the SQL statement string
+     * @return true in error, otherwise false
      */
-    ~Row() noexcept = default;
-
-    /**
-     * @brief get value in variant from the column
-     * @param index culumn number, begins from one
-     * @return value returns the value
-     */
-    value_type get_value(std::size_t index) {
-        return values_.at(index);
-    }
-
-private:
-    std::vector<value_type> values_;
+    ErrorCode execute_statement(std::string statement);
 };
 
 }  // namespace ogawayama::stub
 
-#endif  // STUB_H_
+#endif  // TRANSACTIONIMPL_H_

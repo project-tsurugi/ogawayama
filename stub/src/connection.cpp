@@ -16,8 +16,6 @@
 
 #include "connectionImpl.h"
 
-#include "stubImpl.h"
-
 namespace ogawayama::stub {
 
 /**
@@ -25,17 +23,17 @@ namespace ogawayama::stub {
  * @param connection returns a connection class
  * @return true in error, otherwise false
  */
-ErrorCode Stub::Impl::get_connection(std::unique_ptr<Connection> &connection)
+ErrorCode Connection::Impl::begin(std::unique_ptr<Transaction> &transaction)
 {
-    connection = std::move(std::make_unique<Connection>());
+    transaction = std::move(std::make_unique<Transaction>());
     return ErrorCode::OK;
 }
 
 /**
- * @brief constructor of Stub class
+ * @brief constructor of Connection class
  */
-Stub::Stub()
-    : stub_(std::move(std::make_unique<Stub::Impl>())){
+Connection::Connection()
+    : connection_(std::move(std::make_unique<Connection::Impl>())){
 }
 
 }  // namespace ogawayama::stub

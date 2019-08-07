@@ -19,16 +19,16 @@
 #include <iostream>
 #include <memory>
 #include <string>
-
+#include <variant>
 
 #include "ogawayama/stub/metadata.h"
+#include "ogawayama/stub/error_code.h"
 
 namespace ogawayama::stub {
 
 class Connection;
 class Transaction;
 class ResultSet;
-class Row;
     
 /**
  * @brief environment for server connection.
@@ -38,7 +38,7 @@ public:
     /**
      * @brief Construct a new object.
      */
-    Stub() = default;
+    Stub();
 
     /**
      * @brief destructs this object.
@@ -46,21 +46,25 @@ public:
     ~Stub() noexcept = default;
 
     /**
-     * @brief connect to the DB and get Connection class
+     * @brief connect to the DB and get Connection class.
      * @param connection returns a connection class
-     * @return true in error, otherwise false
+     * @return error code defined in error_code.h
      */
-    bool get_connection(std::unique_ptr<Connection> &connection);
+    ErrorCode get_connection(std::unique_ptr<Connection> &connection);
+private:
+    class Impl;
+    std::unique_ptr<Impl> stub_;
 };
 
 /**
  * @brief Information about a connection.
  */
 class Connection {
+public:
     /**
      * @brief Construct a new object.
      */
-    Connection() = default;
+    Connection();
 
     /**
      * @brief destructs this object.
@@ -68,21 +72,25 @@ class Connection {
     ~Connection() noexcept = default;
 
     /**
-     * @brief begin a transaction and get Transaction class
+     * @brief begin a transaction and get Transaction class.
      * @param transaction returns a transaction class
-     * @return true in error, otherwise false
+     * @return error code defined in error_code.h
      */
-    bool begin(std::unique_ptr<Transaction> &transaction);
+    ErrorCode begin(std::unique_ptr<Transaction> &transaction);
+private:
+    class Impl;
+    std::unique_ptr<Impl> connection_;
 };
 
 /**
  * @brief Information about a transaction.
  */
 class Transaction {
+public:
     /**
      * @brief Construct a new object.
      */
-    Transaction() = default;
+    Transaction();
 
     /**
      * @brief destructs this object.
@@ -93,29 +101,84 @@ class Transaction {
      * @brief execute a query.
      * @param query the SQL query string
      * @param result_set returns a result set of the query
-     * @return true in error, otherwise false
+     * @return error code defined in error_code.h
      */
-    bool execute_query(std::string query, std::unique_ptr<ResultSet> &result_set);
+    ErrorCode execute_query(std::string query, std::unique_ptr<ResultSet> &result_set);
 
     /**
      * @brief execute a statement.
      * @param statement the SQL statement string
-     * @return true in error, otherwise false
+     * @return error code defined in error_code.h
      */
-    bool execute_statement(std::string statement);
+    ErrorCode execute_statement(std::string statement);
 
     /**
      * @brief commit the current transaction.
-     * @return true in error, otherwise false
+     * @return error code defined in error_code.h
      */
-    bool commit();
+    ErrorCode commit();
+private:
+    class Impl;
+    std::unique_ptr<Impl> transaction_;
 };
 
 /**
  * @brief Result of a query.
  */
 class ResultSet{
-    
+public:
+    /**
+     * @brief variant used to pass value from server to stub.
+     */
+    using ValueType = std::variant<std::monostate, std::int16_t, std::int32_t, std::int64_t, float, double, std::string_view>;
+
+    /**
+     * @brief Record object in the result set.
+     */
+    class Row {
+    public:
+        /**
+         * @brief construct.
+         */
+        Row() = default;
+   
+        /**
+         * @brief copy construct.
+         */
+        Row(Row const&) = default;
+   
+        /**
+         * @brief move construct.
+         */
+        Row(Row &&) = default;
+   
+        /**
+         * @brief copy assign.
+         */
+        Row& operator=(Row const&) = default;
+   
+        /**
+         * @brief move assign.
+         */
+        Row& operator=(Row &&) = default;
+   
+        /**
+         * @brief destruct Row.
+         */
+        virtual ~Row() = default;
+    protected:
+        /**
+         * @brief get value in variant from the column.
+         * @param index culumn number, begins from one
+         * @param value returns the value
+         * @return ErrorCode::OK if success
+         */
+        virtual ErrorCode next_column(ValueType &v) {
+            v = 0;
+            return ErrorCode::OK;
+        }
+    };
+
     /**
      * @brief Construct a new object.
      */
@@ -127,39 +190,45 @@ class ResultSet{
     ~ResultSet() noexcept = default;
 
     /**
+     * @brief get metadata for the result set.
+     * @param metadata returns the metadata class
+     * @return error code defined in error_code.h
+     */
+    ErrorCode get_metadata(std::unique_ptr<Metadata> &metadata);
+
+    /**
      * @brief move current to the next tuple.
      * @param eof returns true when current reaches end of tuple (invalid tuple)
-     * @return true in error, otherwise false
+     * @return error code defined in error_code.h
      */
-    bool next(bool &eot);
+    ErrorCode next();
 
     /**
-     * @brief get value in integer from the current row
+     * @brief get value in integer from the current row.
      * @param index culumn number, begins from one
      * @param value returns the value
-     * @return true in error, otherwise false
+     * @return error code defined in error_code.h
      */
-    bool get_int64(std::size_t index, std::int64_t &value);
-
-    /**
-     * @brief get value in float from the current row
-     * @param index culumn number, begins from one
-     * @param value returns the value
-     * @return true in error, otherwise false
-     */
-    bool get_float64(std::size_t index, double &value);
-
-    /**
-     * @brief get value in string from the current row
-     * @param index culumn number, begins from one
-     * @param value returns the value
-     * @return true in error, otherwise false
-     */
-    bool get_text(std::size_t index, std::string &value);
-
+    template<typename T>
+    ErrorCode next_column(T &value) {
+        ValueType v;
+        ErrorCode error_code = current_->next_column(v);
+        if (error_code == ErrorCode::OK) {
+            try {
+                value = std::get<T>(v);
+                return ErrorCode::OK;
+            }
+            catch (const std::bad_variant_access&) {
+                if (std::holds_alternative<std::monostate>(v)) {
+                    return ErrorCode::COLUMN_WAS_NULL;
+                }
+                return ErrorCode::COLUMN_TYPE_MISMATCH;
+            }
+        }
+        return error_code;
+    }
 private:
-    std::unique_ptr<Row> current_; 
-
+    std::unique_ptr<Row> current_;
 };
 
 }  // namespace ogawayama::stub

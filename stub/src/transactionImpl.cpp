@@ -14,28 +14,34 @@
  * limitations under the License.
  */
 
-#include "connectionImpl.h"
-
-#include "stubImpl.h"
+#include "transactionImpl.h"
 
 namespace ogawayama::stub {
 
 /**
- * @brief connect to the DB and get Connection class
+ * @brief connect to the DB and get Transaction class
  * @param connection returns a connection class
  * @return true in error, otherwise false
  */
-ErrorCode Stub::Impl::get_connection(std::unique_ptr<Connection> &connection)
-{
-    connection = std::move(std::make_unique<Connection>());
+ErrorCode Transaction::Impl::execute_query(std::string query, std::unique_ptr<ResultSet> &result_set) {
+    result_set = std::move(std::make_unique<ResultSet>());
     return ErrorCode::OK;
 }
 
 /**
- * @brief constructor of Stub class
+ * @brief execute a statement.
+ * @param statement the SQL statement string
+ * @return true in error, otherwise false
  */
-Stub::Stub()
-    : stub_(std::move(std::make_unique<Stub::Impl>())){
+ErrorCode Transaction::Impl::execute_statement(std::string statement) {
+    return ErrorCode::OK;
+}
+
+/**
+ * @brief constructor of Transaction class
+ */
+Transaction::Transaction()
+    : transaction_(std::move(std::make_unique<Transaction::Impl>())){
 }
 
 }  // namespace ogawayama::stub

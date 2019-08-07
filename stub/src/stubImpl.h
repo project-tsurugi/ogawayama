@@ -13,29 +13,22 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+#ifndef STUBIMPL_H_
+#define STUBIMPL_H_
 
-#include "connectionImpl.h"
-
-#include "stubImpl.h"
+#include "ogawayama/stub/api.h"
 
 namespace ogawayama::stub {
 
 /**
- * @brief connect to the DB and get Connection class
- * @param connection returns a connection class
- * @return true in error, otherwise false
+ * @brief constructor of Stub::Impl class
  */
-ErrorCode Stub::Impl::get_connection(std::unique_ptr<Connection> &connection)
+class Stub::Impl
 {
-    connection = std::move(std::make_unique<Connection>());
-    return ErrorCode::OK;
-}
-
-/**
- * @brief constructor of Stub class
- */
-Stub::Stub()
-    : stub_(std::move(std::make_unique<Stub::Impl>())){
-}
+public:
+    ErrorCode get_connection(std::unique_ptr<Connection> &connection);
+};
 
 }  // namespace ogawayama::stub
+
+#endif  // STUBIMPL_H_

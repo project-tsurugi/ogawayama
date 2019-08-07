@@ -19,6 +19,8 @@
 #include <cstddef>
 #include <vector>
 
+#include "ogawayama/stub/error_code.h"
+
 namespace ogawayama::stub {
 
 namespace type {}
@@ -26,14 +28,11 @@ namespace type {}
 /**
  * @brief Provides semantic information of a ResultSet.
  */
-class MetaData {
-public:
-
+class Metadata {
     /**
      * @brief Provides semantic information of a Column.
      */
     class ColumnType {
-
     public:
         /**
          * @brief represents a type.
@@ -70,47 +69,58 @@ public:
              */
             TEXT,
         };
-
-        /**
-         * @brief represents nullity of the type.
-         */
-        enum class Nullity : bool {
-
-            /**
-             * @brief the value is never null.
-             */
-            NEVER_NULL = false,
-
-            /**
-             * @brief the value may be or must be null.
-             */
-            NULLABLE = true,
-        };
-
-    private:
-        std::size_t size_;
-        Type type_;
-        Nullity nullable_;
-
-    public:
+        
         /**
          * @brief Construct a new object.
-         * @param type the column type
+         * @param type tag for the column type
+         * @param byte length for the column data
          */
-        ColumnType(Type type, std::size_t size, Nullity nullable)
-            : type_(type), size_(size), nullable_(nullable)
+        ColumnType(Type type, std::size_t size)
+            : type_(type), size_(size)
         {}
 
         /**
          * @brief destructs this object.
          */
         ~ColumnType() noexcept = default;
-        
+
+        /**
+         * @brief get type for this column.
+         * @param type returns the type
+         * @return error code defined in error_code.h
+         */
+        ErrorCode get_type(Metadata::ColumnType::Type &type);
+    
+    private:
+        std::size_t size_;
+        Type type_;
     };
 
-private:
-    std::vector<ColumnType> columns_;
+public:
+    /**
+     * @brief Container to store type data for the columns.
+     */
+    using SetOfTypeData = std::vector<ColumnType>;
+    
+    /**
+     * @brief Construct a new object.
+     */
+    Metadata() = default;
 
+    /**
+     * @brief destructs this object.
+     */
+    ~Metadata() noexcept = default;
+
+    /**
+     * @brief get a set of type data for this result set.
+     * @param columns returns the type data
+     * @return error code defined in error_code.h
+     */
+    ErrorCode get_types(SetOfTypeData &&columns);
+    
+private:
+    SetOfTypeData columns_;
 };
 
 }  // namespace ogawayama::stub
