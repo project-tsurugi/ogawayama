@@ -127,10 +127,10 @@ private:
  */
 class ResultSet{
 public:
-    /**
-     * @brief variant used to pass value from server to stub.
-     */
-    using ValueType = std::variant<std::monostate, std::int16_t, std::int32_t, std::int64_t, float, double, std::string_view>;
+/**
+ * @brief variant used to pass value from server to stub.
+ */
+using ColumnValueType = std::variant<std::monostate, std::int16_t, std::int32_t, std::int64_t, float, double, std::string>;
 
     /**
      * @brief Record object in the result set.
@@ -173,7 +173,7 @@ public:
          * @param value returns the value
          * @return ErrorCode::OK if success
          */
-        virtual ErrorCode next_column(ValueType &v) {
+        virtual ErrorCode next_column(ColumnValueType &v) {
             v = 0;
             return ErrorCode::OK;
         }
@@ -211,7 +211,7 @@ public:
      */
     template<typename T>
     ErrorCode next_column(T &value) {
-        ValueType v;
+        ColumnValueType v;
         ErrorCode error_code = current_->next_column(v);
         if (error_code == ErrorCode::OK) {
             try {
