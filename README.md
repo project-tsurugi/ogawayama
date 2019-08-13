@@ -5,7 +5,7 @@
 * CMake `>= 3.5`
 * C++ Compiler `>= C++17`
 
-RUN apt update -y && apt install -y git build-essential cmake ninja-build
+RUN apt update -y && apt install -y git build-essential cmake ninja-build libboost-serialization-dev
 ```
 
 ## How to build
