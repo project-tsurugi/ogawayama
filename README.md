@@ -20,6 +20,7 @@ ninja
 
 available options:
 * `-DBUILD_TESTS=OFF` - never build test programs
+* `-DCMAKE_PREFIX_PATH=<installation directory>` - indicate prerequiste installation directory
 
 ## License
 
