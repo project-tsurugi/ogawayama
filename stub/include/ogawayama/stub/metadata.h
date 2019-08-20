@@ -18,12 +18,16 @@
 
 #include <cstddef>
 #include <vector>
+#include <variant>
 
 #include "ogawayama/stub/error_code.h"
 
 namespace ogawayama::stub {
 
-namespace type {}
+/**
+ * @brief variant used to pass value from server to stub. It's index() should be consistent with Metadata::ColumnType::Type.
+ */
+using ColumnValueType = std::variant<std::monostate, std::int16_t, std::int32_t, std::int64_t, float, double, std::string>;
 
 /**
  * @brief Provides semantic information of a ResultSet.
@@ -40,34 +44,39 @@ class Metadata {
         enum class Type {
 
             /**
+             * @brief Pseudotype representing that the column is NULL.
+             */
+            NULL_VALUE = 0,
+
+            /**
              * @brief 16bit integral number type.
              */
-            INT16,
+            INT16 = 1,
 
             /**
              * @brief 32bit integral number type.
              */
-            INT32,
+            INT32 = 2,
 
             /**
              * @brief 64bit integral number type.
              */
-            INT64,
+            INT64 = 3,
 
             /**
              * @brief 32bit floating point number type.
              */
-            FLOAT32,
+            FLOAT32 = 4,
 
             /**
              * @brief 64bit floating point number type.
              */
-            FLOAT64,
+            FLOAT64 = 5,
 
             /**
              * @brief text type.
              */
-            TEXT,
+            TEXT = 6,
         };
         
         /**

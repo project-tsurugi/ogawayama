@@ -25,9 +25,7 @@
 
 namespace ogawayama::common {
 
-const std::size_t SEGMENT_SIZE = 10<<20; // 10 MiB (tantative)
-const std::size_t QUEUE_SIZE = 1000L; // (tantative)
-const char* SHARED_MEMORY_NAME = "ogawayama_sirialized_data";
+const std::size_t QUEUE_SIZE = 4096; // 4K byte (tantative)
 
 /**
  * @brief one to one communication channel, intended for communication between server and stub through boost binary_archive.
@@ -135,7 +133,7 @@ public:
         boost::interprocess::interprocess_condition m_not_empty_{};
         boost::interprocess::interprocess_condition m_not_full_{};
         boost::interprocess::interprocess_condition m_not_ack_{};
-        bool ack {};
+        bool ack {false};
     };
     
 public:
@@ -143,31 +141,9 @@ public:
     /**
      * @brief Construct a new object.
      */
-    ChannelStream(char const* name, bool reader, bool construct) {
-        boost::interprocess::managed_shared_memory *mem;
-
-        if (construct) {
-            boost::interprocess::shared_memory_object::remove(SHARED_MEMORY_NAME);
-            mem = new boost::interprocess::managed_shared_memory(boost::interprocess::create_only, SHARED_MEMORY_NAME, SEGMENT_SIZE);
-        } else {
-            mem = new boost::interprocess::managed_shared_memory(boost::interprocess::open_only, SHARED_MEMORY_NAME);
-            assert (mem->get_size() == SEGMENT_SIZE);
-        }
-        if (reader) {
-            buffer_ = mem->construct<BoundedBuffer>(name)(mem->get_segment_manager());
-        } else {
-            buffer_ = mem->find<BoundedBuffer>(name).first;
-        }
-        assert(buffer_);
+    ChannelStream(char const* name, boost::interprocess::managed_shared_memory *mem) : mem_(mem) {
+        buffer_ = mem->find_or_construct<BoundedBuffer>(name)(mem->get_segment_manager());
     }
-    /**
-     * @brief Construct a new object, defaults construct parameter.
-     */
-    ChannelStream(char const* name, bool reader) : ChannelStream(name, reader, false) {}
-    /**
-     * @brief Construct a new object, defaults reader and construct parameters.
-     */
-    ChannelStream(char const* name) : ChannelStream(name, false, false) {}
 
     /**
      * @brief Implements methods inherited from std::streambuf.
@@ -191,6 +167,7 @@ public:
 
 private:
     BoundedBuffer *buffer_;
+    boost::interprocess::managed_shared_memory *mem_;
 };
 
 };  // namespace ogawayama::common

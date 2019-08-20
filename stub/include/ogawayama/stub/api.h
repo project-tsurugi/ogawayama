@@ -19,7 +19,6 @@
 #include <iostream>
 #include <memory>
 #include <string>
-#include <variant>
 
 #include "ogawayama/stub/metadata.h"
 #include "ogawayama/stub/error_code.h"
@@ -127,11 +126,6 @@ private:
  */
 class ResultSet{
 public:
-/**
- * @brief variant used to pass value from server to stub.
- */
-using ColumnValueType = std::variant<std::monostate, std::int16_t, std::int32_t, std::int64_t, float, double, std::string>;
-
     /**
      * @brief Record object in the result set.
      */

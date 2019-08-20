@@ -27,29 +27,31 @@
 namespace boost {
 namespace serialization {
 
+using ColumnValueType = ogawayama::stub::ColumnValueType;
+
 /**
  * @brief Method that does serialization dedicated for ogawayama::stub::ColumnValueType
  * @param ar archiver
- * @param d variable in ogawayama::stub::ResultSet::ColumnValueType
+ * @param d variable in ColumnValueType
  * @param file_version not used
  */
 template<class Archive>
 inline void serialize(Archive & ar,                               
-                      ogawayama::stub::ResultSet::ColumnValueType & d,
+                      ColumnValueType & d,
                       const unsigned int file_version)
 {
     split_free(ar, d, file_version);              
 }
 
 /**
- * @brief Function to save ogawayama::stub::ResultSet::ColumnValueType objects using serialization lib
+ * @brief Function to save ColumnValueType objects using serialization lib
  * @param ar archiver
- * @param d variable in ogawayama::stub::ResultSet::ColumnValueType
+ * @param d variable in ColumnValueType
  * @param file_version not used
  */
 template<class Archive>
 inline void save(Archive & ar, 
-          const ogawayama::stub::ResultSet::ColumnValueType & d, 
+          const ColumnValueType & d, 
           unsigned int version)
 {
     auto index = d.index();
@@ -62,10 +64,10 @@ inline void save(Archive & ar,
 /**
  * @brief Helper Function for load
  * @param ar archiver
- * @param d variable in ogawayama::stub::ResultSet::ColumnValueType
+ * @param d variable in ColumnValueType
  */
 template<class Archive, class T>
-inline void load_for_type(Archive & ar, ogawayama::stub::ResultSet::ColumnValueType &d)
+inline void load_for_type(Archive & ar, ColumnValueType &d)
 {
     T v;
     
@@ -73,14 +75,14 @@ inline void load_for_type(Archive & ar, ogawayama::stub::ResultSet::ColumnValueT
     d = v;
 }
 /**
- * @brief Function to load ogawayama::stub::ResultSet::ColumnValueType objects using serialization lib
+ * @brief Function to load ColumnValueType objects using serialization lib
  * @param ar archiver
- * @param d variable in ogawayama::stub::ResultSet::ColumnValueType
+ * @param d variable in ColumnValueType
  * @param file_version not used
  */
 template<class Archive>
 inline void load(Archive & ar, 
-          ogawayama::stub::ResultSet::ColumnValueType & d, 
+          ColumnValueType & d, 
           unsigned int version)
 {
     std::size_t index;
@@ -112,7 +114,7 @@ inline void load(Archive & ar,
 }
 
 /**
- * @brief Method that does serialization for std::monostate, used in ogawayama::stub::ResultSet::ColumnValueType
+ * @brief Method that does serialization for std::monostate, used in ColumnValueType
  * @param ar archiver
  * @param d variable in std::monostate
  * @param file_version not used
