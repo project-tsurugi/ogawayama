@@ -12,6 +12,4 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-if(BUILD_TESTS)
-    add_subdirectory(test)
-endif()
+add_subdirectory(src)

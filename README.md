@@ -6,7 +6,7 @@
 * C++ Compiler `>= C++17`
 
 ```
-RUN apt update -y && apt install -y git build-essential cmake ninja-build libboost-serialization-dev
+RUN apt update -y && apt install -y git build-essential cmake ninja-build libboost-system-dev libboost-serialization-dev libgflags-dev
 ```
 
 ## How to build
@@ -19,7 +19,7 @@ ninja
 ```
 
 available options:
-* (currently nothing)
+* `-DBUILD_TESTS=OFF` - never build test programs
 
 ## License
 

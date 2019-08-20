@@ -22,6 +22,17 @@ project(ogawayama
 list(APPEND CMAKE_MODULE_PATH "${PROJECT_SOURCE_DIR}/cmake")
 
 option(BUILD_SHARED_LIBS "build shared libraries instead of static" ON)
+option(BUILD_TESTS "Build test programs" ON)
+
+find_package(Boost
+        COMPONENTS system serialization
+        REQUIRED
+        )
+find_package(gflags REQUIRED)
+
+if (BUILD_TESTS)
+    enable_testing()
+endif()
 
 configure_file(
     ${CMAKE_CURRENT_SOURCE_DIR}/cmake/Config.cmake.in
@@ -32,3 +43,4 @@ configure_file(
 include(CompileOptions)
 
 add_subdirectory(stub)
+add_subdirectory(server)
