@@ -1,0 +1,3 @@
+[submodule "third_party/umikongo"]
+	path = third_party/umikongo
+	url = git@github.com:project-tsurugi/umikongo.git
