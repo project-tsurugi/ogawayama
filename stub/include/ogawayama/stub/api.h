@@ -160,7 +160,7 @@ public:
          * @brief destruct Row.
          */
         virtual ~Row() = default;
-    protected:
+
         /**
          * @brief get value in variant from the column.
          * @param index culumn number, begins from one
