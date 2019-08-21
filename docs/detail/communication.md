@@ -1,4 +1,4 @@
-# Ogawayama stubとserver間のcommunication
+# Ogawayama stubとserver間のcommunicatio1
 2019.08.13 NT 堀川　First edition
 2019.08.20 NT 堀川　Revise
 
@@ -6,7 +6,7 @@
 
 ## 用語定義
 * 「通信」とは、stub（PostgreSQL側）とserver（umikongo側）の間で行うデータ転送または同期処理を意味する。  
-* PostgeSQLワーカープロセス間、および、umikonogoスレッド間で行うデータ転送や同期処理は「通信」に含めない。
+* PostgeSQLワーカープロセス間、および、umikongoスレッド間で行うデータ転送や同期処理は「通信」に含めない。
 * 「通信路」は、データや制御を受け渡す媒体を意味する。
   * 必要に応じてフロントエンドとバックエンド間に複数の通信路を設置する。
   * 各通信路には、通信路を特定するためのユニークな文字列（通信路の名前）を与える。
