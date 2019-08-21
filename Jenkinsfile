@@ -97,21 +97,21 @@ pipeline {
         //         '''
         //     }
         // }
-        stage ('Coverage') {
-            environment {
-                GCOVR_COMMON_OPTION='-e ../third_party/ -e ../.*/test.* -e ../.*/examples.* -e ../.local/.*'
-                BUILD_PARALLEL_NUM=4
-            }
-            steps {
-                sh '''
-                    cd build
-                    mkdir gcovr-xml gcovr-html
-                    gcovr -j ${BUILD_PARALLEL_NUM} -r .. --xml ${GCOVR_COMMON_OPTION} -o gcovr-xml/ogawayama-gcovr.xml
-                    gcovr -j ${BUILD_PARALLEL_NUM} -r .. --html --html-details --html-title "ogawayama coverage" ${GCOVR_COMMON_OPTION} -o gcovr-html/ogawayama-gcovr.html
-                    zip -q -r ogawayama-coverage-report gcovr-html
-                '''
-            }
-        }
+        // stage ('Coverage') {
+        //     environment {
+        //         GCOVR_COMMON_OPTION='-e ../third_party/ -e ../.*/test.* -e ../.*/examples.* -e ../.local/.*'
+        //         BUILD_PARALLEL_NUM=4
+        //     }
+        //     steps {
+        //         sh '''
+        //             cd build
+        //             mkdir gcovr-xml gcovr-html
+        //             gcovr -j ${BUILD_PARALLEL_NUM} -r .. --xml ${GCOVR_COMMON_OPTION} -o gcovr-xml/ogawayama-gcovr.xml
+        //             gcovr -j ${BUILD_PARALLEL_NUM} -r .. --html --html-details --html-title "ogawayama coverage" ${GCOVR_COMMON_OPTION} -o gcovr-html/ogawayama-gcovr.html
+        //             zip -q -r ogawayama-coverage-report gcovr-html
+        //         '''
+        //     }
+        // }
         stage ('Lint') {
             steps {
                 sh '''#!/bin/bash
@@ -144,7 +144,7 @@ pipeline {
                 includePattern: '**/*.md,**/*.txt,**/*.in,**/*.cmake,**/*.cpp,**/*.h',
                 excludePattern: 'third_party/**'),
                 enabledForFailure: true
-            publishCoverage adapters: [coberturaAdapter('build/gcovr-xml/ogawayama-gcovr.xml')], sourceFileResolver: sourceFiles('STORE_ALL_BUILD')
+            // publishCoverage adapters: [coberturaAdapter('build/gcovr-xml/ogawayama-gcovr.xml')], sourceFileResolver: sourceFiles('STORE_ALL_BUILD')
             archiveArtifacts allowEmptyArchive: true, artifacts: 'build/ogawayama-coverage-report.zip, build/clang-tidy.log, build/clang-tidy-fix.yaml', onlyIfSuccessful: true
             notifySlack('tsurugi-dev')
         }
