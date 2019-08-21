@@ -25,7 +25,7 @@
 
 namespace ogawayama::common {
 
-const std::size_t QUEUE_SIZE = 4096; // 4K byte (tantative)
+const std::size_t BUFFER_SIZE = 4096; // 4K byte (tantative)
 
 /**
  * @brief one to one communication channel, intended for communication between server and stub through boost binary_archive.
@@ -43,7 +43,7 @@ public:
         /**
          * @brief Construct a new object.
          */
-        BoundedBuffer(AllocatorType allocator, std::size_t capacity = QUEUE_SIZE) : m_container_(capacity, allocator) {}
+        BoundedBuffer(AllocatorType allocator, std::size_t capacity = BUFFER_SIZE) : m_container_(capacity, allocator) {}
         /**
          * @brief Copy and move constructers are deleted.
          */

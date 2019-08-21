@@ -16,6 +16,14 @@
 #ifndef STUBIMPL_H_
 #define STUBIMPL_H_
 
+#include <memory>
+#include <vector>
+
+#include <boost/interprocess/allocators/allocator.hpp>
+#include <boost/interprocess/managed_shared_memory.hpp>
+
+#include "ogawayama/common/channel_stream.h"
+
 #include "ogawayama/stub/api.h"
 
 namespace ogawayama::stub {
@@ -26,7 +34,12 @@ namespace ogawayama::stub {
 class Stub::Impl
 {
 public:
-    ErrorCode get_connection(std::unique_ptr<Connection> &connection);
+    ErrorCode get_connection(std::size_t, Connection * &);
+private:
+    std::string database_name_;
+    boost::interprocess::managed_shared_memory *mem_;
+    std::unique_ptr<ogawayama::common::ChannelStream> server_;
+    std::vector<std::unique_ptr<Connection>> connections_;
 };
 
 }  // namespace ogawayama::stub

@@ -18,6 +18,8 @@
 
 namespace ogawayama::stub {
 
+Connection::Impl::Impl(Connection *connection) : envelope_(connection) {}
+
 /**
  * @brief connect to the DB and get Connection class
  * @param connection returns a connection class
@@ -25,15 +27,14 @@ namespace ogawayama::stub {
  */
 ErrorCode Connection::Impl::begin(std::unique_ptr<Transaction> &transaction)
 {
-    transaction = std::make_unique<Transaction>();
+    transaction = std::make_unique<Transaction>(envelope_);
     return ErrorCode::OK;
 }
 
 /**
  * @brief constructor of Connection class
  */
-Connection::Connection()
-    : connection_(std::make_unique<Connection::Impl>()){
-}
+Connection::Connection(Stub *stub)
+    : connection_(std::make_unique<Connection::Impl>(this)), stub_(stub) {}
 
 }  // namespace ogawayama::stub

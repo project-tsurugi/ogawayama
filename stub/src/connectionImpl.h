@@ -28,7 +28,10 @@ namespace ogawayama::stub {
 class Connection::Impl
 {
 public:
+    Impl(Connection *);
     ErrorCode begin(std::unique_ptr<Transaction> &transaction);
+private:
+    Connection *envelope_;
 };
 
 }  // namespace ogawayama::stub

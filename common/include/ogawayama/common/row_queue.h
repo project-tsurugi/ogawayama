@@ -38,7 +38,7 @@ namespace ogawayama::common {
     using ShmColumn = std::variant<std::monostate, std::int16_t, std::int32_t, std::int64_t, float, double, ShmString>;
     using ShmColumnAllocator = boost::interprocess::allocator<ShmColumn, boost::interprocess::managed_shared_memory::segment_manager>;
     
-    using ShmRow = boost::interprocess::vector<ShmColumn,ShmColumnAllocator>;
+    using ShmRow = boost::interprocess::vector<ShmColumn, ShmColumnAllocator>;
     using ShmRowAllocator = boost::interprocess::allocator<ShmRow, boost::interprocess::managed_shared_memory::segment_manager>;
     using ShmQueue = boost::interprocess::vector<ShmRow, ShmRowAllocator>;
 
@@ -70,8 +70,7 @@ namespace ogawayama::common {
             SpscQueue& operator = (SpscQueue&&) = delete;
             
             /**
-             * @brief push one row into the queue and clear the next row (vector).
-             * @param item char data to be pushed.
+             * @brief push the working row into the queue.
              */
             void push()
             {
@@ -90,16 +89,15 @@ namespace ogawayama::common {
                     m_not_empty_.notify_one();
                 }
                 pushed_++;
-                get_row().clear();
             }
             
             /**
-             * @brief pop one row from the queue, never invoke more than once.
-             * @return reference to the row at the front of the queue
+             * @brief pop and clear the current row.
              */
-            ShmRow & pop() {
+            void pop() {
                 bool was_full = !is_not_full();
                 
+                get_current_row().clear();
                 if(!is_not_empty()) {
                     boost::interprocess::scoped_lock lock(m_empty_mutex_);
                     if(!is_not_empty()) {
@@ -112,15 +110,21 @@ namespace ogawayama::common {
                     lock.unlock();
                     m_not_full_.notify_one();
                 }
-                return m_container_.at(index(poped_++));
+                poped_++;
             }
+            
+            /**
+             * @brief get the current row at the front of the queue
+             * @return reference of the row at the front of the queue
+             */
+            ShmRow & get_current_row() { return m_container_.at(index(poped_)); }
             
             /**
              * @brief get the row to which column data is to be stored.
              * @return reference of the row at the back of the queue
              */
-            ShmRow & get_row() { return m_container_.at(index(pushed_)); }
-            
+            ShmRow & get_working_row() { return m_container_.at(index(pushed_)); }
+
         private:
             bool is_not_empty() const { return pushed_ > poped_; }
             bool is_not_full() const { return (pushed_ - poped_) < (QUEUE_SIZE - 1); }
@@ -150,7 +154,7 @@ namespace ogawayama::common {
         template<typename T>
             void put_next_column(T v) {
             ShmColumn column = v;
-            queue_->get_row().emplace_back(column);
+            queue_->get_working_row().emplace_back(column);
         }
         /**
          * @brief put a string column value to the row at the back of the queue.
@@ -159,14 +163,28 @@ namespace ogawayama::common {
             ShmString column_string(mem_->get_segment_manager());
             column_string.assign(v.begin(), v.end());
             ShmColumn column = column_string;
-            queue_->get_row().emplace_back(column);
+            queue_->get_working_row().emplace_back(column);
         }
         /**
          * @brief push the row into the queue.
          */
-        void push() {
+        void push_working_row() {
             queue_->push();
         }
+
+        /**
+         * @brief get the current row.
+         * @return reference to the current row
+         */
+        ShmRow & get_current_row() { return queue_->get_current_row(); }
+        
+        /**
+         * @brief move current to the next in the queue.
+         */
+        void next() {
+            queue_->pop();
+        }
+
         /**
          * @brief get the queue pointer to retrieve the row, for reference count maintenance.
          * @return shared_ptr to the queue

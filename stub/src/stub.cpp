@@ -25,9 +25,9 @@ namespace ogawayama::stub {
  * @param connection returns a connection class
  * @return true in error, otherwise false
  */
-ErrorCode Stub::Impl::get_connection(std::unique_ptr<Connection> &connection)
+ErrorCode Stub::Impl::get_connection(std::size_t n, Connection * & connection)
 {
-    connection = std::make_unique<Connection>();
+    connection = connections_.at(n).get();
     return ErrorCode::OK;
 }
 

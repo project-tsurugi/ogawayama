@@ -22,6 +22,7 @@ add_library(stub
 
 target_include_directories(stub
     PRIVATE ./include
+    PRIVATE ../common/include
 )
 
 set_target_properties(stub

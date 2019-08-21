@@ -25,36 +25,11 @@
 
 namespace ogawayama::stub {
 
+class Stub;
 class Connection;
 class Transaction;
 class ResultSet;
-    
-/**
- * @brief environment for server connection.
- */
-class Stub {
-public:
-    /**
-     * @brief Construct a new object.
-     */
-    Stub();
-
-    /**
-     * @brief destructs this object.
-     */
-    ~Stub() noexcept = default;
-
-    /**
-     * @brief connect to the DB and get Connection class.
-     * @param connection returns a connection class
-     * @return error code defined in error_code.h
-     */
-    ErrorCode get_connection(std::unique_ptr<Connection> &connection);
-private:
-    class Impl;
-    std::unique_ptr<Impl> stub_;
-};
-
+ 
 /**
  * @brief Information about a connection.
  */
@@ -63,7 +38,7 @@ public:
     /**
      * @brief Construct a new object.
      */
-    Connection();
+    Connection(Stub *);
 
     /**
      * @brief destructs this object.
@@ -71,14 +46,25 @@ public:
     ~Connection() noexcept = default;
 
     /**
+     * @brief get the object to which this belongs
+     * @return stub objext
+     */
+    auto get_parent() { return stub_; }
+
+    /**
      * @brief begin a transaction and get Transaction class.
      * @param transaction returns a transaction class
      * @return error code defined in error_code.h
      */
     ErrorCode begin(std::unique_ptr<Transaction> &transaction);
+
 private:
     class Impl;
     std::unique_ptr<Impl> connection_;
+    Stub *stub_;
+    friend class Stub;
+    friend class Transaction;
+    friend class ResultSet;
 };
 
 /**
@@ -89,7 +75,7 @@ public:
     /**
      * @brief Construct a new object.
      */
-    Transaction();
+    Transaction(Connection *);
 
     /**
      * @brief destructs this object.
@@ -97,12 +83,18 @@ public:
     ~Transaction() noexcept = default;
 
     /**
+     * @brief get the object to which this belongs
+     * @return connection objext
+     */
+    auto get_parent() { return connection_; }
+
+    /**
      * @brief execute a query.
      * @param query the SQL query string
      * @param result_set returns a result set of the query
      * @return error code defined in error_code.h
      */
-    ErrorCode execute_query(std::string query, std::unique_ptr<ResultSet> &result_set);
+    ErrorCode execute_query(std::string query, std::shared_ptr<ResultSet> &result_set);
 
     /**
      * @brief execute a statement.
@@ -116,9 +108,14 @@ public:
      * @return error code defined in error_code.h
      */
     ErrorCode commit();
+
 private:
     class Impl;
     std::unique_ptr<Impl> transaction_;
+    Connection *connection_;
+    friend class Stub;
+    friend class Connection;
+    friend class ResultSet;
 };
 
 /**
@@ -127,61 +124,20 @@ private:
 class ResultSet{
 public:
     /**
-     * @brief Record object in the result set.
-     */
-    class Row {
-    public:
-        /**
-         * @brief construct.
-         */
-        Row() = default;
-   
-        /**
-         * @brief copy construct.
-         */
-        Row(Row const&) = default;
-   
-        /**
-         * @brief move construct.
-         */
-        Row(Row &&) = default;
-   
-        /**
-         * @brief copy assign.
-         */
-        Row& operator=(Row const&) = default;
-   
-        /**
-         * @brief move assign.
-         */
-        Row& operator=(Row &&) = default;
-   
-        /**
-         * @brief destruct Row.
-         */
-        virtual ~Row() = default;
-    protected:
-        /**
-         * @brief get value in variant from the column.
-         * @param index culumn number, begins from one
-         * @param value returns the value
-         * @return ErrorCode::OK if success
-         */
-        virtual ErrorCode next_column(ColumnValueType &v) {
-            v = 0;
-            return ErrorCode::OK;
-        }
-    };
-
-    /**
      * @brief Construct a new object.
      */
-    ResultSet() = default;
+    ResultSet(Transaction *);
 
     /**
      * @brief destructs this object.
      */
     ~ResultSet() noexcept = default;
+
+    /**
+     * @brief get the object to which this belongs
+     * @return transaction objext
+     */
+    auto get_parent() { return transaction_; }
 
     /**
      * @brief get metadata for the result set.
@@ -204,25 +160,51 @@ public:
      * @return error code defined in error_code.h
      */
     template<typename T>
-    ErrorCode next_column(T &value) {
-        ColumnValueType v;
-        ErrorCode error_code = current_->next_column(v);
-        if (error_code == ErrorCode::OK) {
-            try {
-                value = std::get<T>(v);
-                return ErrorCode::OK;
-            }
-            catch (const std::bad_variant_access&) {
-                if (std::holds_alternative<std::monostate>(v)) {
-                    return ErrorCode::COLUMN_WAS_NULL;
-                }
-                return ErrorCode::COLUMN_TYPE_MISMATCH;
-            }
-        }
-        return error_code;
-    }
+    ErrorCode next_column(T &value);
+
 private:
-    std::unique_ptr<Row> current_;
+    class Impl;
+    std::unique_ptr<Impl> result_set_;
+    Transaction *transaction_;
+    friend class Stub;
+    friend class Connection;
+    friend class Transaction;
+};
+
+/**
+ * @brief environment for server connection.
+ */
+class Stub {
+public:
+    /**
+     * @brief Construct a new object.
+     */
+    Stub();
+
+    /**
+     * @brief destructs this object.
+     */
+    ~Stub() noexcept = default;
+
+    /**
+     * @brief get the impl class
+     * @return a pointer to the impl class
+     */
+    auto get_impl() { return stub_.get(); }
+    
+    /**
+     * @brief connect to the DB and get Connection class.
+     * @param connection returns a connection class
+     * @return error code defined in error_code.h
+     */
+    ErrorCode get_connection(std::unique_ptr<Connection> &connection);
+
+ private:
+    class Impl;
+    std::unique_ptr<Impl> stub_;
+    friend class Connection::Impl;
+    friend class Transaction::Impl;
+    friend class ResultSet::Impl;
 };
 
 }  // namespace ogawayama::stub

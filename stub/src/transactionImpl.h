@@ -16,23 +16,29 @@
 #ifndef TRANSACTIONIMPL_H_
 #define TRANSACTIONIMPL_H_
 
-#include "stubImpl.h"
+#include "memory"
+#include "vector"
+
+#include "connectionImpl.h"
+#include "result_setImpl.h"
 
 namespace ogawayama::stub {
 
 /**
- * @brief constructor of Connection::Impl class
+ * @brief constructor of Transaction::Impl class
  */
 class Transaction::Impl
 {
 public:
+    Impl(Transaction *);
+
     /**
      * @brief execute a query.
      * @param query the SQL query string
      * @param result_set returns a result set of the query
      * @return true in error, otherwise false
      */
-    ErrorCode execute_query(std::string query, std::unique_ptr<ResultSet> &result_set);
+    ErrorCode execute_query(std::string query, std::shared_ptr<ResultSet> &result_set);
 
     /**
      * @brief execute a statement.
@@ -40,8 +46,12 @@ public:
      * @return true in error, otherwise false
      */
     ErrorCode execute_statement(std::string statement);
-};
 
+private:
+    std::unique_ptr<std::vector<std::shared_ptr<ResultSet>>> result_sets_;
+    Transaction *envelope_;
+};
+ 
 }  // namespace ogawayama::stub
 
 #endif  // TRANSACTIONIMPL_H_
