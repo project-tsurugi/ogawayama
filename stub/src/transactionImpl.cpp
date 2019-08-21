@@ -24,7 +24,7 @@ namespace ogawayama::stub {
  * @return true in error, otherwise false
  */
 ErrorCode Transaction::Impl::execute_query(std::string query, std::unique_ptr<ResultSet> &result_set) {
-    result_set = std::move(std::make_unique<ResultSet>());
+    result_set = std::make_unique<ResultSet>();
     return ErrorCode::OK;
 }
 
@@ -41,7 +41,7 @@ ErrorCode Transaction::Impl::execute_statement(std::string statement) {
  * @brief constructor of Transaction class
  */
 Transaction::Transaction()
-    : transaction_(std::move(std::make_unique<Transaction::Impl>())){
+    : transaction_(std::make_unique<Transaction::Impl>()){
 }
 
 }  // namespace ogawayama::stub

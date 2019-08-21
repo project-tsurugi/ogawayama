@@ -27,7 +27,7 @@ namespace ogawayama::stub {
  */
 ErrorCode Stub::Impl::get_connection(std::unique_ptr<Connection> &connection)
 {
-    connection = std::move(std::make_unique<Connection>());
+    connection = std::make_unique<Connection>();
     return ErrorCode::OK;
 }
 
@@ -35,7 +35,7 @@ ErrorCode Stub::Impl::get_connection(std::unique_ptr<Connection> &connection)
  * @brief constructor of Stub class
  */
 Stub::Stub()
-    : stub_(std::move(std::make_unique<Stub::Impl>())){
+    : stub_(std::make_unique<Stub::Impl>()){
 }
 
 }  // namespace ogawayama::stub

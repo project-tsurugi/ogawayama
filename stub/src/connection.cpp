@@ -25,7 +25,7 @@ namespace ogawayama::stub {
  */
 ErrorCode Connection::Impl::begin(std::unique_ptr<Transaction> &transaction)
 {
-    transaction = std::move(std::make_unique<Transaction>());
+    transaction = std::make_unique<Transaction>();
     return ErrorCode::OK;
 }
 
@@ -33,7 +33,7 @@ ErrorCode Connection::Impl::begin(std::unique_ptr<Transaction> &transaction)
  * @brief constructor of Connection class
  */
 Connection::Connection()
-    : connection_(std::move(std::make_unique<Connection::Impl>())){
+    : connection_(std::make_unique<Connection::Impl>()){
 }
 
 }  // namespace ogawayama::stub
