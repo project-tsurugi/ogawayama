@@ -19,6 +19,7 @@
 #include <iostream>
 #include <memory>
 #include <string>
+#include <string_view>
 
 #include "ogawayama/stub/metadata.h"
 #include "ogawayama/stub/error_code.h"
@@ -179,7 +180,7 @@ public:
     /**
      * @brief Construct a new object.
      */
-    Stub();
+    Stub(std::string_view, bool);
 
     /**
      * @brief destructs this object.

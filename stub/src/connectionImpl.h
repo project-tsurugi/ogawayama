@@ -16,6 +16,7 @@
 #ifndef CONNECTIONIMPL_H_
 #define CONNECTIONIMPL_H_
 
+#include "ogawayama/common/channel_stream.h"
 #include "transactionImpl.h"
 
 #include "stubImpl.h"
@@ -32,6 +33,9 @@ public:
     ErrorCode begin(std::unique_ptr<Transaction> &transaction);
 private:
     Connection *envelope_;
+
+    std::unique_ptr<ogawayama::common::ChannelStream> request_;
+    std::unique_ptr<ogawayama::common::ChannelStream> result_;
 };
 
 }  // namespace ogawayama::stub

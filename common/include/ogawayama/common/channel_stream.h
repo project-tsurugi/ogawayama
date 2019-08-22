@@ -26,6 +26,7 @@
 namespace ogawayama::common {
 
 const std::size_t BUFFER_SIZE = 4096; // 4K byte (tantative)
+const std::size_t MAX_NAME_LENGTH = 32; // 64 chars (tantative, but probably enough)
 
 /**
  * @brief one to one communication channel, intended for communication between server and stub through boost binary_archive.
@@ -141,8 +142,26 @@ public:
     /**
      * @brief Construct a new object.
      */
-    ChannelStream(char const* name, boost::interprocess::managed_shared_memory *mem) : mem_(mem) {
-        buffer_ = mem->find_or_construct<BoundedBuffer>(name)(mem->get_segment_manager());
+     ChannelStream(char const* name, boost::interprocess::managed_shared_memory *mem, bool owner) : owner_(owner), mem_(mem)
+    {
+        if (owner_) {
+            buffer_ = mem->construct<BoundedBuffer>(name)(mem->get_segment_manager());
+            memcpy(name_, name, MAX_NAME_LENGTH);
+        } else {
+            buffer_ = mem->find<BoundedBuffer>(name).first;
+            assert(buffer_);
+        }
+    }
+    ChannelStream(char const* name, boost::interprocess::managed_shared_memory *mem) : ChannelStream(name, mem, false) {}
+
+    /**
+     * @brief Destruct this object.
+     */
+    ~ChannelStream()
+    {
+        if (owner_) {
+            mem_->destroy<BoundedBuffer>(name_);
+        }
     }
 
     /**
@@ -167,7 +186,9 @@ public:
 
 private:
     BoundedBuffer *buffer_;
+    const bool owner_;
     boost::interprocess::managed_shared_memory *mem_;
+    char name_[MAX_NAME_LENGTH];
 };
 
 };  // namespace ogawayama::common

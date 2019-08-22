@@ -20,6 +20,8 @@
 
 namespace ogawayama::stub {
 
+Stub::Impl::Impl(std::string_view database_name, bool create_shm) : database_name_(database_name) {}
+
 /**
  * @brief connect to the DB and get Connection class
  * @param connection returns a connection class
@@ -34,8 +36,7 @@ ErrorCode Stub::Impl::get_connection(std::size_t n, Connection * & connection)
 /**
  * @brief constructor of Stub class
  */
-Stub::Stub()
-    : stub_(std::make_unique<Stub::Impl>()){
-}
+Stub::Stub(std::string_view database_name, bool create_shm = false)
+    : stub_(std::make_unique<Stub::Impl>(database_name, create_shm)) {}
 
 }  // namespace ogawayama::stub

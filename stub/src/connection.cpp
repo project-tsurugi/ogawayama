@@ -18,7 +18,12 @@
 
 namespace ogawayama::stub {
 
-Connection::Impl::Impl(Connection *connection) : envelope_(connection) {}
+Connection::Impl::Impl(Connection *connection) : envelope_(connection)
+{
+    boost::interprocess::managed_shared_memory *managed_shared_memory = envelope_->get_parent()->get_impl()->get_managed_shared_memory();
+    request_ = std::make_unique<ogawayama::common::ChannelStream>("request", managed_shared_memory, true);
+    result_ = std::make_unique<ogawayama::common::ChannelStream>("result", managed_shared_memory, true);
+}
 
 /**
  * @brief connect to the DB and get Connection class

@@ -34,10 +34,12 @@ namespace ogawayama::stub {
 class Stub::Impl
 {
 public:
+    Impl(std::string_view, bool);
     ErrorCode get_connection(std::size_t, Connection * &);
+    auto get_managed_shared_memory() { return managed_shared_memory_; }
 private:
     std::string database_name_;
-    boost::interprocess::managed_shared_memory *mem_;
+    boost::interprocess::managed_shared_memory *managed_shared_memory_;
     std::unique_ptr<ogawayama::common::ChannelStream> server_;
     std::vector<std::unique_ptr<Connection>> connections_;
 };
