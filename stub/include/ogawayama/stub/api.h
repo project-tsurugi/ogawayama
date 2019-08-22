@@ -53,6 +53,12 @@ public:
     auto get_parent() { return stub_; }
 
     /**
+     * @brief get the impl class
+     * @return a pointer to the impl class
+     */
+    auto get_impl() { return impl_.get(); }
+
+    /**
      * @brief begin a transaction and get Transaction class.
      * @param transaction returns a transaction class
      * @return error code defined in error_code.h
@@ -61,7 +67,7 @@ public:
 
 private:
     class Impl;
-    std::unique_ptr<Impl> connection_;
+    std::unique_ptr<Impl> impl_;
     Stub *stub_;
     friend class Stub;
     friend class Transaction;
@@ -112,7 +118,7 @@ public:
 
 private:
     class Impl;
-    std::unique_ptr<Impl> transaction_;
+    std::unique_ptr<Impl> impl_;
     Connection *connection_;
     friend class Stub;
     friend class Connection;
@@ -165,7 +171,7 @@ public:
 
 private:
     class Impl;
-    std::unique_ptr<Impl> result_set_;
+    std::unique_ptr<Impl> impl_;
     Transaction *transaction_;
     friend class Stub;
     friend class Connection;
@@ -191,7 +197,7 @@ public:
      * @brief get the impl class
      * @return a pointer to the impl class
      */
-    auto get_impl() { return stub_.get(); }
+    auto get_impl() { return impl_.get(); }
     
     /**
      * @brief connect to the DB and get Connection class.
@@ -202,7 +208,7 @@ public:
 
  private:
     class Impl;
-    std::unique_ptr<Impl> stub_;
+    std::unique_ptr<Impl> impl_;
     friend class Connection::Impl;
     friend class Transaction::Impl;
     friend class ResultSet::Impl;

@@ -64,11 +64,11 @@ ErrorCode ResultSet::Impl::next_column(T &value) {
  * @brief constructor of ResultSet class
  */
 ResultSet::ResultSet(Transaction *transaction)
-    : result_set_(std::make_unique<ResultSet::Impl>(this)), transaction_(transaction) {}
+    : impl_(std::make_unique<ResultSet::Impl>(this)), transaction_(transaction) {}
 
-ErrorCode ResultSet::next() { return result_set_->next(); }
+ErrorCode ResultSet::next() { return impl_->next(); }
 
 template<typename T>
-ErrorCode ResultSet::next_column(T &value) { return result_set_->next_column<T>(value); }
+ErrorCode ResultSet::next_column(T &value) { return impl_->next_column<T>(value); }
 
 }  // namespace ogawayama::stub

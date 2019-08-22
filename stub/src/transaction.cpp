@@ -21,6 +21,7 @@ namespace ogawayama::stub {
 Transaction::Impl::Impl(Transaction *transaction) : envelope_(transaction)
 {
     result_sets_ = std::make_unique<std::vector<std::shared_ptr<ResultSet>>>();
+    envelope_->get_parent()->get_impl()->get_channel_streams(request_, result_);
 }
 
 /**
@@ -42,6 +43,9 @@ ErrorCode Transaction::Impl::execute_query(std::string query, std::shared_ptr<Re
  * @return true in error, otherwise false
  */
 ErrorCode Transaction::Impl::execute_statement(std::string statement) {
+    //    std::string sql = "update *";  // Just for test
+    //    request_->get_binary_oarchive() << sql;  // Just for test
+
     return ErrorCode::OK;
 }
 
@@ -49,16 +53,16 @@ ErrorCode Transaction::Impl::execute_statement(std::string statement) {
  * @brief constructor of Transaction class
  */
 Transaction::Transaction(Connection *connection)
-    : transaction_(std::make_unique<Transaction::Impl>(this)), connection_(connection) {}
+    : impl_(std::make_unique<Transaction::Impl>(this)), connection_(connection) {}
 
 ErrorCode Transaction::execute_query(std::string query, std::shared_ptr<ResultSet> &result_set)
 {
-    return transaction_->execute_query(query, result_set);
+    return impl_->execute_query(query, result_set);
 }
 
 ErrorCode Transaction::execute_statement(std::string statement)
 {
-    return transaction_->execute_statement(statement);
+    return impl_->execute_statement(statement);
 }
     
 }  // namespace ogawayama::stub

@@ -22,6 +22,8 @@
 #include <boost/interprocess/managed_shared_memory.hpp>
 #include <boost/interprocess/sync/interprocess_condition.hpp>
 #include <boost/interprocess/sync/interprocess_mutex.hpp>
+#include <boost/archive/binary_oarchive.hpp>
+#include <boost/archive/binary_iarchive.hpp>
 
 namespace ogawayama::common {
 
@@ -184,6 +186,24 @@ public:
         return static_cast<int>(rv);
     }
 
+    /**
+     * @brief get binary_iarchive associated with this object
+     * @return a binary_iarchive associated with this object
+     */
+    boost::archive::binary_iarchive get_binary_iarchive()
+    {
+        return boost::archive::binary_iarchive(*this);
+    }
+
+    /**
+     * @brief get binary_oarchive associated with this object
+     * @return a binary_oarchive associated with this object
+     */
+    boost::archive::binary_oarchive get_binary_oarchive()
+    {
+        return boost::archive::binary_oarchive(*this);
+    }
+
 private:
     BoundedBuffer *buffer_;
     const bool owner_;
@@ -192,5 +212,4 @@ private:
 };
 
 };  // namespace ogawayama::common
-
 #endif //  CHANNEL_STREAM_H_

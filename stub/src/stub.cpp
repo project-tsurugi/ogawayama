@@ -37,6 +37,6 @@ ErrorCode Stub::Impl::get_connection(std::size_t n, Connection * & connection)
  * @brief constructor of Stub class
  */
 Stub::Stub(std::string_view database_name, bool create_shm = false)
-    : stub_(std::make_unique<Stub::Impl>(database_name, create_shm)) {}
+    : impl_(std::make_unique<Stub::Impl>(database_name, create_shm)) {}
 
 }  // namespace ogawayama::stub

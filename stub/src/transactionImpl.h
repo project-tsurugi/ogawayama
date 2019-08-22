@@ -50,8 +50,10 @@ public:
 private:
     std::unique_ptr<std::vector<std::shared_ptr<ResultSet>>> result_sets_;
     Transaction *envelope_;
+    ogawayama::common::ChannelStream *request_; // copy of unique_ptr<ChannelStream> request_ belongs to Connection (and its Impl)
+    ogawayama::common::ChannelStream *result_;  // copy of unique_ptr<ChannelStream> result_ belongs to Connection (and its Impl)
 };
- 
+
 }  // namespace ogawayama::stub
 
 #endif  // TRANSACTIONIMPL_H_

@@ -18,7 +18,6 @@
 
 #include "ogawayama/common/channel_stream.h"
 #include "transactionImpl.h"
-
 #include "stubImpl.h"
 
 namespace ogawayama::stub {
@@ -31,6 +30,13 @@ class Connection::Impl
 public:
     Impl(Connection *);
     ErrorCode begin(std::unique_ptr<Transaction> &transaction);
+
+    void get_channel_streams(ogawayama::common::ChannelStream * & request, ogawayama::common::ChannelStream * & result)
+    {
+        request = request_.get();
+        result = result_.get();
+    }
+
 private:
     Connection *envelope_;
 

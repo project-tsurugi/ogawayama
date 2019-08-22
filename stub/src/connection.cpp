@@ -40,6 +40,6 @@ ErrorCode Connection::Impl::begin(std::unique_ptr<Transaction> &transaction)
  * @brief constructor of Connection class
  */
 Connection::Connection(Stub *stub)
-    : connection_(std::make_unique<Connection::Impl>(this)), stub_(stub) {}
+    : impl_(std::make_unique<Connection::Impl>(this)), stub_(stub) {}
 
 }  // namespace ogawayama::stub
