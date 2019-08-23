@@ -18,11 +18,11 @@
 
 namespace ogawayama::stub {
 
-Connection::Impl::Impl(Connection *connection) : envelope_(connection)
+Connection::Impl::Impl(Connection *connection, std::size_t pgprocno) : envelope_(connection), pgprocno_(pgprocno)
 {
-    boost::interprocess::managed_shared_memory *managed_shared_memory = envelope_->get_parent()->get_impl()->get_managed_shared_memory();
-    request_ = std::make_unique<ogawayama::common::ChannelStream>("request", managed_shared_memory, true);
-    result_ = std::make_unique<ogawayama::common::ChannelStream>("result", managed_shared_memory, true);
+    boost::interprocess::managed_shared_memory *managed_shared_memory_ptr = envelope_->get_manager()->get_impl()->get_managed_shared_memory_ptr();
+    request_ = std::make_unique<ogawayama::common::ChannelStream>("request", managed_shared_memory_ptr, true);
+    result_ = std::make_unique<ogawayama::common::ChannelStream>("result", managed_shared_memory_ptr, true);
 }
 
 /**
@@ -39,7 +39,7 @@ ErrorCode Connection::Impl::begin(std::unique_ptr<Transaction> &transaction)
 /**
  * @brief constructor of Connection class
  */
-Connection::Connection(Stub *stub)
-    : impl_(std::make_unique<Connection::Impl>(this)), stub_(stub) {}
+Connection::Connection(Stub *stub, std::size_t pgprocno)
+    : impl_(std::make_unique<Connection::Impl>(this, pgprocno)), manager_(stub) {}
 
 }  // namespace ogawayama::stub

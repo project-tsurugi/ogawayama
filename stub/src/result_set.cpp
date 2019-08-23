@@ -64,7 +64,7 @@ ErrorCode ResultSet::Impl::next_column(T &value) {
  * @brief constructor of ResultSet class
  */
 ResultSet::ResultSet(Transaction *transaction)
-    : impl_(std::make_unique<ResultSet::Impl>(this)), transaction_(transaction) {}
+    : impl_(std::make_unique<ResultSet::Impl>(this)), manager_(transaction) {}
 
 ErrorCode ResultSet::next() { return impl_->next(); }
 

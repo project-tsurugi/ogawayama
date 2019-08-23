@@ -28,8 +28,8 @@ namespace ogawayama::stub {
 class Connection::Impl
 {
 public:
-    Impl(Connection *);
-    ErrorCode begin(std::unique_ptr<Transaction> &transaction);
+    Impl(Connection *, std::size_t);
+    ErrorCode begin(TransactionPtr &transaction);
 
     void get_channel_streams(ogawayama::common::ChannelStream * & request, ogawayama::common::ChannelStream * & result)
     {
@@ -40,6 +40,7 @@ public:
 private:
     Connection *envelope_;
 
+    std::size_t pgprocno_;
     std::unique_ptr<ogawayama::common::ChannelStream> request_;
     std::unique_ptr<ogawayama::common::ChannelStream> result_;
 };

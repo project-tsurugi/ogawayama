@@ -21,7 +21,7 @@ namespace ogawayama::stub {
 Transaction::Impl::Impl(Transaction *transaction) : envelope_(transaction)
 {
     result_sets_ = std::make_unique<std::vector<std::shared_ptr<ResultSet>>>();
-    envelope_->get_parent()->get_impl()->get_channel_streams(request_, result_);
+    envelope_->get_manager()->get_impl()->get_channel_streams(request_, result_);
 }
 
 /**
@@ -29,7 +29,7 @@ Transaction::Impl::Impl(Transaction *transaction) : envelope_(transaction)
  * @param connection returns a connection class
  * @return true in error, otherwise false
  */
-ErrorCode Transaction::Impl::execute_query(std::string query, std::shared_ptr<ResultSet> &result_set) {
+ErrorCode Transaction::Impl::execute_query(std::string_view query, std::shared_ptr<ResultSet> &result_set) {
     if (result_sets_->size() == 0) {
         result_sets_->emplace_back(std::make_shared<ResultSet>(envelope_));
     }
@@ -42,10 +42,8 @@ ErrorCode Transaction::Impl::execute_query(std::string query, std::shared_ptr<Re
  * @param statement the SQL statement string
  * @return true in error, otherwise false
  */
-ErrorCode Transaction::Impl::execute_statement(std::string statement) {
-    //    std::string sql = "update *";  // Just for test
-    //    request_->get_binary_oarchive() << sql;  // Just for test
-
+ErrorCode Transaction::Impl::execute_statement(std::string_view statement) {
+    request_->get_binary_oarchive() << std::string(statement);  // Just for test
     return ErrorCode::OK;
 }
 
@@ -53,16 +51,16 @@ ErrorCode Transaction::Impl::execute_statement(std::string statement) {
  * @brief constructor of Transaction class
  */
 Transaction::Transaction(Connection *connection)
-    : impl_(std::make_unique<Transaction::Impl>(this)), connection_(connection) {}
+    : impl_(std::make_unique<Transaction::Impl>(this)), manager_(connection) {}
 
-ErrorCode Transaction::execute_query(std::string query, std::shared_ptr<ResultSet> &result_set)
+ErrorCode Transaction::execute_query(std::string_view query, std::shared_ptr<ResultSet> &result_set)
 {
     return impl_->execute_query(query, result_set);
 }
 
-ErrorCode Transaction::execute_statement(std::string statement)
+ErrorCode Transaction::execute_statement(std::string_view statement)
 {
     return impl_->execute_statement(statement);
 }
-    
+
 }  // namespace ogawayama::stub

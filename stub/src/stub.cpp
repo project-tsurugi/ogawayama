@@ -14,22 +14,35 @@
  * limitations under the License.
  */
 
+#include "boost/container/vector.hpp"
+
 #include "connectionImpl.h"
 
 #include "stubImpl.h"
 
 namespace ogawayama::stub {
 
-Stub::Impl::Impl(std::string_view database_name, bool create_shm) : database_name_(database_name) {}
+Stub::Impl::Impl(Stub *stub, std::string_view database_name, bool create_shm) : envelope_(stub), database_name_(database_name)
+{
+    if (create_shm) {
+        boost::interprocess::shared_memory_object::remove(database_name_.c_str());
+        managed_shared_memory_ = boost::interprocess::managed_shared_memory(boost::interprocess::create_only, database_name_.c_str(), SEGMENT_SIZE);
+        server_ = std::make_unique<ogawayama::common::ChannelStream>("server", &managed_shared_memory_, true);
+    } else {
+        managed_shared_memory_ = boost::interprocess::managed_shared_memory(boost::interprocess::open_only, database_name_.c_str());
+        assert (managed_shared_memory_.get_size() == SEGMENT_SIZE);
+        server_ = std::make_unique<ogawayama::common::ChannelStream>("server", &managed_shared_memory_);
+    }
+}
 
 /**
  * @brief connect to the DB and get Connection class
  * @param connection returns a connection class
  * @return true in error, otherwise false
  */
-ErrorCode Stub::Impl::get_connection(std::size_t n, Connection * & connection)
+ErrorCode Stub::Impl::get_connection(std::size_t pgprocno, ConnectionPtr & connection)
 {
-    connection = connections_.at(n).get();
+    connection = std::make_unique<Connection>(this->envelope_, pgprocno);
     return ErrorCode::OK;
 }
 
@@ -37,6 +50,14 @@ ErrorCode Stub::Impl::get_connection(std::size_t n, Connection * & connection)
  * @brief constructor of Stub class
  */
 Stub::Stub(std::string_view database_name, bool create_shm = false)
-    : impl_(std::make_unique<Stub::Impl>(database_name, create_shm)) {}
+    : impl_(std::make_unique<Stub::Impl>(this, database_name, create_shm)) {}
+
+/**
+ * @brief connect to the DB and get Connection class.
+ */
+ErrorCode Stub::get_connection(std::size_t pgprocno, ConnectionPtr & connection)
+{    
+    return impl_->get_connection(pgprocno, connection);
+}
 
 }  // namespace ogawayama::stub

@@ -24,107 +24,15 @@
 #include "ogawayama/stub/metadata.h"
 #include "ogawayama/stub/error_code.h"
 
+using MetadataPtr = std::shared_ptr<ogawayama::stub::Metadata>;
+
 namespace ogawayama::stub {
 
-class Stub;
-class Connection;
-class Transaction;
 class ResultSet;
+class Transaction;
+class Connection;
+class Stub;
  
-/**
- * @brief Information about a connection.
- */
-class Connection {
-public:
-    /**
-     * @brief Construct a new object.
-     */
-    Connection(Stub *);
-
-    /**
-     * @brief destructs this object.
-     */
-    ~Connection() noexcept = default;
-
-    /**
-     * @brief get the object to which this belongs
-     * @return stub objext
-     */
-    auto get_parent() { return stub_; }
-
-    /**
-     * @brief get the impl class
-     * @return a pointer to the impl class
-     */
-    auto get_impl() { return impl_.get(); }
-
-    /**
-     * @brief begin a transaction and get Transaction class.
-     * @param transaction returns a transaction class
-     * @return error code defined in error_code.h
-     */
-    ErrorCode begin(std::unique_ptr<Transaction> &transaction);
-
-private:
-    class Impl;
-    std::unique_ptr<Impl> impl_;
-    Stub *stub_;
-    friend class Stub;
-    friend class Transaction;
-    friend class ResultSet;
-};
-
-/**
- * @brief Information about a transaction.
- */
-class Transaction {
-public:
-    /**
-     * @brief Construct a new object.
-     */
-    Transaction(Connection *);
-
-    /**
-     * @brief destructs this object.
-     */
-    ~Transaction() noexcept = default;
-
-    /**
-     * @brief get the object to which this belongs
-     * @return connection objext
-     */
-    auto get_parent() { return connection_; }
-
-    /**
-     * @brief execute a query.
-     * @param query the SQL query string
-     * @param result_set returns a result set of the query
-     * @return error code defined in error_code.h
-     */
-    ErrorCode execute_query(std::string query, std::shared_ptr<ResultSet> &result_set);
-
-    /**
-     * @brief execute a statement.
-     * @param statement the SQL statement string
-     * @return error code defined in error_code.h
-     */
-    ErrorCode execute_statement(std::string statement);
-
-    /**
-     * @brief commit the current transaction.
-     * @return error code defined in error_code.h
-     */
-    ErrorCode commit();
-
-private:
-    class Impl;
-    std::unique_ptr<Impl> impl_;
-    Connection *connection_;
-    friend class Stub;
-    friend class Connection;
-    friend class ResultSet;
-};
-
 /**
  * @brief Result of a query.
  */
@@ -144,14 +52,14 @@ public:
      * @brief get the object to which this belongs
      * @return transaction objext
      */
-    auto get_parent() { return transaction_; }
+    auto get_manager() { return manager_; }
 
     /**
      * @brief get metadata for the result set.
      * @param metadata returns the metadata class
      * @return error code defined in error_code.h
      */
-    ErrorCode get_metadata(std::unique_ptr<Metadata> &metadata);
+    ErrorCode get_metadata(MetadataPtr &);
 
     /**
      * @brief move current to the next tuple.
@@ -172,11 +80,126 @@ public:
 private:
     class Impl;
     std::unique_ptr<Impl> impl_;
-    Transaction *transaction_;
+    Transaction *manager_;
     friend class Stub;
     friend class Connection;
     friend class Transaction;
 };
+
+}  // namespace ogawayama::stub
+
+using ResultSetPtr = std::shared_ptr<ogawayama::stub::ResultSet>;
+
+
+namespace ogawayama::stub {
+
+/**
+ * @brief Information about a transaction.
+ */
+class Transaction {
+public:
+    /**
+     * @brief Construct a new object.
+     */
+    Transaction(Connection *);
+
+    /**
+     * @brief destructs this object.
+     */
+    ~Transaction() noexcept = default;
+
+    /**
+     * @brief get the object to which this belongs
+     * @return connection objext
+     */
+    auto get_manager() { return manager_; }
+
+    /**
+     * @brief execute a query.
+     * @param query the SQL query string
+     * @param result_set returns a result set of the query
+     * @return error code defined in error_code.h
+     */
+    ErrorCode execute_query(std::string_view, ResultSetPtr &);
+
+    /**
+     * @brief execute a statement.
+     * @param statement the SQL statement string
+     * @return error code defined in error_code.h
+     */
+    ErrorCode execute_statement(std::string_view);
+
+    /**
+     * @brief commit the current transaction.
+     * @return error code defined in error_code.h
+     */
+    ErrorCode commit();
+
+private:
+    class Impl;
+    std::unique_ptr<Impl> impl_;
+    Connection *manager_;
+    friend class Stub;
+    friend class Connection;
+    friend class ResultSet;
+};
+
+}  // namespace ogawayama::stub
+
+using TransactionPtr = std::unique_ptr<ogawayama::stub::Transaction>;
+
+
+namespace ogawayama::stub {
+
+/**
+ * @brief Information about a connection.
+ */
+class Connection {
+public:
+    /**
+     * @brief Construct a new object.
+     */
+    Connection(Stub *, std::size_t);
+
+    /**
+     * @brief destructs this object.
+     */
+    ~Connection() noexcept = default;
+
+    /**
+     * @brief get the object to which this belongs
+     * @return stub objext
+     */
+    auto get_manager() { return manager_; }
+
+    /**
+     * @brief get the impl class
+     * @return a pointer to the impl class
+     */
+    auto get_impl() { return impl_.get(); }
+
+    /**
+     * @brief begin a transaction and get Transaction class.
+     * @param transaction returns a transaction class
+     * @return error code defined in error_code.h
+     */
+    ErrorCode begin(TransactionPtr &);
+
+private:
+    class Impl;
+    std::unique_ptr<Impl> impl_;
+    Stub *manager_;
+    friend class Stub;
+    friend class Transaction;
+    friend class ResultSet;
+};
+
+}  // namespace ogawayama::stub
+
+using ConnectionPtr = std::unique_ptr<ogawayama::stub::Connection>;
+
+
+namespace ogawayama::stub {
 
 /**
  * @brief environment for server connection.
@@ -201,10 +224,11 @@ public:
     
     /**
      * @brief connect to the DB and get Connection class.
+     * @param give MyProc->pgprocno to n
      * @param connection returns a connection class
      * @return error code defined in error_code.h
      */
-    ErrorCode get_connection(std::unique_ptr<Connection> &connection);
+    ErrorCode get_connection(std::size_t, ConnectionPtr &);
 
  private:
     class Impl;
@@ -215,5 +239,8 @@ public:
 };
 
 }  // namespace ogawayama::stub
+
+using ConnectionPtr = std::unique_ptr<ogawayama::stub::Connection>;
+using TransactionPtr = std::unique_ptr<ogawayama::stub::Transaction>;
 
 #endif  // STUB_API_H_
