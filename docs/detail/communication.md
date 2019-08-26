@@ -1,4 +1,4 @@
-# Ogawayama stubとserver間のcommunication
+# Ogawayama stubとserver間のcommunicatio1
 2019.08.13 NT 堀川　First edition
 2019.08.20 NT 堀川　Revise
 2019.08.20 NT 堀川　R2 (request_xxxもフロントエンドが作成する）
