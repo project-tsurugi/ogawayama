@@ -24,7 +24,7 @@
 #include "ogawayama/stub/metadata.h"
 #include "ogawayama/stub/error_code.h"
 
-using MetadataPtr = std::shared_ptr<ogawayama::stub::Metadata>;
+using MetadataPtr = ogawayama::stub::Metadata *;
 
 namespace ogawayama::stub {
 
@@ -41,7 +41,7 @@ public:
     /**
      * @brief Construct a new object.
      */
-    ResultSet(Transaction *);
+    ResultSet(Transaction *, std::size_t);
 
     /**
      * @brief destructs this object.
@@ -53,6 +53,12 @@ public:
      * @return transaction objext
      */
     auto get_manager() { return manager_; }
+
+    /**
+     * @brief get the impl class
+     * @return a pointer to the impl class
+     */
+    auto get_impl() { return impl_.get(); }
 
     /**
      * @brief get metadata for the result set.

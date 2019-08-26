@@ -18,9 +18,30 @@
 
 namespace ogawayama::stub {
 
-ResultSet::Impl::Impl(ResultSet *result_set) : envelope_(result_set) {}
-    //    row_queue_(std::make_unique<ogawayama::common::RowQueue>("name", MEMORY_ALLOCATOR)) {}
+ResultSet::Impl::Impl(ResultSet *result_set, std::size_t id) : envelope_(result_set), id_(id), c_idx_(0)
+{
+    Connection *connection = envelope_->get_manager()->get_manager();
     
+    row_queue_ = std::make_unique<ogawayama::common::RowQueue>
+        (
+         connection->get_impl()->shm_name("resultset", connection->get_impl()->get_id(), id_),
+         connection->get_manager()->get_impl()->get_managed_shared_memory_ptr(),
+         true
+         );
+    metadata_ = std::make_unique<Metadata>();
+}
+    
+/**
+ * @brief get metadata for the result set.
+ * @param metadata returns the metadata class
+ * @return error code defined in error_code.h
+ */
+ErrorCode ResultSet::Impl::get_metadata(MetadataPtr &metadata)
+{
+    metadata = metadata_.get();
+    return ErrorCode::OK;
+}
+
 /**
  * @brief connect to the DB and get Result_Set class
  * @param result_set returns a result_set class
@@ -29,7 +50,7 @@ ResultSet::Impl::Impl(ResultSet *result_set) : envelope_(result_set) {}
 ErrorCode ResultSet::Impl::next()
 {
     row_queue_->next();
-    index_ = 0;
+    c_idx_ = 0;
     return ErrorCode::OK;
 }
 
@@ -47,7 +68,7 @@ ErrorCode ResultSet::Impl::next_column(T &value) {
         return ErrorCode::END_OF_ROW;
     }
     
-    ogawayama::common::ShmColumn c = r.at(index_);
+    ogawayama::common::ShmColumn c = r.at(c_idx_++);
     try {
         value = std::get<T>(c);
         return ErrorCode::OK;
@@ -61,10 +82,20 @@ ErrorCode ResultSet::Impl::next_column(T &value) {
 }
 
 /**
+ * @brief get metadata for the result set.
+ * @param metadata returns the metadata class
+ * @return error code defined in error_code.h
+ */
+ErrorCode ResultSet::get_metadata(MetadataPtr &metadata)
+{
+    return impl_->get_metadata(metadata);
+}
+
+/**
  * @brief constructor of ResultSet class
  */
-ResultSet::ResultSet(Transaction *transaction)
-    : impl_(std::make_unique<ResultSet::Impl>(this)), manager_(transaction) {}
+ResultSet::ResultSet(Transaction *transaction, std::size_t id)
+    : impl_(std::make_unique<ResultSet::Impl>(this, id)), manager_(transaction) {}
 
 ErrorCode ResultSet::next() { return impl_->next(); }
 

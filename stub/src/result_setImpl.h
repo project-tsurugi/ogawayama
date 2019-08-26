@@ -28,14 +28,20 @@ namespace ogawayama::stub {
 class ResultSet::Impl
 {
 public:
-    Impl(ResultSet *);
+    Impl(ResultSet *, std::size_t);
+    ErrorCode get_metadata(MetadataPtr &);
     ErrorCode next();
     template<typename T>
         ErrorCode next_column(T &value);
+    void clear() { metadata_->clear(); } //  FIXME row_queue->clear();
+
  private:
-    std::size_t index_ {};
-    std::unique_ptr<ogawayama::common::RowQueue> row_queue_;
     ResultSet *envelope_;
+
+    std::size_t id_;
+    std::size_t c_idx_;
+    std::unique_ptr<Metadata> metadata_;
+    std::unique_ptr<ogawayama::common::RowQueue> row_queue_;
 };
 
 }  // namespace ogawayama::stub

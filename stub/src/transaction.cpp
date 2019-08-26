@@ -29,11 +29,17 @@ Transaction::Impl::Impl(Transaction *transaction) : envelope_(transaction)
  * @param connection returns a connection class
  * @return true in error, otherwise false
  */
-ErrorCode Transaction::Impl::execute_query(std::string_view query, std::shared_ptr<ResultSet> &result_set) {
-    if (result_sets_->size() == 0) {
-        result_sets_->emplace_back(std::make_shared<ResultSet>(envelope_));
+ErrorCode Transaction::Impl::execute_query(std::string_view query, std::shared_ptr<ResultSet> &result_set)
+{
+    for( auto rs : *result_sets_ ) {
+        if( rs.use_count() == 1) {
+            result_set = rs;
+            result_set->get_impl()->clear();
+            return ErrorCode::OK;
+        }
     }
-    result_set = result_sets_->at(0);
+    result_set = std::make_shared<ResultSet>(envelope_, result_sets_->size());
+    result_sets_->emplace_back(result_set);
     return ErrorCode::OK;
 }
 
