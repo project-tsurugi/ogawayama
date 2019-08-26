@@ -16,23 +16,24 @@
 
 #include <iostream>
 #include <string>
-#include "boost/archive/binary_iarchive.hpp"
+
+#include "gflags/gflags.h"
 
 #include "ogawayama/common/channel_stream.h"
 
+namespace ogawayama::server {
 
-namespace ogawayama {
-namespace server {
-
-const std::size_t SEGMENT_SIZE = 100<<20; // 100 MiB (tantative)
-const char* SHARED_MEMORY_NAME = "ogawayama"; // (tantative)
+DEFINE_string(databasename, ogawayama::common::param::SHARED_MEMORY_NAME, "database name");  // NOLINT
 
 int backend_main(int argc, char **argv) {
-    boost::interprocess::managed_shared_memory *mem;
-    mem = new boost::interprocess::managed_shared_memory(boost::interprocess::open_only, SHARED_MEMORY_NAME);
-    assert (mem->get_size() == SEGMENT_SIZE);
+    gflags::SetUsageMessage("ogawayama database server");
+    gflags::ParseCommandLineFlags(&argc, &argv, true);
 
-    ogawayama::common::ChannelStream server_ch("Server", mem);
+    boost::interprocess::shared_memory_object::remove(FLAGS_databasename.c_str());
+    boost::interprocess::managed_shared_memory *mem = new boost::interprocess::managed_shared_memory(boost::interprocess::create_only, FLAGS_databasename.c_str(), ogawayama::common::param::SEGMENT_SIZE);
+    assert (mem->get_size() == ogawayama::common::param::SEGMENT_SIZE);
+
+    ogawayama::common::ChannelStream server_ch(ogawayama::common::param::server, mem, true);
     boost::archive::binary_iarchive server_ia(server_ch);
     std::string command;
 
@@ -43,5 +44,4 @@ int backend_main(int argc, char **argv) {
     }
 }
 
-}  // server
-}  // ogawayama
+}  // ogawayama::server

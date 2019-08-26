@@ -22,14 +22,12 @@
 
 namespace ogawayama::stub {
 
-char const *channel_name = "server";
-
 Stub::Impl::Impl(Stub *stub, std::string_view database_name, bool create_shm) : envelope_(stub), database_name_(database_name)
 {
     if (create_shm) {
         boost::interprocess::shared_memory_object::remove(database_name_.c_str());
-        managed_shared_memory_ = boost::interprocess::managed_shared_memory(boost::interprocess::create_only, database_name_.c_str(), SEGMENT_SIZE);
-        server_ = std::make_unique<ogawayama::common::ChannelStream>(channel_name, &managed_shared_memory_, true);
+        managed_shared_memory_ = boost::interprocess::managed_shared_memory(boost::interprocess::create_only, database_name_.c_str(), ogawayama::common::param::SEGMENT_SIZE);
+        server_ = std::make_unique<ogawayama::common::ChannelStream>(ogawayama::common::param::server, &managed_shared_memory_, true);
     } else {
         try {
             managed_shared_memory_ = boost::interprocess::managed_shared_memory(boost::interprocess::open_only, database_name_.c_str());
@@ -38,8 +36,8 @@ Stub::Impl::Impl(Stub *stub, std::string_view database_name, bool create_shm) : 
             std::cerr << "failed with exception \"" << ex.what() << "\"" << std::endl;
             exit(-1);
         }
-        assert (managed_shared_memory_.get_size() == SEGMENT_SIZE);
-        server_ = std::make_unique<ogawayama::common::ChannelStream>(channel_name, &managed_shared_memory_);
+        assert (managed_shared_memory_.get_size() == ogawayama::common::param::SEGMENT_SIZE);
+        server_ = std::make_unique<ogawayama::common::ChannelStream>(ogawayama::common::param::server, &managed_shared_memory_);
     }
 }
 

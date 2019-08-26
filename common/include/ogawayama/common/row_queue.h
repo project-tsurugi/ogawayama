@@ -28,9 +28,10 @@
 #include "boost/bind.hpp"
 #include "boost/interprocess/smart_ptr/shared_ptr.hpp"
 
+#include "ogawayama/common/shared_memory.h"
+
 namespace ogawayama::common {
-    const std::size_t QUEUE_SIZE = 32; // 32 rows (tantative)
-    
+
     using VoidAllocator = boost::interprocess::allocator<void, boost::interprocess::managed_shared_memory::segment_manager>;
     using CharAllocator = boost::interprocess::allocator<char, boost::interprocess::managed_shared_memory::segment_manager>;
     using ShmString = boost::interprocess::basic_string<char, std::char_traits<char>, CharAllocator>;
@@ -58,7 +59,7 @@ namespace ogawayama::common {
             /**
              * @brief Construct a new object.
              */
-            SpscQueue(VoidAllocator allocator, std::size_t capacity = QUEUE_SIZE) : m_container_(allocator) {
+            SpscQueue(VoidAllocator allocator, std::size_t capacity = param::QUEUE_SIZE) : m_container_(allocator) {
                 m_container_.resize(capacity, ShmRow(allocator));
             }
             /**
@@ -131,8 +132,8 @@ namespace ogawayama::common {
 
         private:
             bool is_not_empty() const { return pushed_ > poped_; }
-            bool is_not_full() const { return (pushed_ - poped_) < QUEUE_SIZE; }
-            std::size_t index(std::size_t n) { return n %  QUEUE_SIZE; }
+            bool is_not_full() const { return (pushed_ - poped_) < param::QUEUE_SIZE; }
+            std::size_t index(std::size_t n) { return n %  param::QUEUE_SIZE; }
             
             ShmQueue m_container_;
             std::size_t pushed_{0};
@@ -152,7 +153,7 @@ namespace ogawayama::common {
         {
             if (owner_) {
                 queue_ = mem->construct<SpscQueue>(name)(mem->get_segment_manager());
-                memcpy(name_, name, MAX_NAME_LENGTH);
+                memcpy(name_, name, param::MAX_NAME_LENGTH);
             } else {
                 queue_ = mem->find<SpscQueue>(name).first;
                 assert(queue_);
@@ -211,7 +212,7 @@ namespace ogawayama::common {
         SpscQueue *queue_;
         const bool owner_;
         boost::interprocess::managed_shared_memory *mem_;
-        char name_[MAX_NAME_LENGTH];
+        char name_[param::MAX_NAME_LENGTH];
     };
     
 };  // namespace ogawayama::common

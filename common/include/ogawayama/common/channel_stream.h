@@ -25,10 +25,9 @@
 #include "boost/archive/binary_oarchive.hpp"
 #include "boost/archive/binary_iarchive.hpp"
 
-namespace ogawayama::common {
+#include "ogawayama/common/shared_memory.h"
 
-const std::size_t BUFFER_SIZE = 4096; // 4K byte (tantative)
-const std::size_t MAX_NAME_LENGTH = 32; // 64 chars (tantative, but probably enough)
+namespace ogawayama::common {
 
 /**
  * @brief one to one communication channel, intended for communication between server and stub through boost binary_archive.
@@ -46,7 +45,7 @@ public:
         /**
          * @brief Construct a new object.
          */
-        BoundedBuffer(AllocatorType allocator, std::size_t capacity = BUFFER_SIZE) : m_container_(capacity, allocator) {}
+        BoundedBuffer(AllocatorType allocator, std::size_t capacity = param::BUFFER_SIZE) : m_container_(capacity, allocator) {}
         /**
          * @brief Copy and move constructers are deleted.
          */
@@ -147,8 +146,9 @@ public:
     ChannelStream(char const* name, boost::interprocess::managed_shared_memory *mem, bool owner) : owner_(owner), mem_(mem)
     {
         if (owner_) {
+            mem_->destroy<BoundedBuffer>(name_);
             buffer_ = mem->construct<BoundedBuffer>(name)(mem->get_segment_manager());
-            memcpy(name_, name, MAX_NAME_LENGTH);
+            memcpy(name_, name, param::MAX_NAME_LENGTH);
         } else {
             buffer_ = mem->find<BoundedBuffer>(name).first;
             assert(buffer_);
@@ -208,7 +208,7 @@ private:
     BoundedBuffer *buffer_;
     const bool owner_;
     boost::interprocess::managed_shared_memory *mem_;
-    char name_[MAX_NAME_LENGTH];
+    char name_[param::MAX_NAME_LENGTH];
 };
 
 };  // namespace ogawayama::common

@@ -24,7 +24,7 @@ ResultSet::Impl::Impl(ResultSet *result_set, std::size_t id) : envelope_(result_
     
     row_queue_ = std::make_unique<ogawayama::common::RowQueue>
         (
-         connection->get_impl()->shm_name("resultset", connection->get_impl()->get_id(), id_).c_str(),
+         connection->get_impl()->shm_name(ogawayama::common::param::result_set, connection->get_impl()->get_id(), id_).c_str(),
          connection->get_manager()->get_impl()->get_managed_shared_memory_ptr(),
          true
          );

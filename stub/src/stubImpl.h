@@ -28,8 +28,6 @@
 
 namespace ogawayama::stub {
 
-const std::size_t SEGMENT_SIZE = 100<<20; // 100 MiB (tantative)
-
 /**
  * @brief constructor of Stub::Impl class
  */

@@ -38,11 +38,13 @@ set_target_properties(server
 
 target_link_libraries(server
     PRIVATE umikongo-${SHARKSFIN_IMPLEMENTATION}-executor-${SHARKSFIN_IMPLEMENTATION}
+    PRIVATE gflags::gflags
     PRIVATE Boost::serialization
     PRIVATE pthread
     PRIVATE rt
 )
 
 target_include_directories(server
+    PRIVATE ../../stub/include
     PRIVATE ../../common/include
 )

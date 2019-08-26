@@ -14,30 +14,22 @@
  * limitations under the License.
  */
 
-#include "boost/interprocess/managed_shared_memory.hpp"
-
 #include <iostream>
 
-#include "ogawayama/stub/api.h"
-
-
 #include "ogawayama/common/channel_stream.h"
+#include "ogawayama/stub/api.h"
 
 boost::interprocess::managed_shared_memory managed_shared_memory;
 std::unique_ptr<ogawayama::common::ChannelStream> chs;
 
 void dummy_server(char const *name)
 {
-    const std::size_t SEGMENT_SIZE = 100<<20; // 100 MiB (tantative) defined in stubImpl.h
-    char const *channel_name = "server"; // defined in stub.cpp
-
     boost::interprocess::shared_memory_object::remove(name);
-    managed_shared_memory = boost::interprocess::managed_shared_memory(boost::interprocess::open_or_create, name, SEGMENT_SIZE);
-    chs = std::make_unique<ogawayama::common::ChannelStream>(channel_name, &managed_shared_memory, true);
+    managed_shared_memory = boost::interprocess::managed_shared_memory(boost::interprocess::open_or_create, name, ogawayama::common::param::SEGMENT_SIZE);
+    chs = std::make_unique<ogawayama::common::ChannelStream>(ogawayama::common::param::server, &managed_shared_memory, true);
 }
 
 
-char const * database_name = "ogawayama";
 
 static StubPtr stub;
 static ConnectionPtr connection;
@@ -46,9 +38,9 @@ static MetadataPtr metadata;
 static ResultSetPtr result_set;
 
 int main() {
-    dummy_server(database_name);
+    //    dummy_server(ogawayama::common::param::server);
 
-    stub = make_stub(database_name);
+    stub = make_stub(ogawayama::common::param::SHARED_MEMORY_NAME);
     
     if (stub->get_connection(12, connection) != ogawayama::stub::ErrorCode::OK) { exit(1); }
 
