@@ -46,7 +46,7 @@ public:
     /**
      * @brief destructs this object.
      */
-    ~ResultSet() noexcept = default;
+    ~ResultSet();
 
     /**
      * @brief get the object to which this belongs
@@ -112,7 +112,7 @@ public:
     /**
      * @brief destructs this object.
      */
-    ~Transaction() noexcept = default;
+    ~Transaction();
 
     /**
      * @brief get the object to which this belongs
@@ -170,7 +170,7 @@ public:
     /**
      * @brief destructs this object.
      */
-    ~Connection() noexcept = default;
+    ~Connection();
 
     /**
      * @brief get the object to which this belongs
@@ -218,9 +218,14 @@ public:
     Stub(std::string_view, bool);
 
     /**
+     * @brief Construct a new object.
+     */
+    Stub(std::string_view name) : Stub(name, false) {}
+
+    /**
      * @brief destructs this object.
      */
-    ~Stub() noexcept = default;
+    ~Stub();
 
     /**
      * @brief get the impl class
@@ -246,7 +251,7 @@ public:
 
 }  // namespace ogawayama::stub
 
-using ConnectionPtr = std::unique_ptr<ogawayama::stub::Connection>;
-using TransactionPtr = std::unique_ptr<ogawayama::stub::Transaction>;
+using StubPtr = std::unique_ptr<ogawayama::stub::Stub>;
+inline static StubPtr make_stub(std::string_view name) { return std::make_unique<ogawayama::stub::Stub>(name, false); }
 
 #endif  // STUB_API_H_

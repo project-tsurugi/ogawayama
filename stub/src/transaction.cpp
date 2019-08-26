@@ -56,8 +56,15 @@ ErrorCode Transaction::Impl::execute_statement(std::string_view statement) {
 /**
  * @brief constructor of Transaction class
  */
-Transaction::Transaction(Connection *connection)
-    : impl_(std::make_unique<Transaction::Impl>(this)), manager_(connection) {}
+Transaction::Transaction(Connection *connection) : manager_(connection)
+{
+    impl_ = std::make_unique<Transaction::Impl>(this);
+}
+
+/**
+ * @brief destructor of Transaction class
+ */
+Transaction::~Transaction() = default;
 
 ErrorCode Transaction::execute_query(std::string_view query, std::shared_ptr<ResultSet> &result_set)
 {

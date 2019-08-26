@@ -16,14 +16,14 @@
 #ifndef CHANNEL_STREAM_H_
 #define CHANNEL_STREAM_H_
 
-#include <boost/circular_buffer.hpp>
-#include <boost/bind.hpp>
-#include <boost/interprocess/allocators/allocator.hpp>
-#include <boost/interprocess/managed_shared_memory.hpp>
-#include <boost/interprocess/sync/interprocess_condition.hpp>
-#include <boost/interprocess/sync/interprocess_mutex.hpp>
-#include <boost/archive/binary_oarchive.hpp>
-#include <boost/archive/binary_iarchive.hpp>
+#include "boost/circular_buffer.hpp"
+#include "boost/bind.hpp"
+#include "boost/interprocess/allocators/allocator.hpp"
+#include "boost/interprocess/managed_shared_memory.hpp"
+#include "boost/interprocess/sync/interprocess_condition.hpp"
+#include "boost/interprocess/sync/interprocess_mutex.hpp"
+#include "boost/archive/binary_oarchive.hpp"
+#include "boost/archive/binary_iarchive.hpp"
 
 namespace ogawayama::common {
 
@@ -144,7 +144,7 @@ public:
     /**
      * @brief Construct a new object.
      */
-     ChannelStream(char const* name, boost::interprocess::managed_shared_memory *mem, bool owner) : owner_(owner), mem_(mem)
+    ChannelStream(char const* name, boost::interprocess::managed_shared_memory *mem, bool owner) : owner_(owner), mem_(mem)
     {
         if (owner_) {
             buffer_ = mem->construct<BoundedBuffer>(name)(mem->get_segment_manager());

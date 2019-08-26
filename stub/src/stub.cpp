@@ -22,16 +22,24 @@
 
 namespace ogawayama::stub {
 
+char const *channel_name = "server";
+
 Stub::Impl::Impl(Stub *stub, std::string_view database_name, bool create_shm) : envelope_(stub), database_name_(database_name)
 {
     if (create_shm) {
         boost::interprocess::shared_memory_object::remove(database_name_.c_str());
         managed_shared_memory_ = boost::interprocess::managed_shared_memory(boost::interprocess::create_only, database_name_.c_str(), SEGMENT_SIZE);
-        server_ = std::make_unique<ogawayama::common::ChannelStream>("server", &managed_shared_memory_, true);
+        server_ = std::make_unique<ogawayama::common::ChannelStream>(channel_name, &managed_shared_memory_, true);
     } else {
-        managed_shared_memory_ = boost::interprocess::managed_shared_memory(boost::interprocess::open_only, database_name_.c_str());
+        try {
+            managed_shared_memory_ = boost::interprocess::managed_shared_memory(boost::interprocess::open_only, database_name_.c_str());
+        }
+        catch(const boost::interprocess::interprocess_exception& ex) {
+            std::cerr << "failed with exception \"" << ex.what() << "\"" << std::endl;
+            exit(-1);
+        }
         assert (managed_shared_memory_.get_size() == SEGMENT_SIZE);
-        server_ = std::make_unique<ogawayama::common::ChannelStream>("server", &managed_shared_memory_);
+        server_ = std::make_unique<ogawayama::common::ChannelStream>(channel_name, &managed_shared_memory_);
     }
 }
 
@@ -51,6 +59,11 @@ ErrorCode Stub::Impl::get_connection(std::size_t pgprocno, ConnectionPtr & conne
  */
 Stub::Stub(std::string_view database_name, bool create_shm = false)
     : impl_(std::make_unique<Stub::Impl>(this, database_name, create_shm)) {}
+
+/**
+ * @brief destructor of Stub class
+ */
+Stub::~Stub() = default;
 
 /**
  * @brief connect to the DB and get Connection class.

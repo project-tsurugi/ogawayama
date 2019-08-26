@@ -44,3 +44,4 @@ include(CompileOptions)
 
 add_subdirectory(stub)
 add_subdirectory(server)
+add_subdirectory(examples)
