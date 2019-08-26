@@ -18,6 +18,13 @@
 
 namespace ogawayama::stub {
 
+Connection::Impl::Impl(Connection *connection, std::size_t pgprocno) : envelope_(connection), pgprocno_(pgprocno)
+{
+    boost::interprocess::managed_shared_memory *managed_shared_memory_ptr = envelope_->get_manager()->get_impl()->get_managed_shared_memory_ptr();
+    request_ = std::make_unique<ogawayama::common::ChannelStream>(shm_name("request", pgprocno_), managed_shared_memory_ptr, true);
+    result_ = std::make_unique<ogawayama::common::ChannelStream>(shm_name("result", pgprocno_), managed_shared_memory_ptr, true);
+}
+
 /**
  * @brief connect to the DB and get Connection class
  * @param connection returns a connection class
@@ -25,15 +32,14 @@ namespace ogawayama::stub {
  */
 ErrorCode Connection::Impl::begin(std::unique_ptr<Transaction> &transaction)
 {
-    transaction = std::make_unique<Transaction>();
+    transaction = std::make_unique<Transaction>(envelope_);
     return ErrorCode::OK;
 }
 
 /**
  * @brief constructor of Connection class
  */
-Connection::Connection()
-    : connection_(std::make_unique<Connection::Impl>()){
-}
+Connection::Connection(Stub *stub, std::size_t pgprocno)
+    : impl_(std::make_unique<Connection::Impl>(this, pgprocno)), manager_(stub) {}
 
 }  // namespace ogawayama::stub

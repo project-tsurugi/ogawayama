@@ -29,7 +29,7 @@
 #include "boost/interprocess/smart_ptr/shared_ptr.hpp"
 
 namespace ogawayama::common {
-    const std::size_t QUEUE_SIZE = 32; // QUEUE_SIZE must be greater than or equal to two. (32 is tantative)
+    const std::size_t QUEUE_SIZE = 32; // 32 rows (tantative)
     
     using VoidAllocator = boost::interprocess::allocator<void, boost::interprocess::managed_shared_memory::segment_manager>;
     using CharAllocator = boost::interprocess::allocator<char, boost::interprocess::managed_shared_memory::segment_manager>;
@@ -38,7 +38,7 @@ namespace ogawayama::common {
     using ShmColumn = std::variant<std::monostate, std::int16_t, std::int32_t, std::int64_t, float, double, ShmString>;
     using ShmColumnAllocator = boost::interprocess::allocator<ShmColumn, boost::interprocess::managed_shared_memory::segment_manager>;
     
-    using ShmRow = boost::interprocess::vector<ShmColumn,ShmColumnAllocator>;
+    using ShmRow = boost::interprocess::vector<ShmColumn, ShmColumnAllocator>;
     using ShmRowAllocator = boost::interprocess::allocator<ShmRow, boost::interprocess::managed_shared_memory::segment_manager>;
     using ShmQueue = boost::interprocess::vector<ShmRow, ShmRowAllocator>;
 
@@ -70,36 +70,40 @@ namespace ogawayama::common {
             SpscQueue& operator = (SpscQueue&&) = delete;
             
             /**
-             * @brief push one row into the queue and clear the next row (vector).
-             * @param item char data to be pushed.
+             * @brief push the writing row into the queue.
              */
             void push()
             {
                 bool was_empty = !is_not_empty();
                 
-                if(!is_not_full()) {
-                    boost::interprocess::scoped_lock lock(m_full_mutex_);
-                    if(!is_not_full()) {
-                        m_not_full_.wait(lock, boost::bind(&SpscQueue::is_not_full, this));
-                    }
-                    lock.unlock();
-                }
+                pushed_++;
                 if(was_empty) {
                     boost::interprocess::scoped_lock lock(m_empty_mutex_);
                     lock.unlock();
                     m_not_empty_.notify_one();
                 }
-                pushed_++;
-                get_row().clear();
             }
             
             /**
-             * @brief pop one row from the queue, never invoke more than once.
-             * @return reference to the row at the front of the queue
+             * @brief pop and clear the current row.
              */
-            ShmRow & pop() {
+            void pop() {
                 bool was_full = !is_not_full();
                 
+                get_current_row().clear();
+                poped_++;
+                if(was_full) {
+                    boost::interprocess::scoped_lock lock(m_full_mutex_);
+                    lock.unlock();
+                    m_not_full_.notify_one();
+                }
+            }
+            
+            /**
+             * @brief get the current row at the front of the queue
+             * @return reference of the row at the front of the queue
+             */
+            ShmRow & get_current_row() {
                 if(!is_not_empty()) {
                     boost::interprocess::scoped_lock lock(m_empty_mutex_);
                     if(!is_not_empty()) {
@@ -107,23 +111,27 @@ namespace ogawayama::common {
                     }
                     lock.unlock();
                 }
-                if(was_full) {
-                    boost::interprocess::scoped_lock lock(m_full_mutex_);
-                    lock.unlock();
-                    m_not_full_.notify_one();
-                }
-                return m_container_.at(index(poped_++));
+                return m_container_.at(index(poped_));
             }
-            
+
             /**
              * @brief get the row to which column data is to be stored.
              * @return reference of the row at the back of the queue
              */
-            ShmRow & get_row() { return m_container_.at(index(pushed_)); }
-            
+            ShmRow & get_writing_row() {
+                if(!is_not_full()) {
+                    boost::interprocess::scoped_lock lock(m_full_mutex_);
+                    if(!is_not_full()) {
+                        m_not_full_.wait(lock, boost::bind(&SpscQueue::is_not_full, this));
+                    }
+                    lock.unlock();
+                }
+                return m_container_.at(index(pushed_));
+            }
+
         private:
             bool is_not_empty() const { return pushed_ > poped_; }
-            bool is_not_full() const { return (pushed_ - poped_) < (QUEUE_SIZE - 1); }
+            bool is_not_full() const { return (pushed_ - poped_) < QUEUE_SIZE; }
             std::size_t index(std::size_t n) { return n %  QUEUE_SIZE; }
             
             ShmQueue m_container_;
@@ -140,17 +148,35 @@ namespace ogawayama::common {
         /**
          * @brief Construct a new object.
          */
-        RowQueue(char const* name, boost::interprocess::managed_shared_memory *mem) : mem_(mem) {
-            queue_ = boost::interprocess::make_managed_shared_ptr<SpscQueue, boost::interprocess::managed_shared_memory>(mem_->find_or_construct<SpscQueue>(name)(mem_->get_segment_manager()), *mem_);
-            assert(queue_);
+        RowQueue(char const* name, boost::interprocess::managed_shared_memory *mem, bool owner) : owner_(owner), mem_(mem)
+        {
+            if (owner_) {
+                queue_ = mem->construct<SpscQueue>(name)(mem->get_segment_manager());
+                memcpy(name_, name, MAX_NAME_LENGTH);
+            } else {
+                queue_ = mem->find<SpscQueue>(name).first;
+                assert(queue_);
+            }
         }
+        RowQueue(char const* name, boost::interprocess::managed_shared_memory *mem) : RowQueue(name, mem, false) {}
+
+        /**
+         * @brief Destruct this object.
+         */
+        ~RowQueue()
+        {
+            if (owner_) {
+                mem_->destroy<SpscQueue>(name_);
+            }
+        }
+
         /**
          * @brief put a column value (of other than string) to the row at the back of the queue.
          */
         template<typename T>
             void put_next_column(T v) {
             ShmColumn column = v;
-            queue_->get_row().emplace_back(column);
+            queue_->get_writing_row().emplace_back(column);
         }
         /**
          * @brief put a string column value to the row at the back of the queue.
@@ -159,32 +185,33 @@ namespace ogawayama::common {
             ShmString column_string(mem_->get_segment_manager());
             column_string.assign(v.begin(), v.end());
             ShmColumn column = column_string;
-            queue_->get_row().emplace_back(column);
+            queue_->get_writing_row().emplace_back(column);
         }
         /**
          * @brief push the row into the queue.
          */
-        void push() {
+        void push_writing_row() {
             queue_->push();
         }
+
         /**
-         * @brief get the queue pointer to retrieve the row, for reference count maintenance.
-         * @return shared_ptr to the queue
+         * @brief get the current row.
+         * @return reference to the current row
          */
-        auto get_queue() {
-            return queue_;
-        }
-        /**
-         * @brief get the reference count to the queue to see if anyone uses the queue.
-         * @return the reference count to the queue
-         */
-        auto use_count() {
-            return queue_.use_count();
-        }
+        ShmRow & get_current_row() { return queue_->get_current_row(); }
         
+        /**
+         * @brief move current to the next in the queue.
+         */
+        void next() {
+            queue_->pop();
+        }
+
     private:
-        boost::interprocess::managed_shared_ptr<SpscQueue, boost::interprocess::managed_shared_memory>::type queue_;
+        SpscQueue *queue_;
+        const bool owner_;
         boost::interprocess::managed_shared_memory *mem_;
+        char name_[MAX_NAME_LENGTH];
     };
     
 };  // namespace ogawayama::common

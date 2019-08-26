@@ -16,9 +16,19 @@
 #ifndef STUBIMPL_H_
 #define STUBIMPL_H_
 
+#include <memory>
+#include <vector>
+
+#include "boost/interprocess/managed_shared_memory.hpp"
+#include "boost/interprocess/allocators/allocator.hpp"
+
+#include "ogawayama/common/channel_stream.h"
+
 #include "ogawayama/stub/api.h"
 
 namespace ogawayama::stub {
+
+const std::size_t SEGMENT_SIZE = 100<<20; // 100 MiB (tantative)
 
 /**
  * @brief constructor of Stub::Impl class
@@ -26,7 +36,15 @@ namespace ogawayama::stub {
 class Stub::Impl
 {
 public:
-    ErrorCode get_connection(std::unique_ptr<Connection> &connection);
+    Impl(Stub *, std::string_view, bool);
+    ErrorCode get_connection(std::size_t, ConnectionPtr &);
+    auto get_managed_shared_memory_ptr() { return &managed_shared_memory_; }
+private:
+    Stub *envelope_;
+
+    std::string database_name_;
+    boost::interprocess::managed_shared_memory managed_shared_memory_;
+    std::unique_ptr<ogawayama::common::ChannelStream> server_;
 };
 
 }  // namespace ogawayama::stub

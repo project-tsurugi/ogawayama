@@ -128,6 +128,11 @@ public:
      */
     const SetOfTypeData& get_types() const noexcept { return columns_; }
     
+    /**
+     * @brief clear this metadata.
+     */
+    void clear() { columns_.clear(); }
+
 private:
     SetOfTypeData columns_;
 };

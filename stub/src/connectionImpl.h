@@ -16,8 +16,8 @@
 #ifndef CONNECTIONIMPL_H_
 #define CONNECTIONIMPL_H_
 
+#include "ogawayama/common/channel_stream.h"
 #include "transactionImpl.h"
-
 #include "stubImpl.h"
 
 namespace ogawayama::stub {
@@ -28,7 +28,37 @@ namespace ogawayama::stub {
 class Connection::Impl
 {
 public:
-    ErrorCode begin(std::unique_ptr<Transaction> &transaction);
+    Impl(Connection *, std::size_t);
+    ErrorCode begin(TransactionPtr &transaction);
+
+    void get_channel_streams(ogawayama::common::ChannelStream * & request, ogawayama::common::ChannelStream * & result)
+    {
+        request = request_.get();
+        result = result_.get();
+    }
+
+    std::size_t get_id() { return pgprocno_; }
+    
+    char const *shm_name(char const *prefix, std::size_t i)
+    {
+        std::stringstream ss;
+        ss << prefix << "-" << i;
+        return ss.str().c_str();
+    }
+
+    char const *shm_name(char const *prefix, std::size_t i, std::size_t j)
+    {
+        std::stringstream ss;
+        ss << prefix << "-" << i << "-" << j;
+        return ss.str().c_str();
+    }
+
+private:
+    Connection *envelope_;
+
+    std::size_t pgprocno_;
+    std::unique_ptr<ogawayama::common::ChannelStream> request_;
+    std::unique_ptr<ogawayama::common::ChannelStream> result_;
 };
 
 }  // namespace ogawayama::stub

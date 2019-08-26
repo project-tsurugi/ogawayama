@@ -22,10 +22,13 @@
 #include <boost/interprocess/managed_shared_memory.hpp>
 #include <boost/interprocess/sync/interprocess_condition.hpp>
 #include <boost/interprocess/sync/interprocess_mutex.hpp>
+#include <boost/archive/binary_oarchive.hpp>
+#include <boost/archive/binary_iarchive.hpp>
 
 namespace ogawayama::common {
 
-const std::size_t QUEUE_SIZE = 4096; // 4K byte (tantative)
+const std::size_t BUFFER_SIZE = 4096; // 4K byte (tantative)
+const std::size_t MAX_NAME_LENGTH = 32; // 64 chars (tantative, but probably enough)
 
 /**
  * @brief one to one communication channel, intended for communication between server and stub through boost binary_archive.
@@ -43,7 +46,7 @@ public:
         /**
          * @brief Construct a new object.
          */
-        BoundedBuffer(AllocatorType allocator, std::size_t capacity = QUEUE_SIZE) : m_container_(capacity, allocator) {}
+        BoundedBuffer(AllocatorType allocator, std::size_t capacity = BUFFER_SIZE) : m_container_(capacity, allocator) {}
         /**
          * @brief Copy and move constructers are deleted.
          */
@@ -141,8 +144,26 @@ public:
     /**
      * @brief Construct a new object.
      */
-    ChannelStream(char const* name, boost::interprocess::managed_shared_memory *mem) : mem_(mem) {
-        buffer_ = mem->find_or_construct<BoundedBuffer>(name)(mem->get_segment_manager());
+     ChannelStream(char const* name, boost::interprocess::managed_shared_memory *mem, bool owner) : owner_(owner), mem_(mem)
+    {
+        if (owner_) {
+            buffer_ = mem->construct<BoundedBuffer>(name)(mem->get_segment_manager());
+            memcpy(name_, name, MAX_NAME_LENGTH);
+        } else {
+            buffer_ = mem->find<BoundedBuffer>(name).first;
+            assert(buffer_);
+        }
+    }
+    ChannelStream(char const* name, boost::interprocess::managed_shared_memory *mem) : ChannelStream(name, mem, false) {}
+
+    /**
+     * @brief Destruct this object.
+     */
+    ~ChannelStream()
+    {
+        if (owner_) {
+            mem_->destroy<BoundedBuffer>(name_);
+        }
     }
 
     /**
@@ -165,11 +186,30 @@ public:
         return static_cast<int>(rv);
     }
 
+    /**
+     * @brief get binary_iarchive associated with this object
+     * @return a binary_iarchive associated with this object
+     */
+    boost::archive::binary_iarchive get_binary_iarchive()
+    {
+        return boost::archive::binary_iarchive(*this);
+    }
+
+    /**
+     * @brief get binary_oarchive associated with this object
+     * @return a binary_oarchive associated with this object
+     */
+    boost::archive::binary_oarchive get_binary_oarchive()
+    {
+        return boost::archive::binary_oarchive(*this);
+    }
+
 private:
     BoundedBuffer *buffer_;
+    const bool owner_;
     boost::interprocess::managed_shared_memory *mem_;
+    char name_[MAX_NAME_LENGTH];
 };
 
 };  // namespace ogawayama::common
-
 #endif //  CHANNEL_STREAM_H_

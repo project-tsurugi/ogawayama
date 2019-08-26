@@ -13,35 +13,37 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+#ifndef RESULT_SETIMPL_H_
+#define RESULT_SETIMPL_H_
 
+#include "stubImpl.h"
 #include "transactionImpl.h"
+#include "ogawayama/common/row_queue.h"
 
 namespace ogawayama::stub {
 
 /**
- * @brief connect to the DB and get Transaction class
- * @param connection returns a connection class
- * @return true in error, otherwise false
+ * @brief constructor of ResultSet::Impl class
  */
-ErrorCode Transaction::Impl::execute_query(std::string query, std::unique_ptr<ResultSet> &result_set) {
-    result_set = std::make_unique<ResultSet>();
-    return ErrorCode::OK;
-}
+class ResultSet::Impl
+{
+public:
+    Impl(ResultSet *, std::size_t);
+    ErrorCode get_metadata(MetadataPtr &);
+    ErrorCode next();
+    template<typename T>
+        ErrorCode next_column(T &value);
+    void clear() { metadata_->clear(); } //  FIXME row_queue->clear();
 
-/**
- * @brief execute a statement.
- * @param statement the SQL statement string
- * @return true in error, otherwise false
- */
-ErrorCode Transaction::Impl::execute_statement(std::string statement) {
-    return ErrorCode::OK;
-}
+ private:
+    ResultSet *envelope_;
 
-/**
- * @brief constructor of Transaction class
- */
-Transaction::Transaction()
-    : transaction_(std::make_unique<Transaction::Impl>()){
-}
+    std::size_t id_;
+    std::size_t c_idx_;
+    std::unique_ptr<Metadata> metadata_;
+    std::unique_ptr<ogawayama::common::RowQueue> row_queue_;
+};
 
 }  // namespace ogawayama::stub
+
+#endif  // RESULT_SETIMPL_H_
