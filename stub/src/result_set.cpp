@@ -24,11 +24,10 @@ ResultSet::Impl::Impl(ResultSet *result_set, std::size_t id) : envelope_(result_
     
     row_queue_ = std::make_unique<ogawayama::common::RowQueue>
         (
-         connection->get_impl()->shm_name(ogawayama::common::param::result_set, connection->get_impl()->get_id(), id_).c_str(),
+         connection->get_manager()->get_impl()->get_managed_shared_memory()->shm_name(ogawayama::common::param::resultset, connection->get_impl()->get_id(), id_).c_str(),
          connection->get_manager()->get_impl()->get_managed_shared_memory_ptr(),
          true
          );
-    metadata_ = std::make_unique<Metadata>();
 }
     
 /**
@@ -38,7 +37,8 @@ ResultSet::Impl::Impl(ResultSet *result_set, std::size_t id) : envelope_(result_
  */
 ErrorCode ResultSet::Impl::get_metadata(MetadataPtr &metadata)
 {
-    metadata = metadata_.get();
+    envelope_->get_manager()->get_impl()->get_result_channel()->get_binary_iarchive() >> metadata_;
+    metadata = &metadata_;
     return ErrorCode::OK;
 }
 

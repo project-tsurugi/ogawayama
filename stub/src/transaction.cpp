@@ -35,11 +35,18 @@ ErrorCode Transaction::Impl::execute_query(std::string_view query, std::shared_p
         if( rs.use_count() == 1) {
             result_set = rs;
             result_set->get_impl()->clear();
-            return ErrorCode::OK;
+            goto found;
         }
     }
     result_set = std::make_shared<ResultSet>(envelope_, result_sets_->size());
     result_sets_->emplace_back(result_set);
+
+ found:
+    request_->get_binary_oarchive() << ogawayama::common::ChannelMessage(
+                                                                         ogawayama::common::ChannelMessage::Type::EXECUTE_QUERY,
+                                                                         static_cast<std::int32_t>(result_set->get_impl()->get_id()),
+                                                                         query
+                                                                         );
     return ErrorCode::OK;
 }
 

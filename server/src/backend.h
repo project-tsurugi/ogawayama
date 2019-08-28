@@ -17,12 +17,13 @@
 #ifndef STUB_API_H_
 #define STUB_API_H_
 
-namespace ogawayama {
-namespace server {
+#include "ogawayama/common/channel_stream.h"
+
+namespace ogawayama::server {
 
 int backend_main(int, char **);
-    
-}  // server
-}  // ogawayama
+void worker_main(ogawayama::common::SharedMemory *, int);
+
+}  // ogawayama::server
     
 #endif  // STUB_API_H_

@@ -16,9 +16,7 @@
 #ifndef CHANNEL_STREAM_H_
 #define CHANNEL_STREAM_H_
 
-#include "boost/circular_buffer.hpp"
 #include "boost/bind.hpp"
-#include "boost/interprocess/allocators/allocator.hpp"
 #include "boost/interprocess/managed_shared_memory.hpp"
 #include "boost/interprocess/sync/interprocess_condition.hpp"
 #include "boost/interprocess/sync/interprocess_mutex.hpp"
@@ -38,21 +36,21 @@ public:
     /**
      * @brief core class in the communication channel, using boost::circular_buffer.
      */
-    class BoundedBuffer {
+    class RingBuffer {
         using AllocatorType = boost::interprocess::allocator<char, boost::interprocess::managed_shared_memory::segment_manager>;
 
     public:
         /**
          * @brief Construct a new object.
          */
-        BoundedBuffer(AllocatorType allocator, std::size_t capacity = param::BUFFER_SIZE) : m_container_(capacity, allocator) {}
+        RingBuffer() {}
         /**
          * @brief Copy and move constructers are deleted.
          */
-        BoundedBuffer(BoundedBuffer const&) = delete;
-        BoundedBuffer(BoundedBuffer&&) = delete;
-        BoundedBuffer& operator = (BoundedBuffer const&) = delete;
-        BoundedBuffer& operator = (BoundedBuffer&&) = delete;
+        RingBuffer(RingBuffer const&) = delete;
+        RingBuffer(RingBuffer&&) = delete;
+        RingBuffer& operator = (RingBuffer const&) = delete;
+        RingBuffer& operator = (RingBuffer&&) = delete;
 
         /**
          * @brief push one char data into the circular_buffer.
@@ -65,13 +63,11 @@ public:
             if(!is_not_full()) {
                 boost::interprocess::scoped_lock lock(m_full_mutex_);
                 if(!is_not_full()) {
-                    m_not_full_.wait(lock, boost::bind(&BoundedBuffer::is_not_full, this));
+                    m_not_full_.wait(lock, boost::bind(&RingBuffer::is_not_full, this));
                 }
-                m_container_.push_back(item);
                 lock.unlock();
-            } else {
-                m_container_.push_back(item);
             }
+            m_container_[index(pushed_++)] = item;
             ack = false;
             if(was_empty) {
                 boost::interprocess::scoped_lock lock(m_empty_mutex_);
@@ -90,13 +86,11 @@ public:
             if(!is_not_empty()) {
                 boost::interprocess::scoped_lock lock(m_empty_mutex_);
                 if(!is_not_empty()) {
-                    m_not_empty_.wait(lock, boost::bind(&BoundedBuffer::is_not_empty, this));
+                    m_not_empty_.wait(lock, boost::bind(&RingBuffer::is_not_empty, this));
                 }
-                *pItem = m_container_.front(); m_container_.pop_front();
                 lock.unlock();
-            } else {
-                *pItem = m_container_.front(); m_container_.pop_front();
             }
+            *pItem = m_container_[index(poped_++)];
             if(was_full) {
                 boost::interprocess::scoped_lock lock(m_full_mutex_);
                 lock.unlock();
@@ -104,12 +98,13 @@ public:
             }
         }
         
+#if 0
         /**
          * @brief waiting acknowledge from the other side.
          */
         void recieve_ack() {
             boost::interprocess::scoped_lock lock(m_ack_mutex_);
-            m_not_ack_.wait(lock, boost::bind(&BoundedBuffer::is_acked, this));
+            m_not_ack_.wait(lock, boost::bind(&RingBuffer::is_acked, this));
             lock.unlock();
         }
 
@@ -122,13 +117,18 @@ public:
             lock.unlock();
             m_not_ack_.notify_one();
         }
-            
-    private:
-        bool is_not_empty() const { return (m_container_.array_one().second + m_container_.array_two().second) > 0; }
-        bool is_not_full() const { return (m_container_.array_one().second + m_container_.array_two().second) < m_container_.capacity(); }
-        bool is_acked() const { return ack; }
+#endif
 
-        boost::circular_buffer<char, AllocatorType> m_container_;
+    private:
+        std::size_t index(std::size_t i) { return i % param::BUFFER_SIZE; }
+        
+        bool is_not_empty() const { return poped_ < pushed_; }
+        bool is_not_full() const { return (pushed_ - poped_) < param::BUFFER_SIZE; }
+        bool is_acked() const { return ack; }
+        std::size_t pushed_{0};
+        std::size_t poped_{0};
+
+        char m_container_[param::BUFFER_SIZE];
         boost::interprocess::interprocess_mutex m_empty_mutex_{};
         boost::interprocess::interprocess_mutex m_full_mutex_{};
         boost::interprocess::interprocess_mutex m_ack_mutex_{};
@@ -146,11 +146,11 @@ public:
     ChannelStream(char const* name, boost::interprocess::managed_shared_memory *mem, bool owner) : owner_(owner), mem_(mem)
     {
         if (owner_) {
-            mem_->destroy<BoundedBuffer>(name_);
-            buffer_ = mem->construct<BoundedBuffer>(name)(mem->get_segment_manager());
+            mem_->destroy<RingBuffer>(name_);
+            buffer_ = mem->construct<RingBuffer>(name)();
             memcpy(name_, name, param::MAX_NAME_LENGTH);
         } else {
-            buffer_ = mem->find<BoundedBuffer>(name).first;
+            buffer_ = mem->find<RingBuffer>(name).first;
             assert(buffer_);
         }
     }
@@ -162,7 +162,7 @@ public:
     ~ChannelStream()
     {
         if (owner_) {
-            mem_->destroy<BoundedBuffer>(name_);
+            mem_->destroy<RingBuffer>(name_);
         }
     }
 
@@ -205,11 +205,83 @@ public:
     }
 
 private:
-    BoundedBuffer *buffer_;
+    RingBuffer *buffer_;
     const bool owner_;
     boost::interprocess::managed_shared_memory *mem_;
     char name_[param::MAX_NAME_LENGTH];
 };
 
+/**
+ * @brief Messages exchanged via channel
+ */
+struct ChannelMessage
+{
+public:
+    /**
+     * @brief represents a type.
+     */
+    enum class Type {
+
+        /**
+         * @brief 
+         */
+        OK,
+
+        /**
+         * @brief 
+         */
+        CONNECT,
+
+        /**
+         * @brief 
+         */
+        DISCONNECT,
+
+        /**
+         * @brief 
+         */
+        EXECUTE_STATEMENT,
+
+        /**
+         * @brief 
+         */
+        EXECUTE_QUERY,
+            
+        /**
+         * @brief 
+         */
+        NEXT,
+    };
+
+    ChannelMessage() = default;
+    ChannelMessage(const ChannelMessage&) = default;
+    ChannelMessage& operator=(const ChannelMessage&) = default;
+    ChannelMessage(ChannelMessage&&) = default;
+    ChannelMessage& operator=(ChannelMessage&&) = default;
+
+    ChannelMessage( Type type, std::size_t ivalue, std::string_view string ) : type_(type), ivalue_(ivalue), string_(string) {}
+    ChannelMessage( Type type, std::size_t ivalue ) : ChannelMessage(type, ivalue, std::string()) {}
+    ChannelMessage( Type type ) : ChannelMessage(type, 0, std::string()) {}
+    
+    Type get_type() const { return type_; }
+    std::size_t get_ivalue() const { return ivalue_; }
+    std::string_view get_string() const { return std::string_view(string_.data(), string_.size()); }
+
+private:
+    Type type_;
+    std::size_t ivalue_;
+    std::string string_;
+
+    friend class boost::serialization::access;
+    template <class Archive>
+    void serialize(Archive& ar, unsigned int /*version*/)
+    {
+        ar & boost::serialization::make_nvp("type", type_);
+        ar & boost::serialization::make_nvp("ivalue", ivalue_);
+        ar & boost::serialization::make_nvp("string", string_);
+    }    
+};
+
 };  // namespace ogawayama::common
+
 #endif //  CHANNEL_STREAM_H_

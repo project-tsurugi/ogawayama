@@ -86,11 +86,12 @@ public:
          * @param byte length for the column data
          */
         ColumnType(Type type, std::size_t length) : type_(type), length_(length) {}
+        ColumnType(Type type) : ColumnType(type, 0) {}
         
         /**
          * @brief Copy and move constructers.
          */
-        ColumnType() = delete;
+        ColumnType() = default;
         ColumnType(const ColumnType&) = default;
         ColumnType& operator=(const ColumnType&) = default;
         ColumnType(ColumnType&&) = default;
@@ -114,8 +115,8 @@ public:
         std::size_t get_length() { return length_; }
 
     private:
-        Type type_;
-        std::size_t length_;
+        Type type_{};
+        std::size_t length_{};
     };
 
     /**
@@ -139,7 +140,14 @@ public:
      * @return error code defined in error_code.h
      */
     const SetOfTypeData& get_types() const noexcept { return columns_; }
-    
+
+    /**
+     * @brief push a column type.
+     * @param type of the column
+     * @param data length of the columns
+     */
+    void push(ColumnType::Type t, std::size_t l) { columns_.emplace_back(ColumnType(t, l)); } 
+
     /**
      * @brief clear this metadata.
      */

@@ -29,7 +29,8 @@ class Connection::Impl
 {
 public:
     Impl(Connection *, std::size_t);
-    void create_channel_streams();
+    ~Impl();
+    void confirm();
 
     ErrorCode begin(TransactionPtr &transaction);
 
@@ -41,20 +42,6 @@ public:
 
     std::size_t get_id() { return pgprocno_; }
     
-    std::string shm_name(char const *prefix, std::size_t i)
-    {
-        std::stringstream ss;
-        ss << prefix << "-" << i;
-        return ss.str();
-    }
-
-    std::string shm_name(char const *prefix, std::size_t i, std::size_t j)
-    {
-        std::stringstream ss;
-        ss << prefix << "-" << i << "-" << j;
-        return ss.str();
-    }
-
 private:
     Connection *envelope_;
 

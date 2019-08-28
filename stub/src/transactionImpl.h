@@ -47,6 +47,8 @@ public:
      */
     ErrorCode execute_statement(std::string_view statement);
 
+    auto get_result_channel() { return result_; }
+
 private:
     Transaction *envelope_;
 
