@@ -142,7 +142,7 @@ pipeline {
             recordIssues tool: taskScanner(
                 highTags: 'FIXME', normalTags: 'TODO',
                 includePattern: '**/*.md,**/*.txt,**/*.in,**/*.cmake,**/*.cpp,**/*.h',
-                excludePattern: 'third_party/**'),
+                excludePattern: 'third_party/**,build/**,.local/**'),
                 enabledForFailure: true
             // publishCoverage adapters: [coberturaAdapter('build/gcovr-xml/ogawayama-gcovr.xml')], sourceFileResolver: sourceFiles('STORE_ALL_BUILD')
             archiveArtifacts allowEmptyArchive: true, artifacts: 'build/ogawayama-coverage-report.zip, build/clang-tidy.log, build/clang-tidy-fix.yaml', onlyIfSuccessful: true
