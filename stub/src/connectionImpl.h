@@ -29,6 +29,9 @@ class Connection::Impl
 {
 public:
     Impl(Connection *, std::size_t);
+    ~Impl();
+    void confirm();
+
     ErrorCode begin(TransactionPtr &transaction);
 
     void get_channel_streams(ogawayama::common::ChannelStream * & request, ogawayama::common::ChannelStream * & result)
@@ -39,20 +42,6 @@ public:
 
     std::size_t get_id() { return pgprocno_; }
     
-    char const *shm_name(char const *prefix, std::size_t i)
-    {
-        std::stringstream ss;
-        ss << prefix << "-" << i;
-        return ss.str().c_str();
-    }
-
-    char const *shm_name(char const *prefix, std::size_t i, std::size_t j)
-    {
-        std::stringstream ss;
-        ss << prefix << "-" << i << "-" << j;
-        return ss.str().c_str();
-    }
-
 private:
     Connection *envelope_;
 

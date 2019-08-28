@@ -28,9 +28,11 @@
 #include "boost/bind.hpp"
 #include "boost/interprocess/smart_ptr/shared_ptr.hpp"
 
+#include "ogawayama/common/serialization/metadata.h"
+#include "ogawayama/common/shared_memory.h"
+
 namespace ogawayama::common {
-    const std::size_t QUEUE_SIZE = 32; // 32 rows (tantative)
-    
+
     using VoidAllocator = boost::interprocess::allocator<void, boost::interprocess::managed_shared_memory::segment_manager>;
     using CharAllocator = boost::interprocess::allocator<char, boost::interprocess::managed_shared_memory::segment_manager>;
     using ShmString = boost::interprocess::basic_string<char, std::char_traits<char>, CharAllocator>;
@@ -58,7 +60,7 @@ namespace ogawayama::common {
             /**
              * @brief Construct a new object.
              */
-            SpscQueue(VoidAllocator allocator, std::size_t capacity = QUEUE_SIZE) : m_container_(allocator) {
+            SpscQueue(VoidAllocator allocator, std::size_t capacity = param::QUEUE_SIZE) : m_container_(allocator), allocator_(allocator), capacity_(capacity) {
                 m_container_.resize(capacity, ShmRow(allocator));
             }
             /**
@@ -91,6 +93,13 @@ namespace ogawayama::common {
                 bool was_full = !is_not_full();
                 
                 get_current_row().clear();
+                if(!is_not_empty()) {
+                    boost::interprocess::scoped_lock lock(m_empty_mutex_);
+                    if(!is_not_empty()) {
+                        m_not_empty_.wait(lock, boost::bind(&SpscQueue::is_not_empty, this));
+                    }
+                    lock.unlock();
+                }
                 poped_++;
                 if(was_full) {
                     boost::interprocess::scoped_lock lock(m_full_mutex_);
@@ -104,14 +113,7 @@ namespace ogawayama::common {
              * @return reference of the row at the front of the queue
              */
             ShmRow & get_current_row() {
-                if(!is_not_empty()) {
-                    boost::interprocess::scoped_lock lock(m_empty_mutex_);
-                    if(!is_not_empty()) {
-                        m_not_empty_.wait(lock, boost::bind(&SpscQueue::is_not_empty, this));
-                    }
-                    lock.unlock();
-                }
-                return m_container_.at(index(poped_));
+                return m_container_.at(index(poped_-1));
             }
 
             /**
@@ -129,12 +131,21 @@ namespace ogawayama::common {
                 return m_container_.at(index(pushed_));
             }
 
+            void clear()
+            {
+                m_container_.clear();
+                m_container_.resize(capacity_, ShmRow(allocator_));
+                pushed_ = poped_ = 0;
+            }
+            
         private:
             bool is_not_empty() const { return pushed_ > poped_; }
-            bool is_not_full() const { return (pushed_ - poped_) < QUEUE_SIZE; }
-            std::size_t index(std::size_t n) { return n %  QUEUE_SIZE; }
+            bool is_not_full() const { return (pushed_ - poped_) < (param::QUEUE_SIZE - 1); }
+            std::size_t index(std::size_t n) { return n %  param::QUEUE_SIZE; }
             
             ShmQueue m_container_;
+            VoidAllocator allocator_;
+            std::size_t capacity_;
             std::size_t pushed_{0};
             std::size_t poped_{0};
 
@@ -151,8 +162,9 @@ namespace ogawayama::common {
         RowQueue(char const* name, boost::interprocess::managed_shared_memory *mem, bool owner) : owner_(owner), mem_(mem)
         {
             if (owner_) {
+                mem_->destroy<SpscQueue>(name_);
                 queue_ = mem->construct<SpscQueue>(name)(mem->get_segment_manager());
-                memcpy(name_, name, MAX_NAME_LENGTH);
+                memcpy(name_, name, param::MAX_NAME_LENGTH);
             } else {
                 queue_ = mem->find<SpscQueue>(name).first;
                 assert(queue_);
@@ -207,11 +219,18 @@ namespace ogawayama::common {
             queue_->pop();
         }
 
+        /**
+         * @brief move current to the next in the queue.
+         */
+        void clear() {
+            queue_->clear();
+        }
+
     private:
         SpscQueue *queue_;
         const bool owner_;
         boost::interprocess::managed_shared_memory *mem_;
-        char name_[MAX_NAME_LENGTH];
+        char name_[param::MAX_NAME_LENGTH];
     };
     
 };  // namespace ogawayama::common

@@ -46,7 +46,7 @@ public:
     /**
      * @brief destructs this object.
      */
-    ~ResultSet() noexcept = default;
+    ~ResultSet();
 
     /**
      * @brief get the object to which this belongs
@@ -112,7 +112,7 @@ public:
     /**
      * @brief destructs this object.
      */
-    ~Transaction() noexcept = default;
+    ~Transaction();
 
     /**
      * @brief get the object to which this belongs
@@ -120,6 +120,12 @@ public:
      */
     auto get_manager() { return manager_; }
 
+    /**
+     * @brief get the impl class
+     * @return a pointer to the impl class
+     */
+    auto get_impl() { return impl_.get(); }
+    
     /**
      * @brief execute a query.
      * @param query the SQL query string
@@ -170,7 +176,7 @@ public:
     /**
      * @brief destructs this object.
      */
-    ~Connection() noexcept = default;
+    ~Connection();
 
     /**
      * @brief get the object to which this belongs
@@ -215,12 +221,12 @@ public:
     /**
      * @brief Construct a new object.
      */
-    Stub(std::string_view, bool);
+    Stub(std::string_view);
 
     /**
      * @brief destructs this object.
      */
-    ~Stub() noexcept = default;
+    ~Stub();
 
     /**
      * @brief get the impl class
@@ -230,7 +236,7 @@ public:
     
     /**
      * @brief connect to the DB and get Connection class.
-     * @param give MyProc->pgprocno to n
+     * @param supposed to be given MyProc->pgprocno for the first param
      * @param connection returns a connection class
      * @return error code defined in error_code.h
      */
@@ -246,7 +252,7 @@ public:
 
 }  // namespace ogawayama::stub
 
-using ConnectionPtr = std::unique_ptr<ogawayama::stub::Connection>;
-using TransactionPtr = std::unique_ptr<ogawayama::stub::Transaction>;
+using StubPtr = std::unique_ptr<ogawayama::stub::Stub>;
+inline static StubPtr make_stub(std::string_view name) { return std::make_unique<ogawayama::stub::Stub>(name); }
 
 #endif  // STUB_API_H_

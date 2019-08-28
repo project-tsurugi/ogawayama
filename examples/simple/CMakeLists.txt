@@ -1,4 +1,4 @@
-# Copyright 2019-2019 tsurugi project.
+# Copyright 2018-2018 umikongo project.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -12,39 +12,39 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-if(NOT DEFINED SHARKSFIN_IMPLEMENTATION)
-    set(
-        SHARKSFIN_IMPLEMENTATION "memory"
-        CACHE STRING
-        "sharksfin target name to link"
-        FORCE
-    )
-endif()
-
-find_package(umikongo-${SHARKSFIN_IMPLEMENTATION} REQUIRED)
-
 file(GLOB SOURCES
     "*.cpp"
 )
 
-add_executable(server
+add_executable(simple
     ${SOURCES}
 )
 
-set_target_properties(server
+set_target_properties(simple
     PROPERTIES
-        RUNTIME_OUTPUT_NAME "ogawayama-server"
+        RUNTIME_OUTPUT_NAME "ogawayama-simple"
 )
 
-target_link_libraries(server
-    PRIVATE umikongo-${SHARKSFIN_IMPLEMENTATION}-executor-${SHARKSFIN_IMPLEMENTATION}
-    PRIVATE gflags::gflags
+target_include_directories(simple
+    PRIVATE .
+    PRIVATE ../../stub/include
+    PRIVATE ../../common/include
+)
+
+target_link_libraries(simple
+    PUBLIC stub
     PRIVATE Boost::serialization
     PRIVATE pthread
     PRIVATE rt
 )
 
-target_include_directories(server
-    PRIVATE ../../stub/include
-    PRIVATE ../../common/include
+set_compile_options(simple)
+
+if(INSTALL_EXAMPLES)
+    install_custom(simple ${export_name})
+endif()
+
+add_test(
+        NAME simple
+        COMMAND simple
 )

@@ -14,34 +14,51 @@
  * limitations under the License.
  */
 
-#include <iostream>
+#include <memory>
 #include <string>
-#include "boost/archive/binary_iarchive.hpp"
+#include <thread>
+#include <exception>
+#include <iostream>
 
-#include "ogawayama/common/channel_stream.h"
+#include "gflags/gflags.h"
+
+#include "backend.h"
+
+namespace ogawayama::server {
+
+DEFINE_string(databasename, ogawayama::common::param::SHARED_MEMORY_NAME, "database name");  // NOLINT
 
 
-namespace ogawayama {
-namespace server {
-
-const std::size_t SEGMENT_SIZE = 100<<20; // 100 MiB (tantative)
-const char* SHARED_MEMORY_NAME = "ogawayama"; // (tantative)
+std::unique_ptr<ogawayama::common::SharedMemory> shared_memory;
+static std::unique_ptr<ogawayama::common::ChannelStream> server_ch;
 
 int backend_main(int argc, char **argv) {
-    boost::interprocess::managed_shared_memory *mem;
-    mem = new boost::interprocess::managed_shared_memory(boost::interprocess::open_only, SHARED_MEMORY_NAME);
-    assert (mem->get_size() == SEGMENT_SIZE);
+    gflags::SetUsageMessage("ogawayama database server");
+    gflags::ParseCommandLineFlags(&argc, &argv, true);
 
-    ogawayama::common::ChannelStream server_ch("Server", mem);
-    boost::archive::binary_iarchive server_ia(server_ch);
-    std::string command;
+    shared_memory = std::make_unique<ogawayama::common::SharedMemory>(FLAGS_databasename, true);
 
-    server_ia >> command;
+    server_ch = std::make_unique<ogawayama::common::ChannelStream>(ogawayama::common::param::server, shared_memory->get_managed_shared_memory_ptr(), true);
+    boost::archive::binary_iarchive server_ia();
 
     while(true) {
+        ogawayama::common::ChannelMessage message;
+        try {
+            server_ch->get_binary_iarchive() >> message;
+        } catch (std::exception &ex) {
+            std::cerr << __func__ << " " << __LINE__ << ": exiting \"" << ex.what() << "\"" << std::endl;
+            return -1;
+        }
 
+        if (message.get_type() == ogawayama::common::ChannelMessage::Type::CONNECT) {
+            try {
+                std::thread t1(worker_main, shared_memory.get(), message.get_ivalue());
+                t1.join();
+            } catch (std::exception &ex) {
+                std::cerr << ex.what() << std::endl;
+            }
+        }
     }
 }
 
-}  // server
-}  // ogawayama
+}  // ogawayama::server

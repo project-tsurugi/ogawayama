@@ -33,6 +33,7 @@ using ColumnValueType = std::variant<std::monostate, std::int16_t, std::int32_t,
  * @brief Provides semantic information of a ResultSet.
  */
 class Metadata {
+public:
     /**
      * @brief Provides semantic information of a Column.
      */
@@ -84,9 +85,17 @@ class Metadata {
          * @param type tag for the column type
          * @param byte length for the column data
          */
-        ColumnType(Type type, std::size_t size)
-            : type_(type), size_(size)
-        {}
+        ColumnType(Type type, std::size_t length) : type_(type), length_(length) {}
+        ColumnType(Type type) : ColumnType(type, 0) {}
+        
+        /**
+         * @brief Copy and move constructers.
+         */
+        ColumnType() = default;
+        ColumnType(const ColumnType&) = default;
+        ColumnType& operator=(const ColumnType&) = default;
+        ColumnType(ColumnType&&) = default;
+        ColumnType& operator=(ColumnType&&) = default;
 
         /**
          * @brief destructs this object.
@@ -95,17 +104,21 @@ class Metadata {
 
         /**
          * @brief get type for this column.
-         * @param type returns the type
-         * @return error code defined in error_code.h
+         * @return Type of this column
          */
-        ErrorCode get_type(Metadata::ColumnType::Type &type);
+        Metadata::ColumnType::Type get_type() { return type_; }
     
+        /**
+         * @brief get type for this column.
+         * @return Type of this column
+         */
+        std::size_t get_length() { return length_; }
+
     private:
-        std::size_t size_;
-        Type type_;
+        Type type_{};
+        std::size_t length_{};
     };
 
-public:
     /**
      * @brief Container to store type data for the columns.
      */
@@ -127,7 +140,14 @@ public:
      * @return error code defined in error_code.h
      */
     const SetOfTypeData& get_types() const noexcept { return columns_; }
-    
+
+    /**
+     * @brief push a column type.
+     * @param type of the column
+     * @param data length of the columns
+     */
+    void push(ColumnType::Type t, std::size_t l) { columns_.emplace_back(ColumnType(t, l)); } 
+
     /**
      * @brief clear this metadata.
      */

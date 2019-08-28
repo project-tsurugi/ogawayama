@@ -29,14 +29,19 @@ enum class ErrorCode {
     OK = 0,
 
     /**
-     * @brief NULL has been observed as the column value (may be successful prodessing).
+     * @brief NULL has been observed as the column value (a result of successful prodessing).
      */
     COLUMN_WAS_NULL,
 
     /**
-     * @brief Current in the ResultSet stepped over the last row (may be successful prodessing).
+     * @brief Current in the ResultSet stepped over the last row (a result of successful prodessing).
      */
     END_OF_ROW,
+
+    /**
+     * @brief Current Column in the Row stepped over the last column (a result of successful prodessing).
+     */
+    END_OF_COLUMN,
 
     /**
      * @brief the column value has been requested for a different type than the actual type.
