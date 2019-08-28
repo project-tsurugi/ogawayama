@@ -44,7 +44,7 @@ if(INSTALL_EXAMPLES)
     install_custom(simple ${export_name})
 endif()
 
-add_test(
-        NAME simple
-        COMMAND simple
-)
+# add_test(
+#         NAME simple
+#         COMMAND simple
+# )
