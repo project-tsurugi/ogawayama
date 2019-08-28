@@ -37,9 +37,7 @@ int backend_main(int argc, char **argv) {
     gflags::ParseCommandLineFlags(&argc, &argv, true);
 
     shared_memory = std::make_unique<ogawayama::common::SharedMemory>(FLAGS_databasename, true);
-
     server_ch = std::make_unique<ogawayama::common::ChannelStream>(ogawayama::common::param::server, shared_memory->get_managed_shared_memory_ptr(), true);
-    boost::archive::binary_iarchive server_ia();
 
     while(true) {
         ogawayama::common::ChannelMessage message;
