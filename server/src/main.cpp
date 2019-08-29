@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-#include "backend.h"
+#include "server.h"
 
 int main(int argc, char **argv) {
     return ogawayama::server::backend_main(argc, argv);

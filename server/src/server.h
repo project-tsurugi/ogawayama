@@ -14,16 +14,17 @@
  * limitations under the License.
  */
 
-#ifndef STUB_API_H_
-#define STUB_API_H_
+#ifndef SERVER_H_
+#define SERVER_H_
 
+#include "umikongo/api.h"
 #include "ogawayama/common/channel_stream.h"
 
 namespace ogawayama::server {
 
 int backend_main(int, char **);
-void worker_main(ogawayama::common::SharedMemory *, int);
+void worker_main(umikongo::Database *, ogawayama::common::SharedMemory *, int);
 
 }  // ogawayama::server
     
-#endif  // STUB_API_H_
+#endif  // SERVER_H_
