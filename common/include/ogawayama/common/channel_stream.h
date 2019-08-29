@@ -58,22 +58,11 @@ public:
          */
         void push(char item)
         {
-            bool was_empty = !is_not_empty();
-            
-            if(!is_not_full()) {
-                boost::interprocess::scoped_lock lock(m_full_mutex_);
-                if(!is_not_full()) {
-                    m_not_full_.wait(lock, boost::bind(&RingBuffer::is_not_full, this));
-                }
-                lock.unlock();
-            }
+            boost::interprocess::scoped_lock lock(m_mutex_);
+            m_not_full_.wait(lock, boost::bind(&RingBuffer::is_not_full, this));
             m_container_[index(pushed_++)] = item;
-            ack = false;
-            if(was_empty) {
-                boost::interprocess::scoped_lock lock(m_empty_mutex_);
-                lock.unlock();
-                m_not_empty_.notify_one();
-            }
+            lock.unlock();
+            m_not_empty_.notify_one();
         }
         
         /**
@@ -81,61 +70,48 @@ public:
          * @param pItem points where poped char data to be stored.
          */
         void pop(char* pItem) {
-            bool was_full = !is_not_full();
-            
-            if(!is_not_empty()) {
-                boost::interprocess::scoped_lock lock(m_empty_mutex_);
-                if(!is_not_empty()) {
-                    m_not_empty_.wait(lock, boost::bind(&RingBuffer::is_not_empty, this));
-                }
-                lock.unlock();
-            }
+            boost::interprocess::scoped_lock lock(m_mutex_);
+            m_not_empty_.wait(lock, boost::bind(&RingBuffer::is_not_empty, this));
             *pItem = m_container_[index(poped_++)];
-            if(was_full) {
-                boost::interprocess::scoped_lock lock(m_full_mutex_);
-                lock.unlock();
-                m_not_full_.notify_one();
-            }
+            lock.unlock();
+            m_not_full_.notify_one();
         }
         
-#if 0
         /**
          * @brief waiting acknowledge from the other side.
          */
-        void recieve_ack() {
-            boost::interprocess::scoped_lock lock(m_ack_mutex_);
-            m_not_ack_.wait(lock, boost::bind(&RingBuffer::is_acked, this));
+        void wait() {
+            boost::interprocess::scoped_lock lock(m_notify_mutex_);
+            m_not_notify_.wait(lock, boost::bind(&RingBuffer::is_notified, this));
             lock.unlock();
         }
 
         /**
          * @brief send acknowledge to the other side.
          */
-        void send_ack() {
-            boost::interprocess::scoped_lock lock(m_ack_mutex_);
-            ack = true;
+        void notify() {
+            boost::interprocess::scoped_lock lock(m_notify_mutex_);
+            notified_ = true;
             lock.unlock();
-            m_not_ack_.notify_one();
+            m_not_notify_.notify_one();
         }
-#endif
 
     private:
         std::size_t index(std::size_t i) { return i % param::BUFFER_SIZE; }
         
         bool is_not_empty() const { return poped_ < pushed_; }
         bool is_not_full() const { return (pushed_ - poped_) < param::BUFFER_SIZE; }
-        bool is_acked() const { return ack; }
+        bool is_notified() const { return notified_; }
         std::size_t pushed_{0};
         std::size_t poped_{0};
 
         char m_container_[param::BUFFER_SIZE];
-        boost::interprocess::interprocess_mutex m_empty_mutex_{};
-        boost::interprocess::interprocess_mutex m_full_mutex_{};
-        boost::interprocess::interprocess_mutex m_ack_mutex_{};
+        boost::interprocess::interprocess_mutex m_mutex_{};
+        boost::interprocess::interprocess_mutex m_notify_mutex_{};
         boost::interprocess::interprocess_condition m_not_empty_{};
         boost::interprocess::interprocess_condition m_not_full_{};
-        boost::interprocess::interprocess_condition m_not_ack_{};
-        bool ack {false};
+        boost::interprocess::interprocess_condition m_not_notify_{};
+        bool notified_ {false};
     };
     
 public:
@@ -202,6 +178,20 @@ public:
     boost::archive::binary_oarchive get_binary_oarchive()
     {
         return boost::archive::binary_oarchive(*this);
+    }
+
+    /**
+     * @brief waiting acknowledge from the other side.
+     */
+    void wait() {
+        buffer_->wait();
+    }
+
+    /**
+     * @brief send acknowledge to the other side.
+     */
+    void notify() {
+        buffer_->notify();
     }
 
 private:

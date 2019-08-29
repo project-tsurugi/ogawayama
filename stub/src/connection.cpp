@@ -28,6 +28,7 @@ Connection::Impl::Impl(Connection *connection, std::size_t pgprocno) : envelope_
 Connection::Impl::~Impl()
 {
     request_->get_binary_oarchive() << ogawayama::common::ChannelMessage(ogawayama::common::ChannelMessage::Type::DISCONNECT);
+    request_->wait();
 }
 
 void Connection::Impl::confirm()    

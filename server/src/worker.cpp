@@ -67,6 +67,7 @@ void worker_main(ogawayama::common::SharedMemory *shared_memory_ptr, std::int32_
             result->get_binary_oarchive() << ogawayama::common::ChannelMessage(ogawayama::common::ChannelMessage::Type::OK);
             break;
         case ogawayama::common::ChannelMessage::Type::DISCONNECT:
+            request->notify();
             std::cerr << __func__ << " " << __LINE__ << ": exiting" << std::endl;
             return;
         default:
