@@ -22,6 +22,7 @@ if(NOT DEFINED SHARKSFIN_IMPLEMENTATION)
 endif()
 
 find_package(umikongo-${SHARKSFIN_IMPLEMENTATION} REQUIRED)
+find_package(shakujo REQUIRED)
 
 file(GLOB SOURCES
     "*.cpp"
@@ -38,6 +39,7 @@ set_target_properties(server
 
 target_link_libraries(server
     PRIVATE umikongo-${SHARKSFIN_IMPLEMENTATION}-executor-${SHARKSFIN_IMPLEMENTATION}
+    PRIVATE shakujo-common
     PRIVATE gflags::gflags
     PRIVATE Boost::serialization
     PRIVATE pthread
