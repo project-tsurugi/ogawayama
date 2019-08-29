@@ -97,22 +97,46 @@ public:
             m_not_notify_.notify_one();
         }
 
+        /**
+         * @brief lock this channel. (for server channel)
+         */
+        void lock() {
+            boost::interprocess::scoped_lock lock(m_lock_mutex_);
+            m_not_locked_.wait(lock, boost::bind(&RingBuffer::is_not_locked, this));
+            locked_ = true;
+            lock.unlock();
+        }
+
+        /**
+         * @brief unlock this channel.
+         */
+        void unlock() {
+            boost::interprocess::scoped_lock lock(m_lock_mutex_);
+            locked_ = false;
+            lock.unlock();
+            m_not_locked_.notify_one();
+        }
+
     private:
         std::size_t index(std::size_t i) { return i % param::BUFFER_SIZE; }
         
         bool is_not_empty() const { return poped_ < pushed_; }
         bool is_not_full() const { return (pushed_ - poped_) < param::BUFFER_SIZE; }
         bool is_notified() const { return notified_; }
+        bool is_not_locked() const { return !locked_; }
         std::size_t pushed_{0};
         std::size_t poped_{0};
 
         char m_container_[param::BUFFER_SIZE];
         boost::interprocess::interprocess_mutex m_mutex_{};
         boost::interprocess::interprocess_mutex m_notify_mutex_{};
+        boost::interprocess::interprocess_mutex m_lock_mutex_{};
         boost::interprocess::interprocess_condition m_not_empty_{};
         boost::interprocess::interprocess_condition m_not_full_{};
         boost::interprocess::interprocess_condition m_not_notify_{};
+        boost::interprocess::interprocess_condition m_not_locked_{};
         bool notified_ {false};
+        bool locked_ {false};
     };
     
 public:
@@ -193,6 +217,20 @@ public:
      */
     void notify() {
         buffer_->notify();
+    }
+
+    /**
+     * @brief lock this channel. (for server channel)
+     */
+    void lock() {
+        buffer_->lock();
+    }
+
+    /**
+     * @brief unlock this channel.
+     */
+    void unlock() {
+        buffer_->unlock();
     }
 
 private:

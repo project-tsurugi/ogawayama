@@ -36,7 +36,9 @@ ErrorCode Stub::Impl::get_connection(std::size_t pgprocno, ConnectionPtr & conne
     connection = std::make_unique<Connection>(this->envelope_, pgprocno);
 
     ogawayama::common::CommandMessage message(ogawayama::common::CommandMessage::Type::CONNECT, pgprocno);
+    server_->lock();
     server_->get_binary_oarchive() << message;
+    server_->unlock();
     return connection->get_impl()->confirm();
 }
 
