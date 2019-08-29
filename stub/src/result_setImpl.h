@@ -33,11 +33,12 @@ public:
     ErrorCode next();
     template<typename T>
         ErrorCode next_column(T &value);
+    auto get_id() { return id_; }
+    Metadata & metadata() { return metadata_; } // for transactionImpl
     void clear() {
         metadata_.clear();
         row_queue_->clear();
     }
-    auto get_id() { return id_; }
     
  private:
     ResultSet *envelope_;
@@ -46,6 +47,8 @@ public:
     std::size_t c_idx_;
     Metadata metadata_ {};
     std::unique_ptr<ogawayama::common::RowQueue> row_queue_;
+
+    friend class transactionImpl;
 };
 
 }  // namespace ogawayama::stub

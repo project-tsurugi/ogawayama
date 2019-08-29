@@ -23,6 +23,7 @@
 #include "boost/archive/binary_oarchive.hpp"
 #include "boost/archive/binary_iarchive.hpp"
 
+#include "ogawayama/stub/error_code.h"
 #include "ogawayama/common/shared_memory.h"
 
 namespace ogawayama::common {
@@ -204,7 +205,7 @@ private:
 /**
  * @brief Messages exchanged via channel
  */
-struct ChannelMessage
+struct CommandMessage
 {
 public:
     /**
@@ -243,15 +244,15 @@ public:
         NEXT,
     };
 
-    ChannelMessage() = default;
-    ChannelMessage(const ChannelMessage&) = default;
-    ChannelMessage& operator=(const ChannelMessage&) = default;
-    ChannelMessage(ChannelMessage&&) = default;
-    ChannelMessage& operator=(ChannelMessage&&) = default;
+    CommandMessage() = default;
+    CommandMessage(const CommandMessage&) = default;
+    CommandMessage& operator=(const CommandMessage&) = default;
+    CommandMessage(CommandMessage&&) = default;
+    CommandMessage& operator=(CommandMessage&&) = default;
 
-    ChannelMessage( Type type, std::size_t ivalue, std::string_view string ) : type_(type), ivalue_(ivalue), string_(string) {}
-    ChannelMessage( Type type, std::size_t ivalue ) : ChannelMessage(type, ivalue, std::string()) {}
-    ChannelMessage( Type type ) : ChannelMessage(type, 0, std::string()) {}
+    CommandMessage( Type type, std::size_t ivalue, std::string_view string ) : type_(type), ivalue_(ivalue), string_(string) {}
+    CommandMessage( Type type, std::size_t ivalue ) : CommandMessage(type, ivalue, std::string()) {}
+    CommandMessage( Type type ) : CommandMessage(type, 0, std::string()) {}
     
     Type get_type() const { return type_; }
     std::size_t get_ivalue() const { return ivalue_; }
@@ -273,5 +274,23 @@ private:
 };
 
 };  // namespace ogawayama::common
+
+namespace boost::serialization {
+
+/**
+ * @brief Method that does serialization dedicated for ogawayama::stub::ErrorCode
+ * @param ar archiver
+ * @param d variable in Channel_MessageType
+ * @param file_version not used
+ */
+template<class Archive>
+inline void serialize(Archive & ar,
+                      ogawayama::stub::ErrorCode & d,
+                      const unsigned int file_version)
+{
+    ar & d;
+}
+
+};  // namespace boost::serialization
 
 #endif //  CHANNEL_STREAM_H_

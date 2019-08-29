@@ -54,13 +54,14 @@ inline void save(Archive & ar,
           const MetadataType & d, 
           unsigned int version)
 {
-    auto index = d.get_types().size();
+    std::int32_t index = d.get_types().size();
 
     ar & index;
     for( auto e: d.get_types() ) {
         auto t = static_cast<std::int32_t>(e.get_type());
         ar & t;
-        ar & e.get_length();
+        std::int32_t l = e.get_length();
+        ar & l;
     }
 }
 
@@ -75,10 +76,9 @@ inline void load(Archive & ar,
           MetadataType & d, 
           unsigned int version)
 {
-    std::size_t index;
+    std::int32_t index;
     ar & index;
-    
-    for (std::size_t i = 0; i < index; i++ ) {
+    for (std::int32_t i = 0; i < index; i++ ) {
         std::int32_t t;
         ar & t;
         std::int32_t l;

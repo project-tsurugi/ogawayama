@@ -24,10 +24,20 @@
 namespace ogawayama::server {
 
 class Worker {
+    class Cursor {
+    public:
+        ogawayama::stub::Metadata metadata_;
+        std::unique_ptr<ogawayama::common::RowQueue> row_queue_{};
+        std::unique_ptr<umikongo::Iterator> iterator_{};
+        void clear() {
+            metadata_.clear();
+        }
+    };
  public:
     Worker(umikongo::Database *, ogawayama::common::SharedMemory *, std::size_t);
     ~Worker() = default;
     void run();
+    void execute_statement(std::string_view);
     void execute_query(std::string_view, std::size_t);
  private:
     umikongo::Database *db_;
@@ -39,8 +49,7 @@ class Worker {
 
     std::unique_ptr<umikongo::Transaction> transaction_;
     umikongo::Context* context_;
-    std::vector<ogawayama::stub::Metadata> metadatas_;
-    std::vector<std::unique_ptr<ogawayama::common::RowQueue>> row_queues_{};
+    std::vector<Cursor> cursors_;
 };
 
 }  // ogawayama::server

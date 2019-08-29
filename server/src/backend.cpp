@@ -52,7 +52,7 @@ int backend_main(int argc, char **argv) {
     db->open(options);
 
     while(true) {
-        ogawayama::common::ChannelMessage message;
+        ogawayama::common::CommandMessage message;
         try {
             server_ch->get_binary_iarchive() >> message;
         } catch (std::exception &ex) {
@@ -61,7 +61,7 @@ int backend_main(int argc, char **argv) {
         }
 
         switch (message.get_type()) {
-        case ogawayama::common::ChannelMessage::Type::CONNECT:
+        case ogawayama::common::CommandMessage::Type::CONNECT:
             try {
                 auto worker = std::make_unique<Worker>(db.get(), shared_memory.get(), message.get_ivalue());
                 std::thread t1(&Worker::run, worker.get());
@@ -71,7 +71,7 @@ int backend_main(int argc, char **argv) {
                 return -1;
             }
             break;
-        case ogawayama::common::ChannelMessage::Type::DISCONNECT:
+        case ogawayama::common::CommandMessage::Type::DISCONNECT:
             return 0;
         }
     }

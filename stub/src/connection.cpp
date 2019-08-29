@@ -27,18 +27,19 @@ Connection::Impl::Impl(Connection *connection, std::size_t pgprocno) : envelope_
 
 Connection::Impl::~Impl()
 {
-    request_->get_binary_oarchive() << ogawayama::common::ChannelMessage(ogawayama::common::ChannelMessage::Type::DISCONNECT);
+    request_->get_binary_oarchive() << ogawayama::common::CommandMessage(ogawayama::common::CommandMessage::Type::DISCONNECT);
     request_->wait();
 }
 
-void Connection::Impl::confirm()    
+ErrorCode Connection::Impl::confirm()
 {
-    ogawayama::common::ChannelMessage message;
-    result_->get_binary_iarchive() >> message;
-    if (message.get_type() != ogawayama::common::ChannelMessage::Type::OK) {
+    ErrorCode reply;
+    result_->get_binary_iarchive() >> reply;
+    if (reply != ErrorCode::OK) {
         std::cerr << "recieved an illegal message" << std::endl;
-        exit(-1);        
+        exit(-1);
     }
+    return reply;
 }
 
 /**

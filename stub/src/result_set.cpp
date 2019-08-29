@@ -37,7 +37,6 @@ ResultSet::Impl::Impl(ResultSet *result_set, std::size_t id) : envelope_(result_
  */
 ErrorCode ResultSet::Impl::get_metadata(MetadataPtr &metadata)
 {
-    envelope_->get_manager()->get_impl()->get_result_channel()->get_binary_iarchive() >> metadata_;
     metadata = &metadata_;
     return ErrorCode::OK;
 }

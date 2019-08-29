@@ -159,7 +159,7 @@ namespace ogawayama::common {
         /**
          * @brief Construct a new object.
          */
-        RowQueue(char const* name, boost::interprocess::managed_shared_memory *mem, bool owner) : owner_(owner), mem_(mem)
+        RowQueue(char const* name, boost::interprocess::managed_shared_memory *mem, bool owner) : owner_(owner), mem_(mem), cindex_(0)
         {
             if (owner_) {
                 mem_->destroy<SpscQueue>(name_);
@@ -189,6 +189,7 @@ namespace ogawayama::common {
             void put_next_column(T v) {
             ShmColumn column = v;
             queue_->get_writing_row().emplace_back(column);
+            cindex_++;
         }
         /**
          * @brief put a string column value to the row at the back of the queue.
@@ -198,12 +199,20 @@ namespace ogawayama::common {
             column_string.assign(v.begin(), v.end());
             ShmColumn column = column_string;
             queue_->get_writing_row().emplace_back(column);
+            cindex_++;
         }
         /**
          * @brief push the row into the queue.
          */
         void push_writing_row() {
             queue_->push();
+            cindex_ = 0;
+        }
+        /**
+         * @brief get current column index.
+         */
+        auto get_cindex() {
+            return cindex_;
         }
 
         /**
@@ -231,6 +240,7 @@ namespace ogawayama::common {
         const bool owner_;
         boost::interprocess::managed_shared_memory *mem_;
         char name_[param::MAX_NAME_LENGTH];
+        std::size_t cindex_{};
     };
     
 };  // namespace ogawayama::common
