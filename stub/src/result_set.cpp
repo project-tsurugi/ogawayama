@@ -98,7 +98,8 @@ ErrorCode ResultSet::Impl::next_column(std::string_view &value) {
     auto c = r.at(c_idx_++);
     try {
         auto v = std::get<ogawayama::common::ShmString>(c);
-        value = std::string_view(v.data(), v.size());
+        std::string s(v.begin(), v.end());
+        value = std::string_view(s);
         return ErrorCode::OK;
     }
     catch (const std::bad_variant_access&) {

@@ -40,8 +40,8 @@ int main() {
 
     if (transaction->execute_statement("CREATE TABLE T2 ("
                                        "C1 INT NOT NULL PRIMARY KEY, "
-                                       "C2 DOUBLE NOT NULL"
-                                       //                                       "C2 DOUBLE NOT NULL, "
+                                       "C2 DOUBLE NOT NULL, "
+                                       "C3 CHAR(5) NOT NULL"
                                        //                                       "C3 CHAR(5) NOT NULL,"
                                        //                                       "C4 INT, "
                                        //                                       "C5 BIGINT, "
@@ -50,8 +50,8 @@ int main() {
                                        ")")
         != ogawayama::stub::ErrorCode::OK) { err_exit(__LINE__); }
     
-    //    if (transaction->execute_statement("INSERT INTO T2 (C1, C2, C3) VALUES(1, 1.1, 'ABCDE')")
-    if (transaction->execute_statement("INSERT INTO T2 (C1, C2) VALUES(1, 1.1)")
+    if (transaction->execute_statement("INSERT INTO T2 (C1, C2, C3) VALUES(1, 1.1, 'ABCDE')")
+    //    if (transaction->execute_statement("INSERT INTO T2 (C1, C2) VALUES(1, 1.1)")
         != ogawayama::stub::ErrorCode::OK) { err_exit(__LINE__); }
 
     if (transaction->execute_query("SELECT * FROM T2", result_set) != ogawayama::stub::ErrorCode::OK) { err_exit(__LINE__); }
@@ -98,7 +98,7 @@ int main() {
                     std::string_view v;
                     if (result_set->next_column(v) != ogawayama::stub::ErrorCode::OK) { err_exit(__LINE__); }
                     std::size_t l = t.get_length();
-                    std::cout << "\"" << v << "\"(" << l << ") | ";
+                    std::cout << v << "(" << l << ") | ";
                     break;
                 }
                 default: {
