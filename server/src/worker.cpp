@@ -143,6 +143,9 @@ void Worker::execute_query(std::string_view sql, std::size_t rid)
             cursors_.at(rid).metadata_.push(ogawayama::stub::Metadata::ColumnType::Type::TEXT,
                                     (static_cast<shakujo::common::core::type::Char const *>(t))->size());
             break;
+        default:
+            std::cerr << "unsurpported data type" << std::endl;
+            break;
         }
     }
     result_->get_binary_oarchive() << cursors_.at(rid).metadata_;
@@ -172,6 +175,8 @@ void Worker::next(std::size_t rid)
                     cursors_.at(rid).row_queue_->put_next_column(row->get<double>(cindex)); break;
                 case ogawayama::stub::Metadata::ColumnType::Type::TEXT:
                     cursors_.at(rid).row_queue_->put_next_column(row->get<std::string_view>(cindex)); break;
+                case ogawayama::stub::Metadata::ColumnType::Type::NULL_VALUE:
+                    std::cerr << "NULL_VALUE type should not be used" << std::endl; break;
                 }
             }
         }

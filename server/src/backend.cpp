@@ -73,6 +73,9 @@ int backend_main(int argc, char **argv) {
             break;
         case ogawayama::common::CommandMessage::Type::TERMINATE:
             return 0;
+        default:
+            std::cerr << "unsurpported message" << std::endl;
+            return -1;
         }
     }
 }
