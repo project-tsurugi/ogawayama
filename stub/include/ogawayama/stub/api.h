@@ -147,6 +147,12 @@ public:
      */
     ErrorCode commit();
 
+    /**
+     * @brief abort the current transaction.
+     * @return error code defined in error_code.h
+     */
+    ErrorCode rollback();
+
 private:
     class Impl;
     std::unique_ptr<Impl> impl_;

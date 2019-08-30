@@ -30,7 +30,7 @@ class Connection::Impl
 public:
     Impl(Connection *, std::size_t);
     ~Impl();
-    void confirm();
+    ErrorCode confirm();
 
     ErrorCode begin(TransactionPtr &transaction);
 

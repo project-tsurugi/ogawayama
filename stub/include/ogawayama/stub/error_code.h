@@ -49,6 +49,21 @@ enum class ErrorCode {
     COLUMN_TYPE_MISMATCH,
 
     /**
+     * @brief function not supported.
+     */
+    UNSUPPORTED,
+
+    /**
+     * @brief transaction not started.
+     */
+    NO_TRANSACTION,
+
+    /**
+     * @brief unknown error.
+     */
+    UNKNOWN,
+
+    /**
      * @brief Encountered server failure.
      */
     SERVER_FAILURE,

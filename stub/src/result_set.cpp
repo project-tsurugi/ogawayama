@@ -37,7 +37,6 @@ ResultSet::Impl::Impl(ResultSet *result_set, std::size_t id) : envelope_(result_
  */
 ErrorCode ResultSet::Impl::get_metadata(MetadataPtr &metadata)
 {
-    envelope_->get_manager()->get_impl()->get_result_channel()->get_binary_iarchive() >> metadata_;
     metadata = &metadata_;
     return ErrorCode::OK;
 }
@@ -49,6 +48,11 @@ ErrorCode ResultSet::Impl::get_metadata(MetadataPtr &metadata)
  */
 ErrorCode ResultSet::Impl::next()
 {
+    envelope_->get_manager()->get_impl()->get_request_channel()->get_binary_oarchive() <<
+        ogawayama::common::CommandMessage(ogawayama::common::CommandMessage::Type::NEXT, id_);
+    ErrorCode reply;
+    envelope_->get_manager()->get_impl()->get_result_channel()->get_binary_iarchive() >> reply;
+
     row_queue_->next();
     if (row_queue_->get_current_row().size() == 0) {
         return ErrorCode::END_OF_ROW;
@@ -99,7 +103,8 @@ ErrorCode ResultSet::Impl::next_column(std::string_view &value) {
     auto c = r.at(c_idx_++);
     try {
         auto v = std::get<ogawayama::common::ShmString>(c);
-        value = std::string_view(v.data(), v.size());
+        std::string s(v.begin(), v.end());
+        value = std::string_view(s);
         return ErrorCode::OK;
     }
     catch (const std::bad_variant_access&) {

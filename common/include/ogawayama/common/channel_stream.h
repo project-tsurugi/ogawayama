@@ -23,6 +23,7 @@
 #include "boost/archive/binary_oarchive.hpp"
 #include "boost/archive/binary_iarchive.hpp"
 
+#include "ogawayama/stub/error_code.h"
 #include "ogawayama/common/shared_memory.h"
 
 namespace ogawayama::common {
@@ -96,22 +97,46 @@ public:
             m_not_notify_.notify_one();
         }
 
+        /**
+         * @brief lock this channel. (for server channel)
+         */
+        void lock() {
+            boost::interprocess::scoped_lock lock(m_lock_mutex_);
+            m_not_locked_.wait(lock, boost::bind(&RingBuffer::is_not_locked, this));
+            locked_ = true;
+            lock.unlock();
+        }
+
+        /**
+         * @brief unlock this channel.
+         */
+        void unlock() {
+            boost::interprocess::scoped_lock lock(m_lock_mutex_);
+            locked_ = false;
+            lock.unlock();
+            m_not_locked_.notify_one();
+        }
+
     private:
         std::size_t index(std::size_t i) { return i % param::BUFFER_SIZE; }
         
         bool is_not_empty() const { return poped_ < pushed_; }
         bool is_not_full() const { return (pushed_ - poped_) < param::BUFFER_SIZE; }
         bool is_notified() const { return notified_; }
+        bool is_not_locked() const { return !locked_; }
         std::size_t pushed_{0};
         std::size_t poped_{0};
 
         char m_container_[param::BUFFER_SIZE];
         boost::interprocess::interprocess_mutex m_mutex_{};
         boost::interprocess::interprocess_mutex m_notify_mutex_{};
+        boost::interprocess::interprocess_mutex m_lock_mutex_{};
         boost::interprocess::interprocess_condition m_not_empty_{};
         boost::interprocess::interprocess_condition m_not_full_{};
         boost::interprocess::interprocess_condition m_not_notify_{};
+        boost::interprocess::interprocess_condition m_not_locked_{};
         bool notified_ {false};
+        bool locked_ {false};
     };
     
 public:
@@ -194,6 +219,20 @@ public:
         buffer_->notify();
     }
 
+    /**
+     * @brief lock this channel. (for server channel)
+     */
+    void lock() {
+        buffer_->lock();
+    }
+
+    /**
+     * @brief unlock this channel.
+     */
+    void unlock() {
+        buffer_->unlock();
+    }
+
 private:
     RingBuffer *buffer_;
     const bool owner_;
@@ -204,7 +243,7 @@ private:
 /**
  * @brief Messages exchanged via channel
  */
-struct ChannelMessage
+struct CommandMessage
 {
 public:
     /**
@@ -241,17 +280,32 @@ public:
          * @brief 
          */
         NEXT,
+
+        /**
+         * @brief 
+         */
+        COMMIT,
+
+        /**
+         * @brief 
+         */
+        ROLLBACK,
+
+        /**
+         * @brief 
+         */
+        TERMINATE,
     };
 
-    ChannelMessage() = default;
-    ChannelMessage(const ChannelMessage&) = default;
-    ChannelMessage& operator=(const ChannelMessage&) = default;
-    ChannelMessage(ChannelMessage&&) = default;
-    ChannelMessage& operator=(ChannelMessage&&) = default;
+    CommandMessage() = default;
+    CommandMessage(const CommandMessage&) = default;
+    CommandMessage& operator=(const CommandMessage&) = default;
+    CommandMessage(CommandMessage&&) = default;
+    CommandMessage& operator=(CommandMessage&&) = default;
 
-    ChannelMessage( Type type, std::size_t ivalue, std::string_view string ) : type_(type), ivalue_(ivalue), string_(string) {}
-    ChannelMessage( Type type, std::size_t ivalue ) : ChannelMessage(type, ivalue, std::string()) {}
-    ChannelMessage( Type type ) : ChannelMessage(type, 0, std::string()) {}
+    CommandMessage( Type type, std::size_t ivalue, std::string_view string ) : type_(type), ivalue_(ivalue), string_(string) {}
+    CommandMessage( Type type, std::size_t ivalue ) : CommandMessage(type, ivalue, std::string()) {}
+    CommandMessage( Type type ) : CommandMessage(type, 0, std::string()) {}
     
     Type get_type() const { return type_; }
     std::size_t get_ivalue() const { return ivalue_; }
@@ -273,5 +327,23 @@ private:
 };
 
 };  // namespace ogawayama::common
+
+namespace boost::serialization {
+
+/**
+ * @brief Method that does serialization dedicated for ogawayama::stub::ErrorCode
+ * @param ar archiver
+ * @param d variable in Channel_MessageType
+ * @param file_version not used
+ */
+template<class Archive>
+inline void serialize(Archive & ar,
+                      ogawayama::stub::ErrorCode & d,
+                      const unsigned int file_version)
+{
+    ar & d;
+}
+
+};  // namespace boost::serialization
 
 #endif //  CHANNEL_STREAM_H_

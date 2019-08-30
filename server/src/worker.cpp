@@ -16,65 +16,167 @@
 
 #include <iostream>
 
-#include "ogawayama/common/row_queue.h"
-#include "backend.h"
+#include "shakujo/common/core/type/Int.h"
+#include "shakujo/common/core/type/Float.h"
+#include "shakujo/common/core/type/Char.h"
+
+#include "worker.h"
 
 namespace ogawayama::server {
 
-void worker_main(ogawayama::common::SharedMemory *shared_memory_ptr, std::int32_t id)
+Worker::Worker(umikongo::Database *db, ogawayama::common::SharedMemory *shm, std::size_t id) : db_(db), shared_memory_ptr_(shm), id_(id)
 {
-    boost::interprocess::managed_shared_memory *managed_shared_memory_ptr = shared_memory_ptr->get_managed_shared_memory_ptr();
-    auto request = std::make_unique<ogawayama::common::ChannelStream>(shared_memory_ptr->shm_name(ogawayama::common::param::request, id).c_str(), managed_shared_memory_ptr);
-    auto result = std::make_unique<ogawayama::common::ChannelStream>(shared_memory_ptr->shm_name(ogawayama::common::param::result, id).c_str(), managed_shared_memory_ptr);
-    result->get_binary_oarchive() << ogawayama::common::ChannelMessage(ogawayama::common::ChannelMessage::Type::OK);
-    
+    auto managed_shared_memory_ptr = shared_memory_ptr_->get_managed_shared_memory_ptr();
+    request_ = std::make_unique<ogawayama::common::ChannelStream>(shared_memory_ptr_->shm_name(ogawayama::common::param::request, id_).c_str(), managed_shared_memory_ptr);
+    result_ = std::make_unique<ogawayama::common::ChannelStream>(shared_memory_ptr_->shm_name(ogawayama::common::param::result, id_).c_str(), managed_shared_memory_ptr);
+
+    result_->get_binary_oarchive() << ogawayama::stub::ErrorCode::OK;
+}
+
+void Worker::run()
+{
     while(true) {
-        ogawayama::common::ChannelMessage request_message;
+        ogawayama::common::CommandMessage command_message;
         try {
-            request->get_binary_iarchive() >> request_message;
-            std::cerr << __func__ << " " << __LINE__ << ": recieved normally" << std::endl;
+            request_->get_binary_iarchive() >> command_message;
         } catch (std::exception &ex) {
             std::cerr << __func__ << " " << __LINE__ << ": exiting \"" << ex.what() << "\"" << std::endl;
             return;
         }
         
-        switch (request_message.get_type()) {
-        case ogawayama::common::ChannelMessage::Type::EXECUTE_STATEMENT:
-            result->get_binary_oarchive() << ogawayama::common::ChannelMessage(ogawayama::common::ChannelMessage::Type::OK, 1);
-
-            std::cerr << request_message.get_string() << std::endl;
-            
+        switch (command_message.get_type()) {
+        case ogawayama::common::CommandMessage::Type::EXECUTE_STATEMENT:
+            execute_statement(command_message.get_string());
             break;
-        case ogawayama::common::ChannelMessage::Type::EXECUTE_QUERY:
-            {
-                ogawayama::stub::Metadata metadata;
-                metadata.push(ogawayama::stub::Metadata::ColumnType::Type::INT32, 4);
-                result->get_binary_oarchive() << metadata;
-                
-                auto row_queue = std::make_unique<ogawayama::common::RowQueue>
-                    (shared_memory_ptr->shm_name(ogawayama::common::param::resultset, id, request_message.get_ivalue()).c_str(),
-                     managed_shared_memory_ptr);
-
-                std::cerr << __func__ << " " << request_message.get_string() << " " << id << " " << request_message.get_ivalue() << std::endl;
-                
-                row_queue->put_next_column<std::int32_t> (1);
-                row_queue->push_writing_row();
-                row_queue->push_writing_row(); // End Of Row
+        case ogawayama::common::CommandMessage::Type::EXECUTE_QUERY:
+            execute_query(command_message.get_string(), command_message.get_ivalue());
+            break;
+        case ogawayama::common::CommandMessage::Type::NEXT:
+            next(command_message.get_ivalue());
+            result_->get_binary_oarchive() << ogawayama::stub::ErrorCode::OK;
+            break;
+        case ogawayama::common::CommandMessage::Type::COMMIT:
+            if (!transaction_) {
+                result_->get_binary_oarchive() << ogawayama::stub::ErrorCode::NO_TRANSACTION;
             }
+            transaction_->commit();
+            result_->get_binary_oarchive() << ogawayama::stub::ErrorCode::OK;
             break;
-        case ogawayama::common::ChannelMessage::Type::NEXT:
-            std::cerr << __func__ << " " << __LINE__ << std::endl;
-            result->get_binary_oarchive() << ogawayama::common::ChannelMessage(ogawayama::common::ChannelMessage::Type::OK);
+        case ogawayama::common::CommandMessage::Type::ROLLBACK:
+            if (!transaction_) {
+                result_->get_binary_oarchive() << ogawayama::stub::ErrorCode::NO_TRANSACTION;
+            }
+            //            transaction_->rollback();  FIXME
+            result_->get_binary_oarchive() << ogawayama::stub::ErrorCode::OK;
             break;
-        case ogawayama::common::ChannelMessage::Type::DISCONNECT:
-            request->notify();
-            std::cerr << __func__ << " " << __LINE__ << ": exiting" << std::endl;
+        case ogawayama::common::CommandMessage::Type::DISCONNECT:
+            request_->notify();
             return;
         default:
-            std::cerr << "recieved an illegal request_message" << std::endl;
+            std::cerr << "recieved an illegal command message" << std::endl;
             return;
         }
     }
 }
+
+void Worker::execute_statement(std::string_view sql)
+{
+    if (!transaction_) {
+        transaction_ = db_->create_transaction();
+        context_ = transaction_->context();
+    }
+    try {
+        context_->execute_statement(sql);
+        result_->get_binary_oarchive() << ogawayama::stub::ErrorCode::OK;
+    } catch (umikongo::Exception& e) {
+        if (e.reason() == umikongo::Exception::ReasonCode::ERR_UNSUPPORTED) {
+            // function not supported, skip this test
+            result_->get_binary_oarchive() << ogawayama::stub::ErrorCode::UNSUPPORTED;
+            return;
+        }
+        std::cerr << e.what() << std::endl;
+        result_->get_binary_oarchive() << ogawayama::stub::ErrorCode::UNKNOWN;
+    }
+}
+
+void Worker::execute_query(std::string_view sql, std::size_t rid)
+{
+    if (!transaction_) {
+        transaction_ = db_->create_transaction();
+        context_ = transaction_->context();
+    }
+    if (cursors_.size() < (rid + 1)) {
+        cursors_.resize(rid + 1);
+    }
+    cursors_.at(rid).clear();
+    cursors_.at(rid).row_queue_ = std::make_unique<ogawayama::common::RowQueue>
+        (shared_memory_ptr_->shm_name(ogawayama::common::param::resultset, id_, rid).c_str(), shared_memory_ptr_->get_managed_shared_memory_ptr());
     
+    auto executable = db_->compile(sql);
+    auto metadata = executable->metadata();
+    for (auto t: metadata->column_types()) {
+        switch(t->kind()) {
+        case shakujo::common::core::Type::Kind::INT:
+            switch((static_cast<shakujo::common::core::type::Numeric const *>(t))->size()) {
+            case 16:
+                cursors_.at(rid).metadata_.push(ogawayama::stub::Metadata::ColumnType::Type::INT16, 2);
+                break;
+            case 32:
+                cursors_.at(rid).metadata_.push(ogawayama::stub::Metadata::ColumnType::Type::INT32, 4);
+                break;
+            case 64:
+                cursors_.at(rid).metadata_.push(ogawayama::stub::Metadata::ColumnType::Type::INT64, 8);
+                break;
+            }
+            break;
+        case shakujo::common::core::Type::Kind::FLOAT:
+            switch((static_cast<shakujo::common::core::type::Float const *>(t))->size()) {
+            case 32:
+                cursors_.at(rid).metadata_.push(ogawayama::stub::Metadata::ColumnType::Type::FLOAT32, 4);
+                break;
+            case 64:
+                cursors_.at(rid).metadata_.push(ogawayama::stub::Metadata::ColumnType::Type::FLOAT64, 8);
+                break;
+            }
+            break;
+        case shakujo::common::core::Type::Kind::CHAR:
+            cursors_.at(rid).metadata_.push(ogawayama::stub::Metadata::ColumnType::Type::TEXT,
+                                    (static_cast<shakujo::common::core::type::Char const *>(t))->size());
+            break;
+        }
+    }
+    result_->get_binary_oarchive() << cursors_.at(rid).metadata_;
+    
+    cursors_.at(rid).iterator_ = context_->execute_query(executable.get());
+}
+
+void Worker::next(std::size_t rid)
+{
+    auto row = cursors_.at(rid).iterator_->next();
+    if (row != nullptr) {
+        for (auto t: cursors_.at(rid).metadata_.get_types()) {
+            std::size_t cindex = cursors_.at(rid).row_queue_->get_cindex();
+            if (row->is_null(cindex)) {
+                cursors_.at(rid).row_queue_->put_next_column(std::monostate());
+            } else {
+                switch (t.get_type()) {
+                case ogawayama::stub::Metadata::ColumnType::Type::INT16:
+                    cursors_.at(rid).row_queue_->put_next_column(row->get<std::int16_t>(cindex)); break;
+                case ogawayama::stub::Metadata::ColumnType::Type::INT32:
+                    cursors_.at(rid).row_queue_->put_next_column(row->get<std::int32_t>(cindex)); break;
+                case ogawayama::stub::Metadata::ColumnType::Type::INT64:
+                    cursors_.at(rid).row_queue_->put_next_column(row->get<std::int64_t>(cindex)); break;
+                case ogawayama::stub::Metadata::ColumnType::Type::FLOAT32:
+                    cursors_.at(rid).row_queue_->put_next_column(row->get<float>(cindex)); break;
+                case ogawayama::stub::Metadata::ColumnType::Type::FLOAT64:
+                    cursors_.at(rid).row_queue_->put_next_column(row->get<double>(cindex)); break;
+                case ogawayama::stub::Metadata::ColumnType::Type::TEXT:
+                    cursors_.at(rid).row_queue_->put_next_column(row->get<std::string_view>(cindex)); break;
+                }
+            }
+        }
+    }
+    cursors_.at(rid).row_queue_->push_writing_row();
+}
+
 }  // ogawayama::server

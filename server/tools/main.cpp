@@ -13,9 +13,26 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+#include <iostream>
 
-#include "server.h"
+#include "gflags/gflags.h"
+
+#include "ogawayama/common/channel_stream.h"
+#include "ogawayama/stub/api.h"
+#include "stubImpl.h"
+
+DEFINE_bool(terminate, false, "terminate commnand");  // NOLINT
 
 int main(int argc, char **argv) {
-    return ogawayama::server::backend_main(argc, argv);
+    // command arguments
+    gflags::SetUsageMessage("ogawayama database server");
+    gflags::ParseCommandLineFlags(&argc, &argv, true);
+
+    StubPtr stub = make_stub(ogawayama::common::param::SHARED_MEMORY_NAME);
+
+    if (FLAGS_terminate) {
+        stub->get_impl()->get_channel()->get_binary_oarchive() <<
+            ogawayama::common::CommandMessage(ogawayama::common::CommandMessage::Type::TERMINATE);
+    }
+    return 0;
 }

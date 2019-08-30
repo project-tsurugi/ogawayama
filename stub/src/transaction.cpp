@@ -25,6 +25,21 @@ Transaction::Impl::Impl(Transaction *transaction) : envelope_(transaction)
 }
 
 /**
+ * @brief execute a statement.
+ * @param statement the SQL statement string
+ * @return true in error, otherwise false
+ */
+ErrorCode Transaction::Impl::execute_statement(std::string_view statement) {
+    request_->get_binary_oarchive() <<
+        ogawayama::common::CommandMessage(ogawayama::common::CommandMessage::Type::EXECUTE_STATEMENT,
+                                          0, // dummy
+                                          statement);
+    ErrorCode reply;
+    result_->get_binary_iarchive() >> reply;
+    return reply;
+}
+
+/**
  * @brief connect to the DB and get Transaction class
  * @param connection returns a connection class
  * @return true in error, otherwise false
@@ -42,22 +57,39 @@ ErrorCode Transaction::Impl::execute_query(std::string_view query, std::shared_p
     result_sets_->emplace_back(result_set);
 
  found:
-    request_->get_binary_oarchive() << ogawayama::common::ChannelMessage(
-                                                                         ogawayama::common::ChannelMessage::Type::EXECUTE_QUERY,
-                                                                         static_cast<std::int32_t>(result_set->get_impl()->get_id()),
-                                                                         query
-                                                                         );
+    request_->get_binary_oarchive() <<
+        ogawayama::common::CommandMessage(ogawayama::common::CommandMessage::Type::EXECUTE_QUERY,
+                                          static_cast<std::int32_t>(result_set->get_impl()->get_id()),
+                                          query);
+    Metadata & metadata = result_set->get_impl()->metadata();
+    envelope_->get_impl()->get_result_channel()->get_binary_iarchive() >> metadata;
     return ErrorCode::OK;
 }
 
 /**
- * @brief execute a statement.
- * @param statement the SQL statement string
- * @return true in error, otherwise false
+ * @brief commit the current transaction.
+ * @return error code defined in error_code.h
  */
-ErrorCode Transaction::Impl::execute_statement(std::string_view statement) {
-    request_->get_binary_oarchive() << std::string(statement);  // Just for test
-    return ErrorCode::OK;
+ErrorCode Transaction::Impl::commit()
+{
+    request_->get_binary_oarchive() <<
+        ogawayama::common::CommandMessage(ogawayama::common::CommandMessage::Type::COMMIT);
+    ErrorCode reply;
+    result_->get_binary_iarchive() >> reply;
+    return reply;
+}
+
+/**
+ * @brief abort the current transaction.
+ * @return error code defined in error_code.h
+ */
+ErrorCode Transaction::Impl::rollback()
+{
+    request_->get_binary_oarchive() <<
+        ogawayama::common::CommandMessage(ogawayama::common::CommandMessage::Type::ROLLBACK);
+    ErrorCode reply;
+    result_->get_binary_iarchive() >> reply;
+    return reply;
 }
 
 /**
@@ -81,6 +113,16 @@ ErrorCode Transaction::execute_query(std::string_view query, std::shared_ptr<Res
 ErrorCode Transaction::execute_statement(std::string_view statement)
 {
     return impl_->execute_statement(statement);
+}
+
+ErrorCode Transaction::commit()
+{
+    return impl_->commit();
+}
+
+ErrorCode Transaction::rollback()
+{
+    return impl_->rollback();
 }
 
 }  // namespace ogawayama::stub

@@ -13,7 +13,6 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-
 #include <memory>
 #include <string>
 #include <thread>
@@ -22,25 +21,38 @@
 
 #include "gflags/gflags.h"
 
-#include "backend.h"
+#include "worker.h"
+
+#include "server.h"
 
 namespace ogawayama::server {
 
 DEFINE_string(databasename, ogawayama::common::param::SHARED_MEMORY_NAME, "database name");  // NOLINT
+DEFINE_string(location, "./db", "database location on file system");  // NOLINT
 
-
-std::unique_ptr<ogawayama::common::SharedMemory> shared_memory;
-static std::unique_ptr<ogawayama::common::ChannelStream> server_ch;
+static constexpr std::string_view KEY_LOCATION { "location" };  //NOLINT
 
 int backend_main(int argc, char **argv) {
+    // database environment
+    auto env = umikongo::create_environment();
+    env->initialize();
+
+    // command arguments
     gflags::SetUsageMessage("ogawayama database server");
     gflags::ParseCommandLineFlags(&argc, &argv, true);
 
-    shared_memory = std::make_unique<ogawayama::common::SharedMemory>(FLAGS_databasename, true);
-    server_ch = std::make_unique<ogawayama::common::ChannelStream>(ogawayama::common::param::server, shared_memory->get_managed_shared_memory_ptr(), true);
+    // communication channel
+    auto shared_memory = std::make_unique<ogawayama::common::SharedMemory>(FLAGS_databasename, true);
+    auto server_ch = std::make_unique<ogawayama::common::ChannelStream>(ogawayama::common::param::server, shared_memory->get_managed_shared_memory_ptr(), true);
+
+    // database
+    auto db = umikongo::create_database();
+    std::map<std::string, std::string> options;
+    options.insert_or_assign(std::string(KEY_LOCATION), FLAGS_location);
+    db->open(options);
 
     while(true) {
-        ogawayama::common::ChannelMessage message;
+        ogawayama::common::CommandMessage message;
         try {
             server_ch->get_binary_iarchive() >> message;
         } catch (std::exception &ex) {
@@ -48,13 +60,19 @@ int backend_main(int argc, char **argv) {
             return -1;
         }
 
-        if (message.get_type() == ogawayama::common::ChannelMessage::Type::CONNECT) {
+        switch (message.get_type()) {
+        case ogawayama::common::CommandMessage::Type::CONNECT:
             try {
-                std::thread t1(worker_main, shared_memory.get(), message.get_ivalue());
+                auto worker = std::make_unique<Worker>(db.get(), shared_memory.get(), message.get_ivalue());
+                std::thread t1(&Worker::run, worker.get());
                 t1.join();
             } catch (std::exception &ex) {
                 std::cerr << ex.what() << std::endl;
+                return -1;
             }
+            break;
+        case ogawayama::common::CommandMessage::Type::TERMINATE:
+            return 0;
         }
     }
 }
