@@ -47,6 +47,19 @@ public:
      */
     ErrorCode execute_statement(std::string_view statement);
 
+    /**
+     * @brief commit the current transaction.
+     * @return error code defined in error_code.h
+     */
+    ErrorCode commit();
+    
+    /**
+     * @brief abort the current transaction.
+     * @return error code defined in error_code.h
+     */
+    ErrorCode rollback();
+
+    auto get_request_channel() { return request_; }
     auto get_result_channel() { return result_; }
 
 private:

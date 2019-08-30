@@ -48,6 +48,11 @@ ErrorCode ResultSet::Impl::get_metadata(MetadataPtr &metadata)
  */
 ErrorCode ResultSet::Impl::next()
 {
+    envelope_->get_manager()->get_impl()->get_request_channel()->get_binary_oarchive() <<
+        ogawayama::common::CommandMessage(ogawayama::common::CommandMessage::Type::NEXT, id_);
+    ErrorCode reply;
+    envelope_->get_manager()->get_impl()->get_result_channel()->get_binary_iarchive() >> reply;
+
     row_queue_->next();
     if (row_queue_->get_current_row().size() == 0) {
         return ErrorCode::END_OF_ROW;

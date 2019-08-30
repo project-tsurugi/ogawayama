@@ -36,23 +36,37 @@ Worker::Worker(umikongo::Database *db, ogawayama::common::SharedMemory *shm, std
 void Worker::run()
 {
     while(true) {
-        ogawayama::common::CommandMessage command_essage;
+        ogawayama::common::CommandMessage command_message;
         try {
-            request_->get_binary_iarchive() >> command_essage;
+            request_->get_binary_iarchive() >> command_message;
         } catch (std::exception &ex) {
             std::cerr << __func__ << " " << __LINE__ << ": exiting \"" << ex.what() << "\"" << std::endl;
             return;
         }
         
-        switch (command_essage.get_type()) {
+        switch (command_message.get_type()) {
         case ogawayama::common::CommandMessage::Type::EXECUTE_STATEMENT:
-            execute_statement(command_essage.get_string());
+            execute_statement(command_message.get_string());
             break;
         case ogawayama::common::CommandMessage::Type::EXECUTE_QUERY:
-            execute_query(command_essage.get_string(), command_essage.get_ivalue());
+            execute_query(command_message.get_string(), command_message.get_ivalue());
             break;
         case ogawayama::common::CommandMessage::Type::NEXT:
-            std::cerr << __func__ << " " << __LINE__ << std::endl;
+            next(command_message.get_ivalue());
+            result_->get_binary_oarchive() << ogawayama::stub::ErrorCode::OK;
+            break;
+        case ogawayama::common::CommandMessage::Type::COMMIT:
+            if (!transaction_) {
+                result_->get_binary_oarchive() << ogawayama::stub::ErrorCode::NO_TRANSACTION;
+            }
+            transaction_->commit();
+            result_->get_binary_oarchive() << ogawayama::stub::ErrorCode::OK;
+            break;
+        case ogawayama::common::CommandMessage::Type::ROLLBACK:
+            if (!transaction_) {
+                result_->get_binary_oarchive() << ogawayama::stub::ErrorCode::NO_TRANSACTION;
+            }
+            //            transaction_->rollback();  FIXME
             result_->get_binary_oarchive() << ogawayama::stub::ErrorCode::OK;
             break;
         case ogawayama::common::CommandMessage::Type::DISCONNECT:
@@ -134,36 +148,35 @@ void Worker::execute_query(std::string_view sql, std::size_t rid)
     result_->get_binary_oarchive() << cursors_.at(rid).metadata_;
     
     cursors_.at(rid).iterator_ = context_->execute_query(executable.get());
-    while (true) {
-        auto row = cursors_.at(rid).iterator_->next();
-        if (row == nullptr) {
-            cursors_.at(rid).row_queue_->push_writing_row();
-            break;
-        } else {
-            for (auto t: cursors_.at(rid).metadata_.get_types()) {
-                std::size_t cindex = cursors_.at(rid).row_queue_->get_cindex();
-                if (row->is_null(cindex)) {
-                    cursors_.at(rid).row_queue_->put_next_column(std::monostate());
-                } else {
-                    switch (t.get_type()) {
-                    case ogawayama::stub::Metadata::ColumnType::Type::INT16:
-                        cursors_.at(rid).row_queue_->put_next_column(row->get<std::int16_t>(cindex)); break;
-                    case ogawayama::stub::Metadata::ColumnType::Type::INT32:
-                        cursors_.at(rid).row_queue_->put_next_column(row->get<std::int32_t>(cindex)); break;
-                    case ogawayama::stub::Metadata::ColumnType::Type::INT64:
-                        cursors_.at(rid).row_queue_->put_next_column(row->get<std::int64_t>(cindex)); break;
-                    case ogawayama::stub::Metadata::ColumnType::Type::FLOAT32:
-                        cursors_.at(rid).row_queue_->put_next_column(row->get<float>(cindex)); break;
-                    case ogawayama::stub::Metadata::ColumnType::Type::FLOAT64:
-                        cursors_.at(rid).row_queue_->put_next_column(row->get<double>(cindex)); break;
-                    case ogawayama::stub::Metadata::ColumnType::Type::TEXT:
-                        cursors_.at(rid).row_queue_->put_next_column(row->get<std::string_view>(cindex)); break;
-                    }
+}
+
+void Worker::next(std::size_t rid)
+{
+    auto row = cursors_.at(rid).iterator_->next();
+    if (row != nullptr) {
+        for (auto t: cursors_.at(rid).metadata_.get_types()) {
+            std::size_t cindex = cursors_.at(rid).row_queue_->get_cindex();
+            if (row->is_null(cindex)) {
+                cursors_.at(rid).row_queue_->put_next_column(std::monostate());
+            } else {
+                switch (t.get_type()) {
+                case ogawayama::stub::Metadata::ColumnType::Type::INT16:
+                    cursors_.at(rid).row_queue_->put_next_column(row->get<std::int16_t>(cindex)); break;
+                case ogawayama::stub::Metadata::ColumnType::Type::INT32:
+                    cursors_.at(rid).row_queue_->put_next_column(row->get<std::int32_t>(cindex)); break;
+                case ogawayama::stub::Metadata::ColumnType::Type::INT64:
+                    cursors_.at(rid).row_queue_->put_next_column(row->get<std::int64_t>(cindex)); break;
+                case ogawayama::stub::Metadata::ColumnType::Type::FLOAT32:
+                    cursors_.at(rid).row_queue_->put_next_column(row->get<float>(cindex)); break;
+                case ogawayama::stub::Metadata::ColumnType::Type::FLOAT64:
+                    cursors_.at(rid).row_queue_->put_next_column(row->get<double>(cindex)); break;
+                case ogawayama::stub::Metadata::ColumnType::Type::TEXT:
+                    cursors_.at(rid).row_queue_->put_next_column(row->get<std::string_view>(cindex)); break;
                 }
             }
-            cursors_.at(rid).row_queue_->push_writing_row();
         }
     }
+    cursors_.at(rid).row_queue_->push_writing_row();
 }
-    
+
 }  // ogawayama::server

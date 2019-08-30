@@ -54,6 +54,11 @@ enum class ErrorCode {
     UNSUPPORTED,
 
     /**
+     * @brief transaction not started.
+     */
+    NO_TRANSACTION,
+
+    /**
      * @brief unknown error.
      */
     UNKNOWN,

@@ -120,5 +120,6 @@ int main() {
     }
 
  finish:
+    transaction->commit();
     return 0;
 }

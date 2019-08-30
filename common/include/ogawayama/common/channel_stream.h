@@ -280,6 +280,16 @@ public:
          * @brief 
          */
         NEXT,
+
+        /**
+         * @brief 
+         */
+        COMMIT,
+
+        /**
+         * @brief 
+         */
+        ROLLBACK,
     };
 
     CommandMessage() = default;

@@ -39,6 +39,7 @@ class Worker {
     void run();
     void execute_statement(std::string_view);
     void execute_query(std::string_view, std::size_t);
+    void next(std::size_t);
  private:
     umikongo::Database *db_;
     ogawayama::common::SharedMemory *shared_memory_ptr_;
