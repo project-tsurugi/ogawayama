@@ -71,7 +71,7 @@ int backend_main(int argc, char **argv) {
                 return -1;
             }
             break;
-        case ogawayama::common::CommandMessage::Type::DISCONNECT:
+        case ogawayama::common::CommandMessage::Type::TERMINATE:
             return 0;
         }
     }

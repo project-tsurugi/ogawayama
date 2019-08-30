@@ -12,5 +12,28 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-add_subdirectory(src)
-add_subdirectory(tools)
+file(GLOB SOURCES
+    "*.cpp"
+)
+
+add_executable(cli
+    ${SOURCES}
+)
+
+set_target_properties(cli
+    PROPERTIES
+        RUNTIME_OUTPUT_NAME "ogawayama-cli"
+)
+
+target_link_libraries(cli
+    PRIVATE stub
+    PRIVATE gflags::gflags
+    PRIVATE Boost::serialization
+    PRIVATE rt
+)
+
+target_include_directories(cli
+    PRIVATE ../../common/include
+    PRIVATE ../../stub/include
+    PRIVATE ../../stub/src
+)

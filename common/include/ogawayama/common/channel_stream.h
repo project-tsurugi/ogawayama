@@ -290,6 +290,11 @@ public:
          * @brief 
          */
         ROLLBACK,
+
+        /**
+         * @brief 
+         */
+        TERMINATE,
     };
 
     CommandMessage() = default;
