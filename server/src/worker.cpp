@@ -90,7 +90,6 @@ void Worker::execute_statement(std::string_view sql)
         result_->get_binary_oarchive() << ogawayama::stub::ErrorCode::OK;
     } catch (umikongo::Exception& e) {
         if (e.reason() == umikongo::Exception::ReasonCode::ERR_UNSUPPORTED) {
-            // function not supported, skip this test
             result_->get_binary_oarchive() << ogawayama::stub::ErrorCode::UNSUPPORTED;
             return;
         }
@@ -112,45 +111,55 @@ void Worker::execute_query(std::string_view sql, std::size_t rid)
     cursors_.at(rid).row_queue_ = std::make_unique<ogawayama::common::RowQueue>
         (shared_memory_ptr_->shm_name(ogawayama::common::param::resultset, id_, rid).c_str(), shared_memory_ptr_->get_managed_shared_memory_ptr());
     
-    auto executable = db_->compile(sql);
-    auto metadata = executable->metadata();
-    for (auto t: metadata->column_types()) {
-        switch(t->kind()) {
-        case shakujo::common::core::Type::Kind::INT:
-            switch((static_cast<shakujo::common::core::type::Numeric const *>(t))->size()) {
-            case 16:
-                cursors_.at(rid).metadata_.push(ogawayama::stub::Metadata::ColumnType::Type::INT16, 2);
+    try {
+        auto executable = db_->compile(sql);
+        auto metadata = executable->metadata();
+        for (auto t: metadata->column_types()) {
+            switch(t->kind()) {
+            case shakujo::common::core::Type::Kind::INT:
+                switch((static_cast<shakujo::common::core::type::Numeric const *>(t))->size()) {
+                case 16:
+                    cursors_.at(rid).metadata_.push(ogawayama::stub::Metadata::ColumnType::Type::INT16, 2);
+                    break;
+                case 32:
+                    cursors_.at(rid).metadata_.push(ogawayama::stub::Metadata::ColumnType::Type::INT32, 4);
+                    break;
+                case 64:
+                    cursors_.at(rid).metadata_.push(ogawayama::stub::Metadata::ColumnType::Type::INT64, 8);
+                    break;
+                }
                 break;
-            case 32:
-                cursors_.at(rid).metadata_.push(ogawayama::stub::Metadata::ColumnType::Type::INT32, 4);
+            case shakujo::common::core::Type::Kind::FLOAT:
+                switch((static_cast<shakujo::common::core::type::Float const *>(t))->size()) {
+                case 32:
+                    cursors_.at(rid).metadata_.push(ogawayama::stub::Metadata::ColumnType::Type::FLOAT32, 4);
+                    break;
+                case 64:
+                    cursors_.at(rid).metadata_.push(ogawayama::stub::Metadata::ColumnType::Type::FLOAT64, 8);
+                    break;
+                }
                 break;
-            case 64:
-                cursors_.at(rid).metadata_.push(ogawayama::stub::Metadata::ColumnType::Type::INT64, 8);
+            case shakujo::common::core::Type::Kind::CHAR:
+                cursors_.at(rid).metadata_.push(ogawayama::stub::Metadata::ColumnType::Type::TEXT,
+                                                (static_cast<shakujo::common::core::type::Char const *>(t))->size());
+                break;
+            default:
+                std::cerr << "unsurpported data type" << std::endl;
                 break;
             }
-            break;
-        case shakujo::common::core::Type::Kind::FLOAT:
-            switch((static_cast<shakujo::common::core::type::Float const *>(t))->size()) {
-            case 32:
-                cursors_.at(rid).metadata_.push(ogawayama::stub::Metadata::ColumnType::Type::FLOAT32, 4);
-                break;
-            case 64:
-                cursors_.at(rid).metadata_.push(ogawayama::stub::Metadata::ColumnType::Type::FLOAT64, 8);
-                break;
-            }
-            break;
-        case shakujo::common::core::Type::Kind::CHAR:
-            cursors_.at(rid).metadata_.push(ogawayama::stub::Metadata::ColumnType::Type::TEXT,
-                                    (static_cast<shakujo::common::core::type::Char const *>(t))->size());
-            break;
-        default:
-            std::cerr << "unsurpported data type" << std::endl;
-            break;
         }
-    }
-    result_->get_binary_oarchive() << cursors_.at(rid).metadata_;
     
-    cursors_.at(rid).iterator_ = context_->execute_query(executable.get());
+        cursors_.at(rid).iterator_ = context_->execute_query(executable.get());
+        result_->get_binary_oarchive() << ogawayama::stub::ErrorCode::OK;
+        result_->get_binary_oarchive() << cursors_.at(rid).metadata_;
+    } catch (umikongo::Exception& e) {
+        if (e.reason() == umikongo::Exception::ReasonCode::ERR_UNSUPPORTED) {
+            result_->get_binary_oarchive() << ogawayama::stub::ErrorCode::UNSUPPORTED;
+            return;
+        }
+        std::cerr << e.what() << std::endl;
+        result_->get_binary_oarchive() << ogawayama::stub::ErrorCode::UNKNOWN;
+    }
 }
 
 void Worker::next(std::size_t rid)
