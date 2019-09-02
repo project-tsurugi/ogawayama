@@ -16,6 +16,8 @@
 #ifndef CHANNEL_STREAM_H_
 #define CHANNEL_STREAM_H_
 
+#include <atomic>
+
 #include "boost/bind.hpp"
 #include "boost/interprocess/managed_shared_memory.hpp"
 #include "boost/interprocess/sync/interprocess_condition.hpp"
@@ -59,11 +61,18 @@ public:
          */
         void push(char item)
         {
-            boost::interprocess::scoped_lock lock(m_mutex_);
-            m_not_full_.wait(lock, boost::bind(&RingBuffer::is_not_full, this));
-            m_container_[index(pushed_++)] = item;
-            lock.unlock();
-            m_not_empty_.notify_one();
+            if(!is_not_full()) {
+                boost::interprocess::scoped_lock lock(m_mutex_);
+                m_not_full_.wait(lock, boost::bind(&RingBuffer::is_not_full, this));
+            }
+            std::atomic_thread_fence(std::memory_order_acquire);
+            m_container_[index(pushed_)] = item;
+            std::atomic_thread_fence(std::memory_order_release);
+            pushed_++;
+            if (was_empty()) {
+                boost::interprocess::scoped_lock lock(m_mutex_);
+                if (was_empty()) { m_not_empty_.notify_one(); }
+            }
         }
         
         /**
@@ -71,11 +80,18 @@ public:
          * @param pItem points where poped char data to be stored.
          */
         void pop(char* pItem) {
-            boost::interprocess::scoped_lock lock(m_mutex_);
-            m_not_empty_.wait(lock, boost::bind(&RingBuffer::is_not_empty, this));
-            *pItem = m_container_[index(poped_++)];
-            lock.unlock();
-            m_not_full_.notify_one();
+            if(!is_not_empty()) {
+                boost::interprocess::scoped_lock lock(m_mutex_);
+                m_not_empty_.wait(lock, boost::bind(&RingBuffer::is_not_empty, this));
+            }
+            std::atomic_thread_fence(std::memory_order_acquire);
+            *pItem = m_container_[index(poped_)];
+            std::atomic_thread_fence(std::memory_order_release);
+            poped_++;
+            if (was_full()) {
+                boost::interprocess::scoped_lock lock(m_mutex_);
+                if (was_full()) { m_not_full_.notify_one(); }
+            }
         }
         
         /**
@@ -120,8 +136,10 @@ public:
     private:
         std::size_t index(std::size_t i) { return i % param::BUFFER_SIZE; }
         
-        bool is_not_empty() const { return poped_ < pushed_; }
+        bool is_not_empty() const { return (pushed_ - poped_) > 0; }
+        bool was_empty() const { return (pushed_ - poped_) == 1; }
         bool is_not_full() const { return (pushed_ - poped_) < param::BUFFER_SIZE; }
+        bool was_full() const { return (pushed_ - poped_) == (param::BUFFER_SIZE - 1); }
         bool is_notified() const { return notified_; }
         bool is_not_locked() const { return !locked_; }
         std::size_t pushed_{0};
