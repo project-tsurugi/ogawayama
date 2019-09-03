@@ -26,12 +26,8 @@ namespace ogawayama::server {
 class Worker {
     class Cursor {
     public:
-        ogawayama::stub::Metadata metadata_;
         std::unique_ptr<ogawayama::common::RowQueue> row_queue_{};
         std::unique_ptr<umikongo::Iterator> iterator_{};
-        void clear() {
-            metadata_.clear();
-        }
     };
  public:
     Worker(umikongo::Database *, ogawayama::common::SharedMemory *, std::size_t);

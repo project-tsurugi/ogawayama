@@ -61,8 +61,12 @@ ErrorCode Transaction::Impl::execute_query(std::string_view query, std::shared_p
         ogawayama::common::CommandMessage(ogawayama::common::CommandMessage::Type::EXECUTE_QUERY,
                                           static_cast<std::int32_t>(result_set->get_impl()->get_id()),
                                           query);
-    Metadata & metadata = result_set->get_impl()->metadata();
-    envelope_->get_impl()->get_result_channel()->get_binary_iarchive() >> metadata;
+    ErrorCode reply;
+    result_->get_binary_iarchive() >> reply;
+    if (reply != ErrorCode::OK) {
+        return reply;
+    }
+    result_set->get_impl()->set_metadata();
     return ErrorCode::OK;
 }
 

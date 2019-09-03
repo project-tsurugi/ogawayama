@@ -38,20 +38,6 @@ int main() {
 
     if (connection->begin(transaction) != ERROR_CODE::OK) { err_exit(__LINE__); }
 
-    if (transaction->execute_statement("CREATE TABLE T2 ("
-                                       "C1 INT NOT NULL PRIMARY KEY, "
-                                       "C2 DOUBLE NOT NULL, "
-                                       "C3 CHAR(5) NOT NULL,"
-                                       "C4 INT, "
-                                       "C5 BIGINT, "
-                                       "C6 FLOAT, "
-                                       "C7 VARCHAR(5)"
-                                       ")")
-        != ERROR_CODE::OK) { err_exit(__LINE__); }
-    
-    if (transaction->execute_statement("INSERT INTO T2 (C1, C2, C3) VALUES(1, 1.1, 'ABCDE')")
-        != ERROR_CODE::OK) { err_exit(__LINE__); }
-
     if (transaction->execute_query("SELECT * FROM T2", result_set) != ERROR_CODE::OK) { err_exit(__LINE__); }
 
     if (result_set->get_metadata(metadata) != ERROR_CODE::OK) { err_exit(__LINE__); }

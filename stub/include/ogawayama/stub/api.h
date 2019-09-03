@@ -25,6 +25,8 @@
 #include "ogawayama/stub/error_code.h"
 
 using MetadataPtr = ogawayama::stub::Metadata *;
+using TYPE = ogawayama::stub::Metadata::ColumnType::Type;
+using ERROR_CODE = ogawayama::stub::ErrorCode;
 
 namespace ogawayama::stub {
 
@@ -259,6 +261,6 @@ public:
 }  // namespace ogawayama::stub
 
 using StubPtr = std::unique_ptr<ogawayama::stub::Stub>;
-inline static StubPtr make_stub(std::string_view name) { return std::make_unique<ogawayama::stub::Stub>(name); }
+inline static StubPtr make_stub(std::string_view name = ogawayama::common::param::SHARED_MEMORY_NAME) { return std::make_unique<ogawayama::stub::Stub>(name); }
 
 #endif  // STUB_API_H_

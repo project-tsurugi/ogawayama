@@ -16,19 +16,19 @@
 #ifndef ROW_QUEUE_H_
 #define ROW_QUEUE_H_
 
+#include <vector>
 #include <variant>
 #include <string_view>
 #include "boost/interprocess/managed_shared_memory.hpp"
 #include "boost/interprocess/allocators/allocator.hpp"
 #include "boost/interprocess/containers/string.hpp"
-#include "boost/interprocess/containers/vector.hpp"
 #include "boost/lockfree/spsc_queue.hpp"
 #include "boost/interprocess/sync/interprocess_condition.hpp"
 #include "boost/interprocess/sync/interprocess_mutex.hpp"
 #include "boost/bind.hpp"
 #include "boost/interprocess/smart_ptr/shared_ptr.hpp"
 
-#include "ogawayama/common/serialization/metadata.h"
+#include "ogawayama/stub/metadata.h"
 #include "ogawayama/common/shared_memory.h"
 
 namespace ogawayama::common {
@@ -40,12 +40,16 @@ namespace ogawayama::common {
     using ShmColumn = std::variant<std::monostate, std::int16_t, std::int32_t, std::int64_t, float, double, ShmString>;
     using ShmColumnAllocator = boost::interprocess::allocator<ShmColumn, boost::interprocess::managed_shared_memory::segment_manager>;
     
-    using ShmRow = boost::interprocess::vector<ShmColumn, ShmColumnAllocator>;
+    using ShmRow = std::vector<ShmColumn, ShmColumnAllocator>;
     using ShmRowAllocator = boost::interprocess::allocator<ShmRow, boost::interprocess::managed_shared_memory::segment_manager>;
-    using ShmQueue = boost::interprocess::vector<ShmRow, ShmRowAllocator>;
+    using ShmQueue = std::vector<ShmRow, ShmRowAllocator>;
 
     using ShMemRef = boost::shared_ptr<boost::interprocess::managed_shared_memory>;
-    
+
+
+    using ShmColumnTypeAllocator = boost::interprocess::allocator<ogawayama::stub::Metadata::ColumnType, boost::interprocess::managed_shared_memory::segment_manager>;
+    using ShmSetOfTypeData = std::vector<ogawayama::stub::Metadata::ColumnType, ShmColumnTypeAllocator>;
+
     /**
      * @brief one to one communication channel, intended for communication between server and stub through boost binary_archive.
      */
@@ -60,7 +64,8 @@ namespace ogawayama::common {
             /**
              * @brief Construct a new object.
              */
-            SpscQueue(VoidAllocator allocator, std::size_t capacity = param::QUEUE_SIZE) : m_container_(allocator), allocator_(allocator), capacity_(capacity) {
+            SpscQueue(VoidAllocator allocator, std::size_t capacity = param::QUEUE_SIZE)
+                : m_container_(allocator), m_types_(allocator), allocator_(allocator), capacity_(capacity) {
                 m_container_.resize(capacity, ShmRow(allocator));
             }
             /**
@@ -76,13 +81,15 @@ namespace ogawayama::common {
              */
             void push()
             {
-                bool was_empty = !is_not_empty();
-                
+                if(!is_not_full()) {
+                    boost::interprocess::scoped_lock lock(m_mutex_);
+                    m_not_full_.wait(lock, boost::bind(&SpscQueue::is_not_full, this));
+                }
+                std::atomic_thread_fence(std::memory_order_acquire);
                 pushed_++;
-                if(was_empty) {
-                    boost::interprocess::scoped_lock lock(m_empty_mutex_);
-                    lock.unlock();
-                    m_not_empty_.notify_one();
+                if (was_empty()) {
+                    boost::interprocess::scoped_lock lock(m_mutex_);
+                    if (was_empty()) { m_not_empty_.notify_one(); }
                 }
             }
             
@@ -90,21 +97,16 @@ namespace ogawayama::common {
              * @brief pop and clear the current row.
              */
             void pop() {
-                bool was_full = !is_not_full();
-                
                 get_current_row().clear();
                 if(!is_not_empty()) {
-                    boost::interprocess::scoped_lock lock(m_empty_mutex_);
-                    if(!is_not_empty()) {
-                        m_not_empty_.wait(lock, boost::bind(&SpscQueue::is_not_empty, this));
-                    }
-                    lock.unlock();
+                    boost::interprocess::scoped_lock lock(m_mutex_);
+                    m_not_empty_.wait(lock, boost::bind(&SpscQueue::is_not_empty, this));
                 }
+                std::atomic_thread_fence(std::memory_order_acquire);
                 poped_++;
-                if(was_full) {
-                    boost::interprocess::scoped_lock lock(m_full_mutex_);
-                    lock.unlock();
-                    m_not_full_.notify_one();
+                if (was_full()) {
+                    boost::interprocess::scoped_lock lock(m_mutex_);
+                    if (was_full()) { m_not_full_.notify_one(); }
                 }
             }
             
@@ -122,7 +124,7 @@ namespace ogawayama::common {
              */
             ShmRow & get_writing_row() {
                 if(!is_not_full()) {
-                    boost::interprocess::scoped_lock lock(m_full_mutex_);
+                    boost::interprocess::scoped_lock lock(m_mutex_);
                     if(!is_not_full()) {
                         m_not_full_.wait(lock, boost::bind(&SpscQueue::is_not_full, this));
                     }
@@ -136,21 +138,32 @@ namespace ogawayama::common {
                 m_container_.clear();
                 m_container_.resize(capacity_, ShmRow(allocator_));
                 pushed_ = poped_ = 0;
+                m_types_.clear();
             }
             
+            void push_type(ogawayama::stub::Metadata::ColumnType type) {
+                m_types_.emplace_back(type);
+            }
+
+            ShmSetOfTypeData & get_types() {
+                return m_types_;
+            }
+
         private:
-            bool is_not_empty() const { return pushed_ > poped_; }
+            bool is_not_empty() const { return (pushed_ - poped_) > 0; }
+            bool was_empty() const { return (pushed_ - poped_) == 1; }
             bool is_not_full() const { return (pushed_ - poped_) < (param::QUEUE_SIZE - 1); }
+            bool was_full() const { return (pushed_ - poped_) == (param::QUEUE_SIZE - 2); }
             std::size_t index(std::size_t n) { return n %  param::QUEUE_SIZE; }
             
             ShmQueue m_container_;
+            ShmSetOfTypeData m_types_;
             VoidAllocator allocator_;
             std::size_t capacity_;
             std::size_t pushed_{0};
             std::size_t poped_{0};
 
-            boost::interprocess::interprocess_mutex m_empty_mutex_{};
-            boost::interprocess::interprocess_mutex m_full_mutex_{};
+            boost::interprocess::interprocess_mutex m_mutex_{};
             boost::interprocess::interprocess_condition m_not_empty_{};
             boost::interprocess::interprocess_condition m_not_full_{};
         };
@@ -219,7 +232,9 @@ namespace ogawayama::common {
          * @brief get the current row.
          * @return reference to the current row
          */
-        ShmRow & get_current_row() { return queue_->get_current_row(); }
+        ShmRow & get_current_row() {
+            return queue_->get_current_row();
+        }
         
         /**
          * @brief move current to the next in the queue.
@@ -233,6 +248,14 @@ namespace ogawayama::common {
          */
         void clear() {
             queue_->clear();
+        }
+
+        void push_type(ogawayama::stub::Metadata::ColumnType type) {
+            queue_->push_type(type);
+        }
+
+        auto get_types() {
+            return queue_->get_types();
         }
 
     private:

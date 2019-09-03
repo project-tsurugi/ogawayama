@@ -1,4 +1,4 @@
-# Copyright 2019-2019 tsurugi fin project.
+# Copyright 2018-2018 umikongo project.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -12,6 +12,34 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-add_subdirectory(prepare)
-add_subdirectory(query)
-add_subdirectory(simple)
+file(GLOB SOURCES
+    "*.cpp"
+)
+
+add_executable(query
+    ${SOURCES}
+)
+
+set_target_properties(query
+    PROPERTIES
+        RUNTIME_OUTPUT_NAME "ogawayama-query"
+)
+
+target_include_directories(query
+    PRIVATE .
+    PRIVATE ../../stub/include
+    PRIVATE ../../common/include
+)
+
+target_link_libraries(query
+    PRIVATE stub
+    PRIVATE Boost::serialization
+    PRIVATE pthread
+    PRIVATE rt
+)
+
+set_compile_options(query)
+
+if(INSTALL_EXAMPLES)
+    install_custom(query ${export_name})
+endif()

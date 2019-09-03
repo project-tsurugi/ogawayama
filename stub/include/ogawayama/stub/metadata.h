@@ -154,7 +154,7 @@ public:
     void clear() { columns_.clear(); }
 
 private:
-    SetOfTypeData columns_;
+    SetOfTypeData columns_{};
 };
 
 }  // namespace ogawayama::stub
