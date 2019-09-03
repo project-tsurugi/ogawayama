@@ -16,16 +16,16 @@ file(GLOB SOURCES
     "*.cpp"
 )
 
-add_library(stub
+add_library(stub-mock
     ${SOURCES}
 )
 
-target_include_directories(stub
+target_include_directories(stub-mock
     PRIVATE ../include
     PRIVATE ../../common/include
 )
 
-set_target_properties(stub
+set_target_properties(stub-mock
     PROPERTIES
-        LIBRARY_OUTPUT_NAME "ogawayama-stub"
+        LIBRARY_OUTPUT_NAME "ogawayama-stub-mock"
 )
