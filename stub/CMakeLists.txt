@@ -12,20 +12,5 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-file(GLOB SOURCES
-    "src/*.cpp"
-)
-
-add_library(stub
-    ${SOURCES}
-)
-
-target_include_directories(stub
-    PRIVATE ./include
-    PRIVATE ../common/include
-)
-
-set_target_properties(stub
-    PROPERTIES
-        LIBRARY_OUTPUT_NAME "ogawayama-stub"
-)
+add_subdirectory(src)
+add_subdirectory(mock)
