@@ -30,11 +30,11 @@ void err_exit(int line)
 }
 
 int main() {
-    stub = make_stub(ogawayama::common::param::SHARED_MEMORY_NAME);
+    stub = make_stub();
     
-    if (stub->get_connection(12, connection) != ogawayama::stub::ErrorCode::OK) { err_exit(__LINE__); }
+    if (stub->get_connection(12, connection) != ERROR_CODE::OK) { err_exit(__LINE__); }
 
-    if (connection->begin(transaction) != ogawayama::stub::ErrorCode::OK) { err_exit(__LINE__); }
+    if (connection->begin(transaction) != ERROR_CODE::OK) { err_exit(__LINE__); }
 
     if (transaction->execute_statement("CREATE TABLE T2 ("
                                        "C1 INT NOT NULL PRIMARY KEY, "
@@ -45,10 +45,10 @@ int main() {
                                        "C6 FLOAT, "
                                        "C7 VARCHAR(5)"
                                        ")")
-        != ogawayama::stub::ErrorCode::OK) { err_exit(__LINE__); }
+        != ERROR_CODE::OK) { err_exit(__LINE__); }
     
     if (transaction->execute_statement("INSERT INTO T2 (C1, C2, C3) VALUES(1, 1.1, 'ABCDE')")
-        != ogawayama::stub::ErrorCode::OK) { err_exit(__LINE__); }
+        != ERROR_CODE::OK) { err_exit(__LINE__); }
 
     transaction->commit();
     return 0;

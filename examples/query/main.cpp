@@ -32,72 +32,72 @@ void err_exit(int line)
 }
 
 int main() {
-    stub = make_stub(ogawayama::common::param::SHARED_MEMORY_NAME);
+    stub = make_stub();
     
-    if (stub->get_connection(12, connection) != ogawayama::stub::ErrorCode::OK) { err_exit(__LINE__); }
+    if (stub->get_connection(12, connection) != ERROR_CODE::OK) { err_exit(__LINE__); }
 
-    if (connection->begin(transaction) != ogawayama::stub::ErrorCode::OK) { err_exit(__LINE__); }
+    if (connection->begin(transaction) != ERROR_CODE::OK) { err_exit(__LINE__); }
 
-    if (transaction->execute_query("SELECT * FROM T2", result_set) != ogawayama::stub::ErrorCode::OK) { err_exit(__LINE__); }
+    if (transaction->execute_query("SELECT * FROM T2", result_set) != ERROR_CODE::OK) { err_exit(__LINE__); }
 
-    if (result_set->get_metadata(metadata) != ogawayama::stub::ErrorCode::OK) { err_exit(__LINE__); }
+    if (result_set->get_metadata(metadata) != ERROR_CODE::OK) { err_exit(__LINE__); }
 
     while(true) {
         switch (result_set->next()) {
-        case ogawayama::stub::ErrorCode::OK: {
+        case ERROR_CODE::OK: {
             std::cout << "| ";
             for (auto t: metadata->get_types()) {
                 switch (t.get_type()) {
-                case ogawayama::stub::Metadata::ColumnType::Type::INT16: {
+                case TYPE::INT16: {
                     std::int16_t v;
                     switch (result_set->next_column(v)) {
-                    case ogawayama::stub::ErrorCode::OK: std::cout << v << " | "; break;
-                    case ogawayama::stub::ErrorCode::COLUMN_WAS_NULL: std::cout << "(null) | "; break;
+                    case ERROR_CODE::OK: std::cout << v << " | "; break;
+                    case ERROR_CODE::COLUMN_WAS_NULL: std::cout << "(null) | "; break;
                     default: err_exit(__LINE__);
                     }
                     break;
                 }
-                case ogawayama::stub::Metadata::ColumnType::Type::INT32: {
+                case TYPE::INT32: {
                     std::int32_t v;
                     switch (result_set->next_column(v)) {
-                    case ogawayama::stub::ErrorCode::OK: std::cout << v << " | "; break;
-                    case ogawayama::stub::ErrorCode::COLUMN_WAS_NULL: std::cout << "(null) | "; break;
+                    case ERROR_CODE::OK: std::cout << v << " | "; break;
+                    case ERROR_CODE::COLUMN_WAS_NULL: std::cout << "(null) | "; break;
                     default: err_exit(__LINE__);
                     }
                     break;
                 }
-                case ogawayama::stub::Metadata::ColumnType::Type::INT64: {
+                case TYPE::INT64: {
                     std::int64_t v;
                     switch (result_set->next_column(v)) {
-                    case ogawayama::stub::ErrorCode::OK: std::cout << v << " | "; break;
-                    case ogawayama::stub::ErrorCode::COLUMN_WAS_NULL: std::cout << "(null) | "; break;
+                    case ERROR_CODE::OK: std::cout << v << " | "; break;
+                    case ERROR_CODE::COLUMN_WAS_NULL: std::cout << "(null) | "; break;
                     default: err_exit(__LINE__);
                     }
                     break;
                 }
-                case ogawayama::stub::Metadata::ColumnType::Type::FLOAT32: {
+                case TYPE::FLOAT32: {
                     float v;
                     switch (result_set->next_column(v)) {
-                    case ogawayama::stub::ErrorCode::OK: std::cout << v << " | "; break;
-                    case ogawayama::stub::ErrorCode::COLUMN_WAS_NULL: std::cout << "(null) | "; break;
+                    case ERROR_CODE::OK: std::cout << v << " | "; break;
+                    case ERROR_CODE::COLUMN_WAS_NULL: std::cout << "(null) | "; break;
                     default: err_exit(__LINE__);
                     }
                     break;
                 }
-                case ogawayama::stub::Metadata::ColumnType::Type::FLOAT64: {
+                case TYPE::FLOAT64: {
                     double v;
                     switch (result_set->next_column(v)) {
-                    case ogawayama::stub::ErrorCode::OK: std::cout << v << " | "; break;
-                    case ogawayama::stub::ErrorCode::COLUMN_WAS_NULL: std::cout << "(null) | "; break;
+                    case ERROR_CODE::OK: std::cout << v << " | "; break;
+                    case ERROR_CODE::COLUMN_WAS_NULL: std::cout << "(null) | "; break;
                     default: err_exit(__LINE__);
                     }
                     break;
                 }
-                case ogawayama::stub::Metadata::ColumnType::Type::TEXT: {
+                case TYPE::TEXT: {
                     std::string_view v;
                     switch (result_set->next_column(v)) {
-                    case ogawayama::stub::ErrorCode::OK: std::cout << v << " | "; break;
-                    case ogawayama::stub::ErrorCode::COLUMN_WAS_NULL: std::cout << "(null) | "; break;
+                    case ERROR_CODE::OK: std::cout << v << " | "; break;
+                    case ERROR_CODE::COLUMN_WAS_NULL: std::cout << "(null) | "; break;
                     default: err_exit(__LINE__);
                     }
                     break;
@@ -110,7 +110,7 @@ int main() {
             std::cout << std::endl;
             break;
         }
-        case ogawayama::stub::ErrorCode::END_OF_ROW: {
+        case ERROR_CODE::END_OF_ROW: {
             std::cout << "=== end of row ===" << std::endl;
             goto finish;
         }
