@@ -106,7 +106,7 @@ public:
          * @brief get type for this column.
          * @return Type of this column
          */
-        Metadata::ColumnType::Type get_type() { return type_; }
+        ColumnType::Type get_type() { return type_; }
     
         /**
          * @brief get type for this column.

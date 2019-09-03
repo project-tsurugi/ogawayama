@@ -53,15 +53,15 @@ ErrorCode Transaction::Impl::execute_query(std::string_view query, std::shared_p
     result_set->get_metadata(metadata);
     
     if (query == select_one) {
-        metadata->push(Metadata::ColumnType::Type::INT32, 4);
+        metadata->push(TYPE::INT32, 4);
         result_set->get_impl()->get_row_queue()->put_next_column(static_cast<std::int32_t>(1));
         result_set->get_impl()->get_row_queue()->push_writing_row();
         return ErrorCode::OK;
     }
     if (query == select_table) {
-        metadata->push(Metadata::ColumnType::Type::INT32, 4);
-        metadata->push(Metadata::ColumnType::Type::FLOAT64, 8);
-        metadata->push(Metadata::ColumnType::Type::TEXT, 16);
+        metadata->push(TYPE::INT32, 4);
+        metadata->push(TYPE::FLOAT64, 8);
+        metadata->push(TYPE::TEXT, 16);
         result_set->get_impl()->get_row_queue()->put_next_column(static_cast<std::int32_t>(1));
         result_set->get_impl()->get_row_queue()->put_next_column(static_cast<double>(1.1));
         result_set->get_impl()->get_row_queue()->put_next_column(static_cast<std::string_view>("ABCDE"));

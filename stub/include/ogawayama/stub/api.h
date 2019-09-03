@@ -260,6 +260,10 @@ public:
 
 }  // namespace ogawayama::stub
 
+namespace ogawayama::common::param {
+    static constexpr char const * SHARED_MEMORY_NAME = "ogawayama";
+}  // namespace ogawayama::common::param
+
 using StubPtr = std::unique_ptr<ogawayama::stub::Stub>;
 inline static StubPtr make_stub(std::string_view name = ogawayama::common::param::SHARED_MEMORY_NAME) { return std::make_unique<ogawayama::stub::Stub>(name); }
 

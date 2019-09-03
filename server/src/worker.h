@@ -18,6 +18,7 @@
 #define WORKER_H_
 
 #include "umikongo/api.h"
+#include "ogawayama/stub/api.h"
 #include "ogawayama/common/channel_stream.h"
 #include "ogawayama/common/row_queue.h"
 
