@@ -37,12 +37,10 @@ public:
     ErrorCode get_connection(std::size_t, ConnectionPtr &);
     auto get_managed_shared_memory() { return shared_memory_.get(); }
     auto get_managed_shared_memory_ptr() { return shared_memory_->get_managed_shared_memory_ptr(); }
-    //    auto get_channel() { return server_.get(); }
 private:
     Stub *envelope_;
 
     std::unique_ptr<ogawayama::common::SharedMemory> shared_memory_;
-    //    std::unique_ptr<ogawayama::common::ChannelStream> server_;
 };
 
 }  // namespace ogawayama::stub

@@ -34,20 +34,12 @@ public:
 
     ErrorCode begin(TransactionPtr &transaction);
 
-    //    void get_channel_streams(ogawayama::common::ChannelStream * & request, ogawayama::common::ChannelStream * & result)
-    //    {
-    //        request = request_.get();
-    //        result = result_.get();
-    //    }
-
     std::size_t get_id() { return pgprocno_; }
     
 private:
     Connection *envelope_;
 
     std::size_t pgprocno_;
-    //    std::unique_ptr<ogawayama::common::ChannelStream> request_;
-    //    std::unique_ptr<ogawayama::common::ChannelStream> result_;
 };
 
 }  // namespace ogawayama::stub

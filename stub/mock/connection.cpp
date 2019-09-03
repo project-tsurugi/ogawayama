@@ -20,21 +20,15 @@ namespace ogawayama::stub {
 
 Connection::Impl::Impl(Connection *connection, std::size_t pgprocno) : envelope_(connection), pgprocno_(pgprocno)
 {
-    boost::interprocess::managed_shared_memory *managed_shared_memory_ptr = envelope_->get_manager()->get_impl()->get_managed_shared_memory_ptr();
-    //    request_ = std::make_unique<ogawayama::common::ChannelStream>(envelope_->get_manager()->get_impl()->get_managed_shared_memory()->shm_name(ogawayama::common::param::request, pgprocno_).c_str(), managed_shared_memory_ptr, true);
-    //    result_ = std::make_unique<ogawayama::common::ChannelStream>(envelope_->get_manager()->get_impl()->get_managed_shared_memory()->shm_name(ogawayama::common::param::result, pgprocno_).c_str(), managed_shared_memory_ptr, true);
 }
 
 Connection::Impl::~Impl()
 {
-    //    request_->get_binary_oarchive() << ogawayama::common::CommandMessage(ogawayama::common::CommandMessage::Type::DISCONNECT);
-    //    request_->wait();
 }
 
 ErrorCode Connection::Impl::confirm()
 {
     ErrorCode reply = ErrorCode::OK;
-    //    result_->get_binary_iarchive() >> reply;
     if (reply != ErrorCode::OK) {
         std::cerr << "recieved an illegal message" << std::endl;
         exit(-1);

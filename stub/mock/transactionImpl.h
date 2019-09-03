@@ -59,15 +59,10 @@ public:
      */
     ErrorCode rollback();
 
-    //    auto get_request_channel() { return request_; }
-    //    auto get_result_channel() { return result_; }
-
 private:
     Transaction *envelope_;
 
     std::unique_ptr<std::vector<std::shared_ptr<ResultSet>>> result_sets_;
-    //    ogawayama::common::ChannelStream *request_; // copy of unique_ptr<ChannelStream> request_ belongs to Connection (and its Impl)
-    //    ogawayama::common::ChannelStream *result_;  // copy of unique_ptr<ChannelStream> result_ belongs to Connection (and its Impl)
 };
 
 }  // namespace ogawayama::stub

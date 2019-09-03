@@ -21,7 +21,6 @@ namespace ogawayama::stub {
 Transaction::Impl::Impl(Transaction *transaction) : envelope_(transaction)
 {
     result_sets_ = std::make_unique<std::vector<std::shared_ptr<ResultSet>>>();
-    //    envelope_->get_manager()->get_impl()->get_channel_streams(request_, result_);
 }
 
 static constexpr std::string_view select_one = "SELECT 1";  // NOLINT
@@ -51,7 +50,7 @@ ErrorCode Transaction::Impl::execute_query(std::string_view query, std::shared_p
     result_sets_->emplace_back(result_set);
 
     MetadataPtr metadata;
-    ErrorCode e = result_set->get_metadata(metadata);
+    result_set->get_metadata(metadata);
     
     if (query == select_one) {
         metadata->push(Metadata::ColumnType::Type::INT32, 4);
