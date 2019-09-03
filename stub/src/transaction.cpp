@@ -66,8 +66,7 @@ ErrorCode Transaction::Impl::execute_query(std::string_view query, std::shared_p
     if (reply != ErrorCode::OK) {
         return reply;
     }
-    Metadata & metadata = result_set->get_impl()->metadata();
-    envelope_->get_impl()->get_result_channel()->get_binary_iarchive() >> metadata;
+    result_set->get_impl()->set_metadata();
     return ErrorCode::OK;
 }
 

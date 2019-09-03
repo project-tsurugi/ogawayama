@@ -18,7 +18,7 @@
 
 namespace ogawayama::stub {
 
-ResultSet::Impl::Impl(ResultSet *result_set, std::size_t id) : envelope_(result_set), id_(id), c_idx_(0)
+ResultSet::Impl::Impl(ResultSet *result_set, std::size_t id) : envelope_(result_set), id_(id), c_idx_(0), metadata_()
 {
     Connection *connection = envelope_->get_manager()->get_manager();
     
