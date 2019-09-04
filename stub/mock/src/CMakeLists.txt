@@ -12,5 +12,28 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-add_subdirectory(src)
-add_subdirectory(test)
+file(GLOB SOURCES
+    "*.cpp"
+)
+
+add_library(stub-mock
+    ${SOURCES}
+)
+
+target_include_directories(stub-mock
+    PRIVATE ../../include
+    PRIVATE ../../../common/include
+)
+
+set_target_properties(stub-mock
+    PROPERTIES
+        LIBRARY_OUTPUT_NAME "ogawayama-stub-mock"
+)
+
+#for tests
+add_library(stub-mock-test INTERFACE)
+
+target_include_directories(stub-mock-test
+    INTERFACE ../../include
+    INTERFACE ../../../common/include
+)
