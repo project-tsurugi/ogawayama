@@ -24,10 +24,12 @@ list(APPEND CMAKE_MODULE_PATH "${PROJECT_SOURCE_DIR}/cmake")
 option(BUILD_SHARED_LIBS "build shared libraries instead of static" ON)
 option(BUILD_TESTS "Build test programs" ON)
 
+find_package(Threads REQUIRED)
 find_package(Boost
         COMPONENTS system serialization
         REQUIRED
-        )
+)
+find_package(glog REQUIRED)
 find_package(gflags REQUIRED)
 
 if (BUILD_TESTS)
@@ -41,7 +43,9 @@ configure_file(
 )
 
 include(CompileOptions)
+include(Tests)
 
 add_subdirectory(stub)
 add_subdirectory(server)
 add_subdirectory(examples)
+add_subdirectory(third_party)

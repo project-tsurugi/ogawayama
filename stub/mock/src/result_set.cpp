@@ -28,6 +28,7 @@ ResultSet::Impl::Impl(ResultSet *result_set, std::size_t id) : envelope_(result_
          connection->get_manager()->get_impl()->get_managed_shared_memory_ptr(),
          true
          );
+    string_buffer_ = std::make_unique<std::vector<std::string>>();
 }
     
 /**
@@ -89,8 +90,9 @@ ErrorCode ResultSet::Impl::next_column(T &value) {
  * @return error code defined in error_code.h
  */
 template<>
-ErrorCode ResultSet::Impl::next_column(std::string_view &value) {
+ErrorCode ResultSet::Impl::next_column(std::string_view &s) {
     auto r = row_queue_->get_current_row();
+    auto myid = c_idx_;
 
     if (c_idx_ >= r.size()) {
         return ErrorCode::END_OF_COLUMN;
@@ -98,8 +100,10 @@ ErrorCode ResultSet::Impl::next_column(std::string_view &value) {
     auto c = r.at(c_idx_++);
     try {
         auto v = std::get<ogawayama::common::ShmString>(c);
-        std::string s(v.begin(), v.end());
-        value = std::string_view(s);
+        if (string_buffer_->size() < myid) { string_buffer_->resize(myid + 1); }
+        s = std::string(v.begin(), v.end());
+        string_buffer_->at(myid) = v;
+        s = string_buffer_->at(myid);
         return ErrorCode::OK;
     }
     catch (const std::bad_variant_access&) {
@@ -136,16 +140,16 @@ ResultSet::~ResultSet() = default;
 ErrorCode ResultSet::next() { return impl_->next(); }
 
 template<>
-ErrorCode ResultSet::next_column(std::int16_t &value) { return impl_->next_column<std::int16_t>(value); }
+ErrorCode ResultSet::next_column(std::int16_t &value) { return impl_->next_column(value); }
 template<>
-ErrorCode ResultSet::next_column(std::int32_t &value) { return impl_->next_column<std::int32_t>(value); }
+ErrorCode ResultSet::next_column(std::int32_t &value) { return impl_->next_column(value); }
 template<>
-ErrorCode ResultSet::next_column(std::int64_t &value) { return impl_->next_column<std::int64_t>(value); }
+ErrorCode ResultSet::next_column(std::int64_t &value) { return impl_->next_column(value); }
 template<>
-ErrorCode ResultSet::next_column(float &value) { return impl_->next_column<float>(value); }
+ErrorCode ResultSet::next_column(float &value) { return impl_->next_column(value); }
 template<>
-ErrorCode ResultSet::next_column(double &value) { return impl_->next_column<double>(value); }
+ErrorCode ResultSet::next_column(double &value) { return impl_->next_column(value); }
 template<>
-ErrorCode ResultSet::next_column(std::string_view &value) { return impl_->next_column<std::string_view>(value); }
+ErrorCode ResultSet::next_column(std::string_view &value) { return impl_->next_column(value); }
 
 }  // namespace ogawayama::stub

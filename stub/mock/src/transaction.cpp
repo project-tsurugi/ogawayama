@@ -56,6 +56,7 @@ ErrorCode Transaction::Impl::execute_query(std::string_view query, std::shared_p
         metadata->push(TYPE::INT32, 4);
         result_set->get_impl()->get_row_queue()->put_next_column(static_cast<std::int32_t>(1));
         result_set->get_impl()->get_row_queue()->push_writing_row();
+        result_set->get_impl()->get_row_queue()->push_writing_row();  // END_OF_ROW mark
         return ErrorCode::OK;
     }
     if (query == select_table) {
@@ -70,6 +71,7 @@ ErrorCode Transaction::Impl::execute_query(std::string_view query, std::shared_p
         result_set->get_impl()->get_row_queue()->put_next_column(static_cast<double>(2.2));
         result_set->get_impl()->get_row_queue()->put_next_column(static_cast<std::string_view>("AAABBBCCCDDDEEE"));
         result_set->get_impl()->get_row_queue()->push_writing_row();
+        result_set->get_impl()->get_row_queue()->push_writing_row();  // END_OF_ROW mark
         return ErrorCode::OK;
     }
     return ErrorCode::UNKNOWN;

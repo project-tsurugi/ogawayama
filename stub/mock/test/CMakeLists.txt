@@ -12,5 +12,16 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-add_subdirectory(src)
-add_subdirectory(test)
+file(GLOB TEST_SOURCES
+    "*.cpp"
+)
+
+register_tests(
+    TARGET stub-mock
+    DEPENDS
+      stub-mock-impl
+      glog::glog
+      Boost::serialization
+      rt
+    SOURCES ${TEST_SOURCES}
+)
