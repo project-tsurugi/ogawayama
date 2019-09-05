@@ -13,9 +13,9 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#include "gtest/gtest.h"
-
 #include "ogawayama/stub/api.h"
+
+#include "gtest/gtest.h"
 
 namespace ogawayama::testing {
 
