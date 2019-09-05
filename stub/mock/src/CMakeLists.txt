@@ -31,9 +31,9 @@ set_target_properties(stub-mock
 )
 
 #for tests
-add_library(stub-mock-test INTERFACE)
+add_library(stub-mock-impl INTERFACE)
 
-target_include_directories(stub-mock-test
+target_include_directories(stub-mock-impl
     INTERFACE ../../include
     INTERFACE ../../../common/include
 )

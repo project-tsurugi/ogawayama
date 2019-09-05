@@ -33,7 +33,6 @@ find_package(glog REQUIRED)
 find_package(gflags REQUIRED)
 
 if (BUILD_TESTS)
-    find_package(GTest REQUIRED)
     enable_testing()
 endif()
 
@@ -49,3 +48,4 @@ include(Tests)
 add_subdirectory(stub)
 add_subdirectory(server)
 add_subdirectory(examples)
+add_subdirectory(third_party)
