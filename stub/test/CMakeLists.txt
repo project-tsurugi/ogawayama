@@ -12,29 +12,16 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-file(GLOB SOURCES
+file(GLOB TEST_SOURCES
     "*.cpp"
 )
 
-add_library(stub
-    ${SOURCES}
-)
-
-target_include_directories(stub
-    PRIVATE ../include
-    PRIVATE ../../common/include
-)
-
-set_target_properties(stub
-    PROPERTIES
-        LIBRARY_OUTPUT_NAME "ogawayama-stub"
-)
-
-#for tests
-add_library(stub-impl INTERFACE)
-
-target_include_directories(stub-impl
-    INTERFACE ../include
-    INTERFACE ../../common/include
-    INTERFACE .
+register_tests(
+    TARGET stub
+    DEPENDS
+      stub-impl
+      glog::glog
+      Boost::serialization
+      rt
+    SOURCES ${TEST_SOURCES}
 )
