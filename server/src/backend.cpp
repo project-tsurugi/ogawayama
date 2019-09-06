@@ -15,7 +15,6 @@
  */
 #include <memory>
 #include <string>
-#include <thread>
 #include <exception>
 #include <iostream>
 
@@ -33,6 +32,8 @@ DEFINE_string(location, "./db", "database location on file system");  // NOLINT
 static constexpr std::string_view KEY_LOCATION { "location" };  //NOLINT
 
 int backend_main(int argc, char **argv) {
+    std::vector<std::unique_ptr<Worker>> workers;
+
     // database environment
     auto env = umikongo::create_environment();
     env->initialize();
@@ -59,13 +60,19 @@ int backend_main(int argc, char **argv) {
             std::cerr << __func__ << " " << __LINE__ << ": exiting \"" << ex.what() << "\"" << std::endl;
             return -1;
         }
+        std::size_t index = message.get_ivalue();
 
         switch (message.get_type()) {
         case ogawayama::common::CommandMessage::Type::CONNECT:
+            if (workers.size() < (index + 1)) {
+                workers.resize(index + 1);
+            }
             try {
-                auto worker = std::make_unique<Worker>(db.get(), shared_memory.get(), message.get_ivalue());
-                std::thread t1(&Worker::run, worker.get());
-                t1.join();
+                std::unique_ptr<Worker> &worker = workers.at(index);
+                worker = std::make_unique<Worker>(db.get(), shared_memory.get(), index);
+                worker->task_ = std::packaged_task<void()>([&]{worker->run();});
+                worker->future_ = worker->task_.get_future();
+                worker->thread_ = std::thread(std::move(worker->task_));
             } catch (std::exception &ex) {
                 std::cerr << ex.what() << std::endl;
                 return -1;

@@ -17,6 +17,9 @@
 #ifndef WORKER_H_
 #define WORKER_H_
 
+#include <future>
+#include <thread>
+
 #include "umikongo/api.h"
 #include "ogawayama/stub/api.h"
 #include "ogawayama/common/channel_stream.h"
@@ -32,11 +35,14 @@ class Worker {
     };
  public:
     Worker(umikongo::Database *, ogawayama::common::SharedMemory *, std::size_t);
-    ~Worker() = default;
+    ~Worker() { if(thread_.joinable()) thread_.join(); }
     void run();
     void execute_statement(std::string_view);
     void execute_query(std::string_view, std::size_t);
     void next(std::size_t);
+
+    friend int backend_main(int, char **);
+
  private:
     umikongo::Database *db_;
     ogawayama::common::SharedMemory *shared_memory_ptr_;
@@ -48,6 +54,10 @@ class Worker {
     std::unique_ptr<umikongo::Transaction> transaction_;
     umikongo::Context* context_;
     std::vector<Cursor> cursors_;
+
+    std::packaged_task<void()> task_;
+    std::future<void> future_;
+    std::thread thread_{};
 };
 
 }  // ogawayama::server
