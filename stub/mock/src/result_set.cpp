@@ -101,7 +101,6 @@ ErrorCode ResultSet::Impl::next_column(std::string_view &s) {
     try {
         auto v = std::get<ogawayama::common::ShmString>(c);
         if (string_buffer_->size() < myid) { string_buffer_->resize(myid + 1); }
-        s = std::string(v.begin(), v.end());
         string_buffer_->at(myid) = v;
         s = string_buffer_->at(myid);
         return ErrorCode::OK;
