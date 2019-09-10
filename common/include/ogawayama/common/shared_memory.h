@@ -17,6 +17,7 @@
 #define SHARED_MEMORY_H_
 
 #include <iostream>
+#include <string.h>
 
 namespace ogawayama::common {
 
@@ -66,6 +67,7 @@ public:
         if (owner_) {
             boost::interprocess::shared_memory_object::remove(database_name_.c_str());
         }
+        delete managed_shared_memory_;
     }
     /**
      * @brief Return the boost shared memory manager.

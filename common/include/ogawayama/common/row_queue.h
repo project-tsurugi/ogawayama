@@ -175,9 +175,8 @@ namespace ogawayama::common {
         RowQueue(char const* name, boost::interprocess::managed_shared_memory *mem, bool owner) : owner_(owner), mem_(mem), cindex_(0)
         {
             if (owner_) {
-                mem_->destroy<SpscQueue>(name_);
                 queue_ = mem->construct<SpscQueue>(name)(mem->get_segment_manager());
-                memcpy(name_, name, param::MAX_NAME_LENGTH);
+                strncpy(name_, name, param::MAX_NAME_LENGTH);
             } else {
                 queue_ = mem->find<SpscQueue>(name).first;
                 assert(queue_);

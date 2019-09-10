@@ -46,7 +46,7 @@ public:
         /**
          * @brief Construct a new object.
          */
-        RingBuffer() {}
+        RingBuffer() : pushed_(0), poped_(0) {}
         /**
          * @brief Copy and move constructers are deleted.
          */
@@ -165,9 +165,8 @@ public:
     ChannelStream(char const* name, boost::interprocess::managed_shared_memory *mem, bool owner) : owner_(owner), mem_(mem)
     {
         if (owner_) {
-            mem_->destroy<RingBuffer>(name_);
             buffer_ = mem->construct<RingBuffer>(name)();
-            memcpy(name_, name, param::MAX_NAME_LENGTH);
+            strncpy(name_, name, param::MAX_NAME_LENGTH);
         } else {
             buffer_ = mem->find<RingBuffer>(name).first;
             assert(buffer_);

@@ -61,6 +61,7 @@ void Worker::run()
             }
             transaction_->commit();
             result_->get_binary_oarchive() << ERROR_CODE::OK;
+            transaction_=nullptr;
             break;
         case ogawayama::common::CommandMessage::Type::ROLLBACK:
             if (!transaction_) {
@@ -111,8 +112,8 @@ void Worker::execute_query(std::string_view sql, std::size_t rid)
         (shared_memory_ptr_->shm_name(ogawayama::common::param::resultset, id_, rid).c_str(), shared_memory_ptr_->get_managed_shared_memory_ptr());
     
     try {
-        auto executable = db_->compile(sql);
-        auto metadata = executable->metadata();
+        cursors_.at(rid).executable_ = db_->compile(sql);
+        auto metadata = cursors_.at(rid).executable_->metadata();
         for (auto t: metadata->column_types()) {
             switch(t->kind()) {
             case shakujo::common::core::Type::Kind::INT:
@@ -148,13 +149,16 @@ void Worker::execute_query(std::string_view sql, std::size_t rid)
                     push_type(ogawayama::stub::Metadata::ColumnType(TYPE::TEXT,
                                                                     (static_cast<shakujo::common::core::type::Char const *>(t))->size()));
                 break;
+            case shakujo::common::core::Type::Kind::STRING:
+                cursors_.at(rid).row_queue_->push_type(ogawayama::stub::Metadata::ColumnType(TYPE::TEXT, 0));
+                break;
             default:
-                std::cerr << "unsurpported data type" << std::endl;
+                std::cerr << "unsurpported data type: " << t->kind() << std::endl;
                 break;
             }
         }
     
-        cursors_.at(rid).iterator_ = context_->execute_query(executable.get());
+        cursors_.at(rid).iterator_ = context_->execute_query(cursors_.at(rid).executable_.get());
         result_->get_binary_oarchive() << ERROR_CODE::OK;
     } catch (umikongo::Exception& e) {
         if (e.reason() == umikongo::Exception::ReasonCode::ERR_UNSUPPORTED) {
@@ -168,33 +172,38 @@ void Worker::execute_query(std::string_view sql, std::size_t rid)
 
 void Worker::next(std::size_t rid)
 {
-    auto row = cursors_.at(rid).iterator_->next();
-    if (row != nullptr) {
-        for (auto t: cursors_.at(rid).row_queue_->get_types()) {
-            std::size_t cindex = cursors_.at(rid).row_queue_->get_cindex();
-            if (row->is_null(cindex)) {
-                cursors_.at(rid).row_queue_->put_next_column(std::monostate());
-            } else {
-                switch (t.get_type()) {
-                case TYPE::INT16:
+    try {
+        auto row = cursors_.at(rid).iterator_->next();
+        if (row != nullptr) {
+            for (auto t: cursors_.at(rid).row_queue_->get_types()) {
+                std::size_t cindex = cursors_.at(rid).row_queue_->get_cindex();
+                if (row->is_null(cindex)) {
+                    cursors_.at(rid).row_queue_->put_next_column(std::monostate());
+                } else {
+                    switch (t.get_type()) {
+                    case TYPE::INT16:
                     cursors_.at(rid).row_queue_->put_next_column(row->get<std::int16_t>(cindex)); break;
-                case TYPE::INT32:
-                    cursors_.at(rid).row_queue_->put_next_column(row->get<std::int32_t>(cindex)); break;
-                case TYPE::INT64:
-                    cursors_.at(rid).row_queue_->put_next_column(row->get<std::int64_t>(cindex)); break;
-                case TYPE::FLOAT32:
-                    cursors_.at(rid).row_queue_->put_next_column(row->get<float>(cindex)); break;
-                case TYPE::FLOAT64:
-                    cursors_.at(rid).row_queue_->put_next_column(row->get<double>(cindex)); break;
-                case TYPE::TEXT:
-                    cursors_.at(rid).row_queue_->put_next_column(row->get<std::string_view>(cindex)); break;
-                case TYPE::NULL_VALUE:
-                    std::cerr << "NULL_VALUE type should not be used" << std::endl; break;
+                    case TYPE::INT32:
+                        cursors_.at(rid).row_queue_->put_next_column(row->get<std::int32_t>(cindex)); break;
+                    case TYPE::INT64:
+                        cursors_.at(rid).row_queue_->put_next_column(row->get<std::int64_t>(cindex)); break;
+                    case TYPE::FLOAT32:
+                        cursors_.at(rid).row_queue_->put_next_column(row->get<float>(cindex)); break;
+                    case TYPE::FLOAT64:
+                        cursors_.at(rid).row_queue_->put_next_column(row->get<double>(cindex)); break;
+                    case TYPE::TEXT:
+                        cursors_.at(rid).row_queue_->put_next_column(row->get<std::string_view>(cindex)); break;
+                    case TYPE::NULL_VALUE:
+                        std::cerr << "NULL_VALUE type should not be used" << std::endl; break;
+                    }
                 }
             }
         }
+        cursors_.at(rid).row_queue_->push_writing_row();
+    } catch (umikongo::Exception& e) {
+        std::cerr << e.what() << std::endl;
+        result_->get_binary_oarchive() << ERROR_CODE::UNKNOWN;
     }
-    cursors_.at(rid).row_queue_->push_writing_row();
 }
 
 }  // ogawayama::server
