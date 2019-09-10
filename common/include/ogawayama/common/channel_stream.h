@@ -356,7 +356,7 @@ namespace boost::serialization {
 template<class Archive>
 inline void serialize(Archive & ar,
                       ogawayama::stub::ErrorCode & d,
-                      const unsigned int file_version)
+                      [[maybe_unused]] const unsigned int file_version)
 {
     ar & d;
 }
