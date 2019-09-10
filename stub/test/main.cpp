@@ -23,39 +23,17 @@ int main(int argc, char** argv) {
 
     int pid;
 
-    if ((pid = fork()) == 0) {  // child process
+    if ((pid = fork()) == 0) {  // child process, execute only at build directory.
         auto retv = execlp("server/src/ogawayama-server", "ogawayama-server", nullptr);
         if (retv != 0) perror("error in ogawayama-server ");
         _exit(0);
     }
     sleep(1);
 
+    auto retv = RUN_ALL_TESTS();
+
     StubPtr stub;
     stub = make_stub();
-
-    ConnectionPtr connection;
-    stub->get_connection(11, connection);
-    TransactionPtr transaction;
-    connection->begin(transaction);
-    transaction->execute_statement(
-                "CREATE TABLE T2 ("
-                "C1 INT NOT NULL PRIMARY KEY, "
-                "C2 DOUBLE NOT NULL, "
-                "C3 CHAR(5) NOT NULL,"
-                "C4 INT, "
-                "C5 BIGINT, "
-                "C6 FLOAT, "
-                "C7 VARCHAR(5)"
-                ")"
-                                   );
-    transaction->execute_statement(
-                "INSERT INTO T2 (C1, C2, C3) VALUES(1, 1.1, 'ABCDE')"
-                                   );
-    transaction->commit();
-    transaction = nullptr;
-    connection = nullptr;
-    
-    auto retv = RUN_ALL_TESTS();
 
     stub->get_impl()->get_channel()->get_binary_oarchive() <<
         ogawayama::common::CommandMessage(ogawayama::common::CommandMessage::Type::TERMINATE);
