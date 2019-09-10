@@ -19,7 +19,7 @@ namespace ogawayama::testing {
 
 class ApiTest : public ::testing::Test {};
 
-TEST_F(ApiTest, DISABLED_use_executable_statement) {
+TEST_F(ApiTest, use_executable_statement) {
     StubPtr stub;
     ConnectionPtr connection;
     TransactionPtr transaction;
@@ -110,7 +110,7 @@ TEST_F(ApiTest, DISABLED_use_executable_statement) {
     EXPECT_EQ(ERROR_CODE::OK, transaction->commit());
 }
 
-TEST_F(ApiTest, DISABLED_mixing_executable_statement) {
+TEST_F(ApiTest, mixing_executable_statement) {
     StubPtr stub;
     ConnectionPtr connection;
     TransactionPtr transaction;
@@ -213,7 +213,7 @@ TEST_F(ApiTest, DISABLED_mixing_executable_statement) {
 // TEST_F(ApiTest, mixing_transactions) {
 // }
 
-TEST_F(ApiTest, DISABLED_fetch_metadata) {
+TEST_F(ApiTest, fetch_metadata) {
     StubPtr stub;
     ConnectionPtr connection;
     TransactionPtr transaction;

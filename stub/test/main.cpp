@@ -15,28 +15,26 @@
  */
 #include "TestRoot.h"
 
+#include <stdlib.h>
 #include <errno.h>
 
 int main(int argc, char** argv) {
     // first consume command line options for gtest
     ::testing::InitGoogleTest(&argc, argv);
-#if 0
-    int pid;
 
-    if ((pid = fork()) == 0) {  // child process, execute only at build directory.
-        auto retv = execlp("server/src/ogawayama-server", "ogawayama-server", nullptr);
+    int pid;
+    if ((pid = fork()) == 0) {  // child process, execute only at build/stub/test directory.
+        auto retv = execlp("../../server/src/ogawayama-server", "ogawayama-server", nullptr);
         if (retv != 0) perror("error in ogawayama-server ");
         _exit(0);
     }
     sleep(1);
-#endif
+
     auto retv = RUN_ALL_TESTS();
-#if 0
     StubPtr stub;
     stub = make_stub();
 
     stub->get_impl()->get_channel()->get_binary_oarchive() <<
         ogawayama::common::CommandMessage(ogawayama::common::CommandMessage::Type::TERMINATE);
-#endif
     return retv;
 }
