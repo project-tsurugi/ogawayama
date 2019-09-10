@@ -20,7 +20,7 @@
 int main(int argc, char** argv) {
     // first consume command line options for gtest
     ::testing::InitGoogleTest(&argc, argv);
-
+#if 0
     int pid;
 
     if ((pid = fork()) == 0) {  // child process, execute only at build directory.
@@ -29,13 +29,14 @@ int main(int argc, char** argv) {
         _exit(0);
     }
     sleep(1);
-
+#endif
     auto retv = RUN_ALL_TESTS();
-
+#if 0
     StubPtr stub;
     stub = make_stub();
 
     stub->get_impl()->get_channel()->get_binary_oarchive() <<
         ogawayama::common::CommandMessage(ogawayama::common::CommandMessage::Type::TERMINATE);
+#endif
     return retv;
 }
