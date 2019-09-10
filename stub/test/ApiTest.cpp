@@ -104,10 +104,6 @@ TEST_F(ApiTest, use_executable_statement) {
     EXPECT_EQ(ERROR_CODE::END_OF_ROW, result_set->next());
 
     EXPECT_EQ(ERROR_CODE::OK, transaction->commit());
-
-    EXPECT_EQ(ERROR_CODE::OK, connection->begin(transaction));
-    EXPECT_EQ(ERROR_CODE::OK, transaction->execute_statement("DROP TABLE T2"));
-    EXPECT_EQ(ERROR_CODE::OK, transaction->commit());
 }
 
 TEST_F(ApiTest, mixing_executable_statement) {
@@ -200,10 +196,6 @@ TEST_F(ApiTest, mixing_executable_statement) {
         EXPECT_EQ(ERROR_CODE::END_OF_ROW, result_set2->next());
     }
 
-    EXPECT_EQ(ERROR_CODE::OK, transaction->commit());
-
-    EXPECT_EQ(ERROR_CODE::OK, connection->begin(transaction));
-    EXPECT_EQ(ERROR_CODE::OK, transaction->execute_statement("DROP TABLE T3"));
     EXPECT_EQ(ERROR_CODE::OK, transaction->commit());
 }
 
@@ -311,11 +303,6 @@ TEST_F(ApiTest, fetch_metadata) {
 
     EXPECT_EQ(ERROR_CODE::END_OF_ROW, result_set->next());
 
-    EXPECT_EQ(ERROR_CODE::OK, transaction->commit());
-
-
-    EXPECT_EQ(ERROR_CODE::OK, connection->begin(transaction));
-    EXPECT_EQ(ERROR_CODE::OK, transaction->execute_statement("DROP TABLE T5"));
     EXPECT_EQ(ERROR_CODE::OK, transaction->commit());
 }
 
