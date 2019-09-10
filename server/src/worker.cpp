@@ -112,8 +112,8 @@ void Worker::execute_query(std::string_view sql, std::size_t rid)
         (shared_memory_ptr_->shm_name(ogawayama::common::param::resultset, id_, rid).c_str(), shared_memory_ptr_->get_managed_shared_memory_ptr());
     
     try {
-        auto executable = db_->compile(sql);
-        auto metadata = executable->metadata();
+        cursors_.at(rid).executable_ = db_->compile(sql);
+        auto metadata = cursors_.at(rid).executable_->metadata();
         for (auto t: metadata->column_types()) {
             switch(t->kind()) {
             case shakujo::common::core::Type::Kind::INT:
@@ -158,7 +158,7 @@ void Worker::execute_query(std::string_view sql, std::size_t rid)
             }
         }
     
-        cursors_.at(rid).iterator_ = context_->execute_query(executable.get());
+        cursors_.at(rid).iterator_ = context_->execute_query(cursors_.at(rid).executable_.get());
         result_->get_binary_oarchive() << ERROR_CODE::OK;
     } catch (umikongo::Exception& e) {
         if (e.reason() == umikongo::Exception::ReasonCode::ERR_UNSUPPORTED) {

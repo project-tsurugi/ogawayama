@@ -24,6 +24,9 @@ list(APPEND CMAKE_MODULE_PATH "${PROJECT_SOURCE_DIR}/cmake")
 option(BUILD_SHARED_LIBS "build shared libraries instead of static" ON)
 option(BUILD_TESTS "Build test programs" ON)
 
+option(ENABLE_SANITIZER "enable sanitizer on debug build" ON)
+option(ENABLE_UB_SANITIZER "enable undefined behavior sanitizer on debug build" OFF)
+
 find_package(Threads REQUIRED)
 find_package(Boost
         COMPONENTS system serialization

@@ -21,6 +21,9 @@ ninja
 available options:
 * `-DBUILD_TESTS=OFF` - never build test programs
 * `-DCMAKE_PREFIX_PATH=<installation directory>` - indicate prerequiste installation directory
+* for debugging only
+  * `-DENABLE_SANITIZER=OFF` - disable sanitizers (requires `-DCMAKE_BUILD_TYPE=Debug`)
+  * `-DENABLE_UB_SANITIZER=ON` - enable undefined behavior sanitizer (requires `-DENABLE_SANITIZER=ON`)
 
 ## License
 

@@ -32,6 +32,7 @@ class Worker {
     public:
         std::unique_ptr<ogawayama::common::RowQueue> row_queue_{};
         std::unique_ptr<umikongo::Iterator> iterator_{};
+        std::unique_ptr<umikongo::ExecutableStatement> executable_{};
     };
  public:
     Worker(umikongo::Database *, ogawayama::common::SharedMemory *, std::size_t);

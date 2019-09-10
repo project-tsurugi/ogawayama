@@ -287,13 +287,13 @@ TEST_F(ApiTest, fetch_metadata) {
     EXPECT_EQ(static_cast<std::int32_t>(2), i);
 
     EXPECT_EQ(ERROR_CODE::OK, result_set->next_column(d));
-    EXPECT_EQ(static_cast<double>(2.2), d);
+    EXPECT_DOUBLE_EQ(2.2, d);
 
     EXPECT_EQ(ERROR_CODE::OK, result_set->next_column(t));
     EXPECT_EQ("ABCDEABCDE", t);
 
     EXPECT_EQ(ERROR_CODE::OK, result_set->next_column(d));
-    EXPECT_EQ(static_cast<double>(2.1), d);
+    EXPECT_DOUBLE_EQ(2.1, d);
 
     EXPECT_EQ(ERROR_CODE::OK, result_set->next_column(i));
     EXPECT_EQ(static_cast<std::int32_t>(3), i);
@@ -302,7 +302,7 @@ TEST_F(ApiTest, fetch_metadata) {
     EXPECT_EQ(static_cast<std::int64_t>(4), b);
 
     EXPECT_EQ(ERROR_CODE::OK, result_set->next_column(d));
-    EXPECT_EQ(static_cast<double>(5.5), d);
+    EXPECT_FLOAT_EQ(5.5, d);
 
     EXPECT_EQ(ERROR_CODE::OK, result_set->next_column(t));
     EXPECT_EQ("ABCDEXYZZZ", t);
