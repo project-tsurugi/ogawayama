@@ -28,7 +28,6 @@ ResultSet::Impl::Impl(ResultSet *result_set, std::size_t id) : envelope_(result_
          connection->get_manager()->get_impl()->get_managed_shared_memory_ptr(),
          true
          );
-    string_buffer_ = std::make_unique<std::vector<std::string>>();
 }
     
 /**
@@ -70,7 +69,7 @@ ErrorCode ResultSet::Impl::next()
  */
 template<typename T>
 ErrorCode ResultSet::Impl::next_column(T &value) {
-    auto r = row_queue_->get_current_row();
+    ogawayama::common::ShmRow &r = row_queue_->get_current_row();
 
     if (c_idx_ >= r.size()) {
         return ErrorCode::END_OF_COLUMN;
@@ -96,18 +95,14 @@ ErrorCode ResultSet::Impl::next_column(T &value) {
  */
 template<>
 ErrorCode ResultSet::Impl::next_column(std::string_view &s) {
-    auto r = row_queue_->get_current_row();
-    auto myid = c_idx_;
+    ogawayama::common::ShmRow &r = row_queue_->get_current_row();
 
     if (c_idx_ >= r.size()) {
         return ErrorCode::END_OF_COLUMN;
     }
-    auto c = r.at(c_idx_++);
+    ogawayama::common::ShmColumn &c = r.at(c_idx_++);
     try {
-        auto v = std::get<ogawayama::common::ShmString>(c);
-        if (string_buffer_->size() < myid) { string_buffer_->resize(myid + 1); }
-        string_buffer_->at(myid) = v;
-        s = string_buffer_->at(myid);
+        s = std::get<ogawayama::common::ShmString>(c);
         return ErrorCode::OK;
     }
     catch (const std::bad_variant_access&) {

@@ -43,7 +43,6 @@ public:
     void clear() {
         metadata_.clear();
         row_queue_->clear();
-        string_buffer_->clear();
     }
     
  private:
@@ -53,7 +52,6 @@ public:
     std::size_t c_idx_;
     Metadata metadata_;
     std::unique_ptr<ogawayama::common::RowQueue> row_queue_;
-    std::unique_ptr<std::vector<std::string>> string_buffer_;
 
     friend class transactionImpl;
 };
