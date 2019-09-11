@@ -165,6 +165,7 @@ public:
     ChannelStream(char const* name, boost::interprocess::managed_shared_memory *mem, bool owner) : owner_(owner), mem_(mem)
     {
         if (owner_) {
+            mem->destroy<RingBuffer>(name);
             buffer_ = mem->construct<RingBuffer>(name)();
             strncpy(name_, name, param::MAX_NAME_LENGTH);
         } else {
