@@ -47,10 +47,10 @@ public:
      SharedMemory(std::string_view database_name, bool create_shm) : database_name_(database_name), owner_(create_shm)  {    
         if (create_shm) {
             boost::interprocess::shared_memory_object::remove(database_name_.c_str());
-            managed_shared_memory_ = new boost::interprocess::managed_shared_memory(boost::interprocess::create_only, database_name_.c_str(), param::SEGMENT_SIZE);
+            managed_shared_memory_ = std::make_unique<boost::interprocess::managed_shared_memory>(boost::interprocess::create_only, database_name_.c_str(), param::SEGMENT_SIZE);
         } else {
             try {
-                managed_shared_memory_ = new boost::interprocess::managed_shared_memory(boost::interprocess::open_only, database_name_.c_str());
+                managed_shared_memory_ = std::make_unique<boost::interprocess::managed_shared_memory>(boost::interprocess::open_only, database_name_.c_str());
             }
             catch(const boost::interprocess::interprocess_exception& ex) {
                 std::cerr << "failed with exception \"" << ex.what() << "\"" << std::endl;
@@ -67,12 +67,11 @@ public:
         if (owner_) {
             boost::interprocess::shared_memory_object::remove(database_name_.c_str());
         }
-        delete managed_shared_memory_;
     }
     /**
      * @brief Return the boost shared memory manager.
      */
-    auto get_managed_shared_memory_ptr() { return managed_shared_memory_; }
+    auto get_managed_shared_memory_ptr() { return managed_shared_memory_.get(); }
 
     std::string shm_name(char const *prefix, std::size_t i)
     {
@@ -89,7 +88,7 @@ public:
     }
 
 private:
-    boost::interprocess::managed_shared_memory *managed_shared_memory_;
+    std::unique_ptr<boost::interprocess::managed_shared_memory> managed_shared_memory_;
     std::string database_name_;
     bool owner_;
 };
