@@ -313,6 +313,16 @@ public:
          * @brief 
          */
         TERMINATE,
+
+        /**
+         * @brief
+         */
+        DUMP_DATABASE,
+
+        /**
+         * @brief
+         */
+        LOAD_DATABASE,
     };
 
     CommandMessage() = default;

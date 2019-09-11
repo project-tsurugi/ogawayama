@@ -21,6 +21,7 @@
 #include "gflags/gflags.h"
 
 #include "worker.h"
+#include "utils.h"
 
 #include "server.h"
 
@@ -76,6 +77,20 @@ int backend_main(int argc, char **argv) {
             } catch (std::exception &ex) {
                 std::cerr << ex.what() << std::endl;
                 return -1;
+            }
+            break;
+        case ogawayama::common::CommandMessage::Type::DUMP_DATABASE:
+            try {
+                load(db.get(), FLAGS_location);
+            } catch (std::exception& e) {
+                std::cerr << e.what() << std::endl;
+            }
+            break;
+        case ogawayama::common::CommandMessage::Type::LOAD_DATABASE:
+            try {
+                dump(db.get(), FLAGS_location);
+            } catch (std::exception& e) {
+                std::cerr << e.what() << std::endl;
             }
             break;
         case ogawayama::common::CommandMessage::Type::TERMINATE:
