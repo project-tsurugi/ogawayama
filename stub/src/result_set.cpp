@@ -69,7 +69,7 @@ ErrorCode ResultSet::Impl::next()
  */
 template<typename T>
 ErrorCode ResultSet::Impl::next_column(T &value) {
-    ogawayama::common::ShmRow &r = row_queue_->get_current_row();
+    const ogawayama::common::ShmRow &r = row_queue_->get_current_row();
 
     if (c_idx_ >= r.size()) {
         return ErrorCode::END_OF_COLUMN;
@@ -95,12 +95,12 @@ ErrorCode ResultSet::Impl::next_column(T &value) {
  */
 template<>
 ErrorCode ResultSet::Impl::next_column(std::string_view &s) {
-    ogawayama::common::ShmRow &r = row_queue_->get_current_row();
+    const ogawayama::common::ShmRow &r = row_queue_->get_current_row();
 
     if (c_idx_ >= r.size()) {
         return ErrorCode::END_OF_COLUMN;
     }
-    ogawayama::common::ShmColumn &c = r.at(c_idx_++);
+    const ogawayama::common::ShmColumn &c = r.at(c_idx_++);
     try {
         s = std::get<ogawayama::common::ShmString>(c);
         return ErrorCode::OK;

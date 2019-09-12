@@ -34,13 +34,13 @@ public:
 
     ErrorCode begin(TransactionPtr &transaction);
 
-    void get_channel_streams(ogawayama::common::ChannelStream * & request, ogawayama::common::ChannelStream * & result)
+    void get_channel_streams(ogawayama::common::ChannelStream * & request, ogawayama::common::ChannelStream * & result) const
     {
         request = request_.get();
         result = result_.get();
     }
 
-    std::size_t get_id() { return pgprocno_; }
+    std::size_t get_id() const { return pgprocno_; }
     
 private:
     Connection *envelope_;

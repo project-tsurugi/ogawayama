@@ -59,8 +59,8 @@ public:
      */
     ErrorCode rollback();
 
-    auto get_request_channel() { return request_; }
-    auto get_result_channel() { return result_; }
+    auto get_request_channel() const { return request_; }
+    auto get_result_channel() const { return result_; }
 
 private:
     Transaction *envelope_;

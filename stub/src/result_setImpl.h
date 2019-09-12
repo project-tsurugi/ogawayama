@@ -33,7 +33,7 @@ public:
     ErrorCode next();
     template<typename T>
         ErrorCode next_column(T &value);
-    auto get_id() { return id_; }
+    auto get_id() const { return id_; }
     void set_metadata() {
         const ogawayama::common::ShmSetOfTypeData & set_of_type_data_from = row_queue_->get_types();
         for(auto type: set_of_type_data_from) {
@@ -44,7 +44,7 @@ public:
         metadata_.clear();
         row_queue_->clear();
     }
-    
+
  private:
     ResultSet *envelope_;
 

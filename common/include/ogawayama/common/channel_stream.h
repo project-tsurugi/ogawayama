@@ -153,8 +153,8 @@ public:
         boost::interprocess::interprocess_condition m_not_full_{};
         boost::interprocess::interprocess_condition m_not_notify_{};
         boost::interprocess::interprocess_condition m_not_locked_{};
-        bool notified_ {false};
-        bool locked_ {false};
+        bool notified_{false};
+        bool locked_{false};
     };
     
 public:
