@@ -14,11 +14,17 @@
  * limitations under the License.
  */
 
-#include "ogawayama/stub/api.h"
+#ifndef UTILS_H_
+#define UTILS_H_
 
-#include "gtest/gtest.h"
+#include "umikongo/api.h"
 
-#include "stubImpl.h"
-#include "connectionImpl.h"
-#include "transactionImpl.h"
-#include "result_setImpl.h"
+namespace ogawayama::server {
+
+    extern std::vector<std::string> tables;
+    void dump(umikongo::Database *, std::string &);
+    void load(umikongo::Database *, std::string &);
+
+}  // ogawayama::server
+    
+#endif  // UTILS_H_

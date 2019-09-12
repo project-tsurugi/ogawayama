@@ -25,6 +25,12 @@ set_target_properties(cli
         RUNTIME_OUTPUT_NAME "ogawayama-cli"
 )
 
+target_include_directories(cli
+    PRIVATE ../../common/include
+    PRIVATE ../../stub/include
+    PRIVATE ../../stub/src
+)
+
 target_link_libraries(cli
     PRIVATE stub
     PRIVATE gflags::gflags
@@ -32,8 +38,4 @@ target_link_libraries(cli
     PRIVATE rt
 )
 
-target_include_directories(cli
-    PRIVATE ../../common/include
-    PRIVATE ../../stub/include
-    PRIVATE ../../stub/src
-)
+install_custom(cli ${export_name})

@@ -22,6 +22,8 @@
 #include "stubImpl.h"
 
 DEFINE_bool(terminate, false, "terminate commnand");  // NOLINT
+DEFINE_bool(dump, false, "Database contents are dumpd to the location just before shutdown");  //NOLINT
+DEFINE_bool(load, false, "Database contents are loaded from the location just after boot");  //NOLINT
 DEFINE_string(statement, "", "SQL statement");  // NOLINT
 DEFINE_string(query, "", "SQL query");  // NOLINT
 
@@ -40,6 +42,16 @@ int main(int argc, char **argv) {
     if (FLAGS_terminate) {
         stub->get_impl()->get_channel()->get_binary_oarchive() <<
             ogawayama::common::CommandMessage(ogawayama::common::CommandMessage::Type::TERMINATE);
+    }
+
+    if (FLAGS_dump) {
+        stub->get_impl()->get_channel()->get_binary_oarchive() <<
+            ogawayama::common::CommandMessage(ogawayama::common::CommandMessage::Type::DUMP_DATABASE);
+    }
+
+    if (FLAGS_load) {
+        stub->get_impl()->get_channel()->get_binary_oarchive() <<
+            ogawayama::common::CommandMessage(ogawayama::common::CommandMessage::Type::LOAD_DATABASE);
     }
 
     if (FLAGS_statement != "") {

@@ -154,7 +154,7 @@ namespace ogawayama::common {
             bool was_empty() const { return (pushed_ - poped_) == 1; }
             bool is_not_full() const { return (pushed_ - poped_) < (param::QUEUE_SIZE - 1); }
             bool was_full() const { return (pushed_ - poped_) == (param::QUEUE_SIZE - 2); }
-            std::size_t index(std::size_t n) { return n %  param::QUEUE_SIZE; }
+            std::size_t index(std::size_t n) const { return n %  param::QUEUE_SIZE; }
             
             ShmQueue m_container_;
             ShmSetOfTypeData m_types_;
@@ -224,7 +224,7 @@ namespace ogawayama::common {
         /**
          * @brief get current column index.
          */
-        auto get_cindex() {
+        auto get_cindex() const {
             return cindex_;
         }
 
@@ -232,7 +232,7 @@ namespace ogawayama::common {
          * @brief get the current row.
          * @return reference to the current row
          */
-        ShmRow & get_current_row() {
+        ShmRow & get_current_row() const {
             return queue_->get_current_row();
         }
         
@@ -254,7 +254,7 @@ namespace ogawayama::common {
             queue_->push_type(type);
         }
 
-        auto get_types() {
+        auto get_types() const {
             return queue_->get_types();
         }
 

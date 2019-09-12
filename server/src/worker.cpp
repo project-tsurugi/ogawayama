@@ -67,7 +67,7 @@ void Worker::run()
             if (!transaction_) {
                 result_->get_binary_oarchive() << ERROR_CODE::NO_TRANSACTION;
             }
-            //            transaction_->rollback();  FIXME
+            transaction_->abort();
             result_->get_binary_oarchive() << ERROR_CODE::OK;
             break;
         case ogawayama::common::CommandMessage::Type::DISCONNECT:

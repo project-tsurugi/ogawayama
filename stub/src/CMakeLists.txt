@@ -20,15 +20,17 @@ add_library(stub
     ${SOURCES}
 )
 
+set_target_properties(stub
+    PROPERTIES
+        LIBRARY_OUTPUT_NAME "ogawayama-stub"
+)
+
 target_include_directories(stub
     PRIVATE ../include
     PRIVATE ../../common/include
 )
 
-set_target_properties(stub
-    PROPERTIES
-        LIBRARY_OUTPUT_NAME "ogawayama-stub"
-)
+install_custom(stub ${export_name})
 
 #for tests
 add_library(stub-impl INTERFACE)
