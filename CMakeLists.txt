@@ -47,6 +47,14 @@ if (BUILD_TESTS)
     enable_testing()
 endif()
 
+add_library(api INTERFACE)
+
+target_include_directories(api
+    INTERFACE
+        $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/stub/include>
+        $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}/ogawayama>
+)
+      
 set(export_name "ogawayama")
 set(package_name "ogawayama")
 
@@ -60,6 +68,8 @@ write_basic_package_version_file(
     "${CMAKE_CURRENT_BINARY_DIR}/${package_name}-config-version.cmake"
     COMPATIBILITY SameMajorVersion
 )
+
+install_custom(api ${export_name})
 
 install(
     FILES
