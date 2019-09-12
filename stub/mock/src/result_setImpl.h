@@ -34,14 +34,7 @@ public:
     template<typename T>
         ErrorCode next_column(T &value);
     auto get_id() { return id_; }
-    void set_metadata() {
-        const ogawayama::common::ShmSetOfTypeData & set_of_type_data_from = row_queue_->get_types();
-        for(auto type: set_of_type_data_from) {
-            metadata_.push(type.get_type(), type.get_length());
-        }
-    } // for transactionImpl
     void clear() {
-        metadata_.clear();
         row_queue_->clear();
         string_buffer_->clear();
     }
@@ -52,7 +45,6 @@ public:
 
     std::size_t id_;
     std::size_t c_idx_;
-    Metadata metadata_;
     std::unique_ptr<ogawayama::common::RowQueue> row_queue_;
     std::unique_ptr<std::vector<std::string>> string_buffer_;
 

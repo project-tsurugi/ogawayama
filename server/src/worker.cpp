@@ -119,38 +119,32 @@ void Worker::execute_query(std::string_view sql, std::size_t rid)
             case shakujo::common::core::Type::Kind::INT:
                 switch((static_cast<shakujo::common::core::type::Numeric const *>(t))->size()) {
                 case 16:
-                    cursors_.at(rid).row_queue_->
-                        push_type(ogawayama::stub::Metadata::ColumnType(TYPE::INT16, 2));
+                    cursors_.at(rid).row_queue_->push_type(TYPE::INT16, 2);
                     break;
                 case 32:
-                    cursors_.at(rid).row_queue_->
-                        push_type(ogawayama::stub::Metadata::ColumnType(TYPE::INT32, 4));
+                    cursors_.at(rid).row_queue_->push_type(TYPE::INT32, 4);
                     break;
                 case 64:
-                    cursors_.at(rid).row_queue_->
-                        push_type(ogawayama::stub::Metadata::ColumnType(TYPE::INT64, 8));
+                    cursors_.at(rid).row_queue_->push_type(TYPE::INT64, 8);
                     break;
                 }
                 break;
             case shakujo::common::core::Type::Kind::FLOAT:
                 switch((static_cast<shakujo::common::core::type::Float const *>(t))->size()) {
                 case 32:
-                    cursors_.at(rid).row_queue_->
-                        push_type(ogawayama::stub::Metadata::ColumnType(TYPE::FLOAT32, 4));
+                    cursors_.at(rid).row_queue_->push_type(TYPE::FLOAT32, 4);
                     break;
                 case 64:
-                    cursors_.at(rid).row_queue_->
-                        push_type(ogawayama::stub::Metadata::ColumnType(TYPE::FLOAT64, 8));
+                    cursors_.at(rid).row_queue_->push_type(TYPE::FLOAT64, 8);
                     break;
                 }
                 break;
             case shakujo::common::core::Type::Kind::CHAR:
-                cursors_.at(rid).row_queue_->
-                    push_type(ogawayama::stub::Metadata::ColumnType(TYPE::TEXT,
-                                                                    (static_cast<shakujo::common::core::type::Char const *>(t))->size()));
+                cursors_.at(rid).row_queue_->push_type(TYPE::TEXT,
+                                                       (static_cast<shakujo::common::core::type::Char const *>(t))->size());
                 break;
             case shakujo::common::core::Type::Kind::STRING:
-                cursors_.at(rid).row_queue_->push_type(ogawayama::stub::Metadata::ColumnType(TYPE::TEXT, 0));
+                cursors_.at(rid).row_queue_->push_type(TYPE::TEXT, 0);
                 break;
             default:
                 std::cerr << "unsurpported data type: " << t->kind() << std::endl;
