@@ -17,10 +17,11 @@
 #define STUB_METADATA_H_
 
 #include <cstddef>
-#include <boost/interprocess/managed_shared_memory.hpp>
-#include <boost/interprocess/allocators/allocator.hpp>
 #include <vector>
 #include <variant>
+
+#include "boost/interprocess/managed_shared_memory.hpp"
+#include "boost/interprocess/allocators/allocator.hpp"
 
 #include "ogawayama/stub/error_code.h"
 

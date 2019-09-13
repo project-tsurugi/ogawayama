@@ -21,6 +21,7 @@
 #include "ogawayama/stub/api.h"
 #include "stubImpl.h"
 
+DEFINE_string(dbname, ogawayama::common::param::SHARED_MEMORY_NAME, "database name");  // NOLINT
 DEFINE_bool(terminate, false, "terminate commnand");  // NOLINT
 DEFINE_bool(dump, false, "Database contents are dumpd to the location just before shutdown");  //NOLINT
 DEFINE_bool(load, false, "Database contents are loaded from the location just after boot");  //NOLINT
@@ -38,7 +39,7 @@ int main(int argc, char **argv) {
     gflags::SetUsageMessage("ogawayama database server");
     gflags::ParseCommandLineFlags(&argc, &argv, true);
 
-    StubPtr stub = make_stub(ogawayama::common::param::SHARED_MEMORY_NAME);
+    StubPtr stub = make_stub(FLAGS_dbname.c_str());
     if (FLAGS_terminate) {
         stub->get_impl()->get_channel()->get_binary_oarchive() <<
             ogawayama::common::CommandMessage(ogawayama::common::CommandMessage::Type::TERMINATE);

@@ -141,12 +141,8 @@ namespace ogawayama::common {
                 m_types_.push(type, length);
             }
 
-            const ogawayama::stub::Metadata * get_metadata_ptr() {
+            ogawayama::stub::Metadata const * get_metadata_ptr() {
                 return &m_types_;
-            }
-
-            const ogawayama::stub::Metadata::SetOfTypeData & get_types() {
-                return m_types_.get_types();
             }
 
         private:
@@ -256,10 +252,6 @@ namespace ogawayama::common {
 
         auto get_metadata_ptr() const {
             return queue_->get_metadata_ptr();
-        }
-
-        auto get_types() const {
-            return queue_->get_types();
         }
 
     private:

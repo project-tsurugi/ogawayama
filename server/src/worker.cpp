@@ -144,7 +144,7 @@ void Worker::execute_query(std::string_view sql, std::size_t rid)
                                                        (static_cast<shakujo::common::core::type::Char const *>(t))->size());
                 break;
             case shakujo::common::core::Type::Kind::STRING:
-                cursors_.at(rid).row_queue_->push_type(TYPE::TEXT, 0);
+                cursors_.at(rid).row_queue_->push_type(TYPE::TEXT, INT32_MAX);
                 break;
             default:
                 std::cerr << "unsurpported data type: " << t->kind() << std::endl;
@@ -169,7 +169,7 @@ void Worker::next(std::size_t rid)
     try {
         auto row = cursors_.at(rid).iterator_->next();
         if (row != nullptr) {
-            for (auto t: cursors_.at(rid).row_queue_->get_types()) {
+            for (auto t: cursors_.at(rid).row_queue_->get_metadata_ptr()->get_types()) {
                 std::size_t cindex = cursors_.at(rid).row_queue_->get_cindex();
                 if (row->is_null(cindex)) {
                     cursors_.at(rid).row_queue_->put_next_column(std::monostate());
