@@ -1,7 +1,7 @@
 pipeline {
     agent {
         docker {
-            image 'nautilus/oltp-sandbox'
+            image 'project-tsurugi/oltp-sandbox'
             label 'docker'
         }
     }
