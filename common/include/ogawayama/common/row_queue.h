@@ -46,10 +46,6 @@ namespace ogawayama::common {
 
     using ShMemRef = boost::shared_ptr<boost::interprocess::managed_shared_memory>;
 
-
-    using ShmColumnTypeAllocator = boost::interprocess::allocator<ogawayama::stub::Metadata::ColumnType, boost::interprocess::managed_shared_memory::segment_manager>;
-    using ShmSetOfTypeData = std::vector<ogawayama::stub::Metadata::ColumnType, ShmColumnTypeAllocator>;
-
     /**
      * @brief one to one communication channel, intended for communication between server and stub through boost binary_archive.
      */
@@ -141,12 +137,12 @@ namespace ogawayama::common {
                 m_types_.clear();
             }
             
-            void push_type(ogawayama::stub::Metadata::ColumnType type) {
-                m_types_.emplace_back(type);
+            void push_type(ogawayama::stub::Metadata::ColumnType::Type type, std::size_t length) {
+                m_types_.push(type, length);
             }
 
-            ShmSetOfTypeData & get_types() {
-                return m_types_;
+            ogawayama::stub::Metadata const * get_metadata_ptr() {
+                return &m_types_;
             }
 
         private:
@@ -157,7 +153,7 @@ namespace ogawayama::common {
             std::size_t index(std::size_t n) const { return n %  param::QUEUE_SIZE; }
             
             ShmQueue m_container_;
-            ShmSetOfTypeData m_types_;
+            ogawayama::stub::Metadata m_types_;
             VoidAllocator allocator_;
             std::size_t capacity_;
             std::size_t pushed_{0};
@@ -250,12 +246,12 @@ namespace ogawayama::common {
             queue_->clear();
         }
 
-        void push_type(ogawayama::stub::Metadata::ColumnType type) {
-            queue_->push_type(type);
+        void push_type(ogawayama::stub::Metadata::ColumnType::Type type, std::size_t length) {
+            queue_->push_type(type, length);
         }
 
-        auto get_types() const {
-            return queue_->get_types();
+        auto get_metadata_ptr() const {
+            return queue_->get_metadata_ptr();
         }
 
     private:

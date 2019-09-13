@@ -66,7 +66,6 @@ ErrorCode Transaction::Impl::execute_query(std::string_view query, std::shared_p
     if (reply != ErrorCode::OK) {
         return reply;
     }
-    result_set->get_impl()->set_metadata();
     return ErrorCode::OK;
 }
 

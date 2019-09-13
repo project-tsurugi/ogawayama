@@ -27,7 +27,7 @@
 
 namespace ogawayama::server {
 
-DEFINE_string(databasename, ogawayama::common::param::SHARED_MEMORY_NAME, "database name");  // NOLINT
+DEFINE_string(dbname, ogawayama::common::param::SHARED_MEMORY_NAME, "database name");  // NOLINT
 DEFINE_string(location, "./db", "database location on file system");  // NOLINT
 
 static constexpr std::string_view KEY_LOCATION { "location" };  //NOLINT
@@ -44,7 +44,7 @@ int backend_main(int argc, char **argv) {
     gflags::ParseCommandLineFlags(&argc, &argv, true);
 
     // communication channel
-    auto shared_memory = std::make_unique<ogawayama::common::SharedMemory>(FLAGS_databasename, true);
+    auto shared_memory = std::make_unique<ogawayama::common::SharedMemory>(FLAGS_dbname, true);
     auto server_ch = std::make_unique<ogawayama::common::ChannelStream>(ogawayama::common::param::server, shared_memory->get_managed_shared_memory_ptr(), true);
 
     // database

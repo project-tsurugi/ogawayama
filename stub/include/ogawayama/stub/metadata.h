@@ -20,6 +20,9 @@
 #include <vector>
 #include <variant>
 
+#include "boost/interprocess/managed_shared_memory.hpp"
+#include "boost/interprocess/allocators/allocator.hpp"
+
 #include "ogawayama/stub/error_code.h"
 
 namespace ogawayama::stub {
@@ -122,12 +125,17 @@ public:
     /**
      * @brief Container to store type data for the columns.
      */
-    using SetOfTypeData = std::vector<ColumnType>;
+    using SetOfTypeData = std::vector<ColumnType, boost::interprocess::allocator<ColumnType, boost::interprocess::managed_shared_memory::segment_manager>>;
     
     /**
      * @brief Construct a new object.
      */
-    Metadata() = default;
+    Metadata() = delete;
+
+    /**
+     * @brief Construct a new object.
+     */
+    explicit Metadata(boost::interprocess::allocator<ogawayama::stub::Metadata::ColumnType, boost::interprocess::managed_shared_memory::segment_manager> allocator) : columns_(allocator) {};
 
     /**
      * @brief destructs this object.
@@ -154,7 +162,7 @@ public:
     void clear() { columns_.clear(); }
 
 private:
-    SetOfTypeData columns_{};
+    SetOfTypeData columns_;
 };
 
 }  // namespace ogawayama::stub

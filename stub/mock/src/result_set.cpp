@@ -18,7 +18,7 @@
 
 namespace ogawayama::stub {
 
-ResultSet::Impl::Impl(ResultSet *result_set, std::size_t id) : envelope_(result_set), id_(id), c_idx_(0), metadata_()
+ResultSet::Impl::Impl(ResultSet *result_set, std::size_t id) : envelope_(result_set), id_(id), c_idx_(0)
 {
     Connection *connection = envelope_->get_manager()->get_manager();
     
@@ -38,7 +38,7 @@ ResultSet::Impl::Impl(ResultSet *result_set, std::size_t id) : envelope_(result_
  */
 ErrorCode ResultSet::Impl::get_metadata(MetadataPtr &metadata)
 {
-    metadata = &metadata_;
+    metadata = row_queue_->get_metadata_ptr();
     return ErrorCode::OK;
 }
 

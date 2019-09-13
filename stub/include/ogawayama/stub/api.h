@@ -24,7 +24,7 @@
 #include "ogawayama/stub/metadata.h"
 #include "ogawayama/stub/error_code.h"
 
-using MetadataPtr = ogawayama::stub::Metadata *;
+using MetadataPtr = ogawayama::stub::Metadata const *;
 using TYPE = ogawayama::stub::Metadata::ColumnType::Type;
 using ERROR_CODE = ogawayama::stub::ErrorCode;
 

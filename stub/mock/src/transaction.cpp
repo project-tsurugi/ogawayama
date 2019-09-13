@@ -49,8 +49,9 @@ ErrorCode Transaction::Impl::execute_query(std::string_view query, std::shared_p
     result_set = std::make_shared<ResultSet>(envelope_, result_sets_->size());
     result_sets_->emplace_back(result_set);
 
-    MetadataPtr metadata;
-    result_set->get_metadata(metadata);
+    MetadataPtr metadatac;
+    result_set->get_metadata(metadatac);
+    auto metadata = const_cast<ogawayama::stub::Metadata *>(metadatac);
     
     if (query == select_one) {
         metadata->push(TYPE::INT32, 4);
