@@ -15,3 +15,4 @@
 add_subdirectory(prepare)
 add_subdirectory(query)
 add_subdirectory(simple)
+add_subdirectory(tpcc_loader)
