@@ -145,7 +145,7 @@ public:
         std::size_t pushed_{0};
         std::size_t poped_{0};
 
-        char m_container_[param::BUFFER_SIZE];
+        volatile char m_container_[param::BUFFER_SIZE];
         boost::interprocess::interprocess_mutex m_mutex_{};
         boost::interprocess::interprocess_mutex m_notify_mutex_{};
         boost::interprocess::interprocess_mutex m_lock_mutex_{};
