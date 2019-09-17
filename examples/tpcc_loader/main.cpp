@@ -34,7 +34,11 @@ void err_exit(int line)
     exit(1);
 }
 
-int main() {
+int main(int argc, char **argv) {
+    // command arguments
+    gflags::SetUsageMessage("ogawayama database server");
+    gflags::ParseCommandLineFlags(&argc, &argv, true);
+
     stub = make_stub();
     
     if (stub->get_connection(12, connection) != ERROR_CODE::OK) { err_exit(__LINE__); }
