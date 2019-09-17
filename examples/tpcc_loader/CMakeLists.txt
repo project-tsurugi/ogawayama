@@ -29,10 +29,12 @@ target_include_directories(tpcc-loader
     PRIVATE .
     PRIVATE ../../stub/include
     PRIVATE ../../common/include
+    PRIVATE ../../stub/src
 )
 
 target_link_libraries(tpcc-loader
     PUBLIC stub
+    PRIVATE gflags::gflags
     PRIVATE Boost::serialization
 )
 
