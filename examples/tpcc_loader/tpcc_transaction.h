@@ -69,6 +69,7 @@ namespace tpcc {
     INTEGER threshold;
   };
 
+  int tpcc_tables(ogawayama::stub::Connection * connection);
   int tpcc_load(ogawayama::stub::Connection * connection);
   //  int transaction_neworder(Database *, randomGeneratorClass *, std::uint16_t, std::uint16_t, tpcc_profiler *);
   //  int transaction_payment(Database *, randomGeneratorClass *, std::uint16_t, std::uint16_t, tpcc_profiler *);

@@ -25,6 +25,16 @@
 namespace ogawayama::server {
 
     std::vector<std::string> tables = {  // NOLINT
+        "WAREHOUSE",
+        "DISTRICT",
+        "CUSTOMER",
+        "CUSTOMER_SECONDARY",
+        "NEW_ORDER",
+        "ORDERS",
+        "ORDERS_SECONDARY",
+        "ORDER_LINE",
+        "ITEM",
+        "STOCK"
     };
 
     boost::filesystem::path prepare(std::string location) {

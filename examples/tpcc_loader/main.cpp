@@ -31,6 +31,7 @@ int main() {
     stub = make_stub();
     
     if (stub->get_connection(12, connection) != ERROR_CODE::OK) { err_exit(__LINE__); }
+    if (ogawayama::tpcc::tpcc_tables(connection.get()) != 0) { err_exit(__LINE__); }
     if (ogawayama::tpcc::tpcc_load(connection.get()) != 0) { err_exit(__LINE__); }
     return 0;
 }
