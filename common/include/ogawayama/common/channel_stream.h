@@ -20,9 +20,10 @@
 
 #include "boost/bind.hpp"
 #include "boost/interprocess/managed_shared_memory.hpp"
+#include "boost/interprocess/allocators/allocator.hpp"
+#include "boost/interprocess/containers/string.hpp"
 #include "boost/interprocess/sync/interprocess_condition.hpp"
 #include "boost/interprocess/sync/interprocess_mutex.hpp"
-#include "boost/interprocess/containers/string.hpp"
 
 #include "ogawayama/stub/error_code.h"
 #include "ogawayama/common/shared_memory.h"
@@ -192,7 +193,7 @@ public:
             {
                 type_ = msg.type_;
                 ivalue_ = msg.ivalue_;
-                string_ = msg.string_;  // NOLINT
+                string_ = ShmString(msg.string_, allocator_);
             }
             valid_ = true;
             lock.unlock();
