@@ -22,8 +22,7 @@
 #include "ogawayama/common/channel_stream.h"
 #include "stubImpl.h"
 
-DEFINE_bool(terminate, false, "terminate commnand");  // NOLINT
-DEFINE_bool(dump, false, "Database contents are dumpd to the location just before shutdown");  //NOLINT
+DEFINE_bool(generate, false, "Database contents are randomly generateed and loadded into the database");  //NOLINT
 
 static StubPtr stub;
 static ConnectionPtr connection;
@@ -43,15 +42,10 @@ int main(int argc, char **argv) {
     
     if (stub->get_connection(12, connection) != ERROR_CODE::OK) { err_exit(__LINE__); }
     if (ogawayama::tpcc::tpcc_tables(connection.get()) != 0) { err_exit(__LINE__); }
-    if (ogawayama::tpcc::tpcc_load(connection.get()) != 0) { err_exit(__LINE__); }
+    if (FLAGS_generate) {
+        if (ogawayama::tpcc::tpcc_load(connection.get()) != 0) { err_exit(__LINE__); }
+    }
     connection = nullptr;  // disconnect before terminate the server
-    
-    if (FLAGS_dump) {
-        stub->get_impl()->get_channel()->send(ogawayama::common::CommandMessage(ogawayama::common::CommandMessage::Type::DUMP_DATABASE, 0, ""));
-    }
-    if (FLAGS_terminate) {
-        stub->get_impl()->get_channel()->send(ogawayama::common::CommandMessage(ogawayama::common::CommandMessage::Type::TERMINATE, 0, ""));
-    }
 
     return 0;
 }
