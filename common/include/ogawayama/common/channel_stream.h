@@ -23,8 +23,6 @@
 #include "boost/interprocess/sync/interprocess_condition.hpp"
 #include "boost/interprocess/sync/interprocess_mutex.hpp"
 #include "boost/interprocess/containers/string.hpp"
-// #include "boost/archive/binary_oarchive.hpp"
-// #include "boost/archive/binary_iarchive.hpp"
 
 #include "ogawayama/stub/error_code.h"
 #include "ogawayama/common/shared_memory.h"
@@ -32,7 +30,7 @@
 namespace ogawayama::common {
 
 class ChannelStream;
-    
+
 /**
  * @brief Messages exchanged via channel
  */
@@ -190,7 +188,7 @@ public:
 
         void send(ogawayama::common::CommandMessage msg) {
             boost::interprocess::scoped_lock lock(m_mutex_);
-            m_invalid_.wait(lock, boost::bind(&MsgBuffer::is_invalid, this));            
+            m_invalid_.wait(lock, boost::bind(&MsgBuffer::is_invalid, this));
             {
                 type_ = msg.type_;
                 ivalue_ = msg.ivalue_;
@@ -202,7 +200,7 @@ public:
         }
         void send(ogawayama::stub::ErrorCode err_code) {
             boost::interprocess::scoped_lock lock(m_mutex_);
-            m_invalid_.wait(lock, boost::bind(&MsgBuffer::is_invalid, this));            
+            m_invalid_.wait(lock, boost::bind(&MsgBuffer::is_invalid, this));
             {
                 err_code_ = err_code;
             }
@@ -243,7 +241,7 @@ public:
         std::size_t ivalue_;
         ShmString string_;
         ogawayama::stub::ErrorCode err_code_;
-        
+
         boost::interprocess::interprocess_mutex m_mutex_{};
         boost::interprocess::interprocess_mutex m_notify_mutex_{};
         boost::interprocess::interprocess_mutex m_lock_mutex_{};
