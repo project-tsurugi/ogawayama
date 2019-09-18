@@ -56,7 +56,8 @@ int backend_main(int argc, char **argv) {
     while(true) {
         ogawayama::common::CommandMessage message;
         try {
-            server_ch->get_binary_iarchive() >> message;
+            server_ch->recv(message);
+            server_ch->notify();
         } catch (std::exception &ex) {
             std::cerr << __func__ << " " << __LINE__ << ": exiting \"" << ex.what() << "\"" << std::endl;
             return -1;
@@ -81,14 +82,14 @@ int backend_main(int argc, char **argv) {
             break;
         case ogawayama::common::CommandMessage::Type::DUMP_DATABASE:
             try {
-                load(db.get(), FLAGS_location);
+                dump(db.get(), FLAGS_location);
             } catch (std::exception& e) {
                 std::cerr << e.what() << std::endl;
             }
             break;
         case ogawayama::common::CommandMessage::Type::LOAD_DATABASE:
             try {
-                dump(db.get(), FLAGS_location);
+                load(db.get(), FLAGS_location);
             } catch (std::exception& e) {
                 std::cerr << e.what() << std::endl;
             }
