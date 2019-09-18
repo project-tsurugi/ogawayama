@@ -193,7 +193,7 @@ public:
             {
                 type_ = msg.type_;
                 ivalue_ = msg.ivalue_;
-                string_ = ShmString(msg.string_, allocator_);
+                string_ = ShmString(msg.string_.begin(), msg.string_.end(), allocator_);
             }
             valid_ = true;
             lock.unlock();
