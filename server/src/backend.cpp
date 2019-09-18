@@ -57,6 +57,7 @@ int backend_main(int argc, char **argv) {
         ogawayama::common::CommandMessage message;
         try {
             server_ch->recv(message);
+            server_ch->notify();
         } catch (std::exception &ex) {
             std::cerr << __func__ << " " << __LINE__ << ": exiting \"" << ex.what() << "\"" << std::endl;
             return -1;
