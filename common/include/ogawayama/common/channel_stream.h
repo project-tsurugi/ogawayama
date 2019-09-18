@@ -138,7 +138,7 @@ public:
         /**
          * @brief Construct a new object.
          */
-        MsgBuffer(VoidAllocator allocator) : string_(allocator) {}
+        MsgBuffer(VoidAllocator allocator) : string_(allocator), allocator_(allocator) {}
         /**
          * @brief Copy and move constructers are deleted.
          */
@@ -192,7 +192,7 @@ public:
             {
                 type_ = msg.type_;
                 ivalue_ = msg.ivalue_;
-                string_ = msg.string_;
+                string_ = msg.string_;  // NOLINT
             }
             valid_ = true;
             lock.unlock();
@@ -214,7 +214,7 @@ public:
             {
                 msg.type_ = type_;
                 msg.ivalue_ = ivalue_;
-                msg.string_ = string_;
+                msg.string_ = std::string(string_.begin(), string_.end());
             }
             valid_ = false;
             lock.unlock();
@@ -241,6 +241,7 @@ public:
         std::size_t ivalue_;
         ShmString string_;
         ogawayama::stub::ErrorCode err_code_;
+        VoidAllocator allocator_;
 
         boost::interprocess::interprocess_mutex m_mutex_{};
         boost::interprocess::interprocess_mutex m_notify_mutex_{};
