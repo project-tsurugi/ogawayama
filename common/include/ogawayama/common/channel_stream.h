@@ -31,6 +31,102 @@
 namespace ogawayama::common {
 
 /**
+ * @brief Messages exchanged via channel
+ */
+struct CommandMessage
+{
+public:
+    /**
+     * @brief represents a type.
+     */
+    enum class Type {
+
+        /**
+         * @brief
+         */
+        OK,
+
+        /**
+         * @brief
+         */
+        CONNECT,
+
+        /**
+         * @brief
+         */
+        DISCONNECT,
+
+        /**
+         * @brief
+         */
+        EXECUTE_STATEMENT,
+
+        /**
+         * @brief
+         */
+        EXECUTE_QUERY,
+
+        /**
+         * @brief
+         */
+        NEXT,
+
+        /**
+         * @brief
+         */
+        COMMIT,
+
+        /**
+         * @brief
+         */
+        ROLLBACK,
+
+        /**
+         * @brief
+         */
+        TERMINATE,
+
+        /**
+         * @brief
+         */
+        DUMP_DATABASE,
+
+        /**
+         * @brief
+         */
+        LOAD_DATABASE,
+    };
+
+    CommandMessage() = default;
+    CommandMessage(const CommandMessage&) = default;
+    CommandMessage& operator=(const CommandMessage&) = default;
+    CommandMessage(CommandMessage&&) = default;
+    CommandMessage& operator=(CommandMessage&&) = default;
+
+    CommandMessage( Type type, std::size_t ivalue, std::string_view string ) : type_(type), ivalue_(ivalue), string_(string) {}
+    CommandMessage( Type type, std::size_t ivalue ) : CommandMessage(type, ivalue, std::string()) {}
+    CommandMessage( Type type ) : CommandMessage(type, 0, std::string()) {}
+
+    Type get_type() const { return type_; }
+    std::size_t get_ivalue() const { return ivalue_; }
+    std::string_view get_string() const { return std::string_view(string_.data(), string_.size()); }
+
+private:
+    Type type_;
+    std::size_t ivalue_;
+    std::string string_;
+
+    friend class boost::serialization::access;
+    template <class Archive>
+    void serialize(Archive& ar, unsigned int /*version*/)
+    {
+        ar & boost::serialization::make_nvp("type", type_);
+        ar & boost::serialization::make_nvp("ivalue", ivalue_);
+        ar & boost::serialization::make_nvp("string", string_);
+    }
+};
+
+/**
  * @brief one to one communication channel, intended for communication between server and stub through boost binary_archive.
  */
 class ChannelStream : public std::streambuf
@@ -206,24 +302,6 @@ public:
     }
 
     /**
-     * @brief get binary_iarchive associated with this object
-     * @return a binary_iarchive associated with this object
-     */
-    boost::archive::binary_iarchive get_binary_iarchive()
-    {
-        return boost::archive::binary_iarchive(*this);
-    }
-
-    /**
-     * @brief get binary_oarchive associated with this object
-     * @return a binary_oarchive associated with this object
-     */
-    boost::archive::binary_oarchive get_binary_oarchive()
-    {
-        return boost::archive::binary_oarchive(*this);
-    }
-
-    /**
      * @brief waiting acknowledge from the other side.
      */
     void wait() {
@@ -251,107 +329,24 @@ public:
         buffer_->unlock();
     }
 
+    void send(ogawayama::common::CommandMessage msg) {
+        boost::archive::binary_oarchive(*this) << msg;
+    }
+    void recv(ogawayama::stub::ErrorCode &reply) {
+        boost::archive::binary_iarchive(*this) >> reply;
+    }
+    void send(ogawayama::stub::ErrorCode err_code) {
+        boost::archive::binary_oarchive(*this) << err_code;
+    }
+    void recv(ogawayama::common::CommandMessage &msg) {
+        boost::archive::binary_iarchive(*this) >> msg;
+    }
+
 private:
     RingBuffer *buffer_;
     const bool owner_;
     boost::interprocess::managed_shared_memory *mem_;
     char name_[param::MAX_NAME_LENGTH];
-};
-
-/**
- * @brief Messages exchanged via channel
- */
-struct CommandMessage
-{
-public:
-    /**
-     * @brief represents a type.
-     */
-    enum class Type {
-
-        /**
-         * @brief 
-         */
-        OK,
-
-        /**
-         * @brief 
-         */
-        CONNECT,
-
-        /**
-         * @brief 
-         */
-        DISCONNECT,
-
-        /**
-         * @brief 
-         */
-        EXECUTE_STATEMENT,
-
-        /**
-         * @brief 
-         */
-        EXECUTE_QUERY,
-            
-        /**
-         * @brief 
-         */
-        NEXT,
-
-        /**
-         * @brief 
-         */
-        COMMIT,
-
-        /**
-         * @brief 
-         */
-        ROLLBACK,
-
-        /**
-         * @brief 
-         */
-        TERMINATE,
-
-        /**
-         * @brief
-         */
-        DUMP_DATABASE,
-
-        /**
-         * @brief
-         */
-        LOAD_DATABASE,
-    };
-
-    CommandMessage() = default;
-    CommandMessage(const CommandMessage&) = default;
-    CommandMessage& operator=(const CommandMessage&) = default;
-    CommandMessage(CommandMessage&&) = default;
-    CommandMessage& operator=(CommandMessage&&) = default;
-
-    CommandMessage( Type type, std::size_t ivalue, std::string_view string ) : type_(type), ivalue_(ivalue), string_(string) {}
-    CommandMessage( Type type, std::size_t ivalue ) : CommandMessage(type, ivalue, std::string()) {}
-    CommandMessage( Type type ) : CommandMessage(type, 0, std::string()) {}
-    
-    Type get_type() const { return type_; }
-    std::size_t get_ivalue() const { return ivalue_; }
-    std::string_view get_string() const { return std::string_view(string_.data(), string_.size()); }
-
-private:
-    Type type_;
-    std::size_t ivalue_;
-    std::string string_;
-
-    friend class boost::serialization::access;
-    template <class Archive>
-    void serialize(Archive& ar, unsigned int /*version*/)
-    {
-        ar & boost::serialization::make_nvp("type", type_);
-        ar & boost::serialization::make_nvp("ivalue", ivalue_);
-        ar & boost::serialization::make_nvp("string", string_);
-    }    
 };
 
 };  // namespace ogawayama::common

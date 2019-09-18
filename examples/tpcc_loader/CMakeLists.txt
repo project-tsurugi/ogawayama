@@ -36,6 +36,7 @@ target_link_libraries(tpcc-loader
     PUBLIC stub
     PRIVATE gflags::gflags
     PRIVATE Boost::serialization
+    PRIVATE rt
 )
 
 set_compile_options(tpcc-loader)

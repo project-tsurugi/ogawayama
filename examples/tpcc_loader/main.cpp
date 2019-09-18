@@ -47,12 +47,10 @@ int main(int argc, char **argv) {
     connection = nullptr;  // disconnect before terminate the server
     
     if (FLAGS_dump) {
-        stub->get_impl()->get_channel()->get_binary_oarchive() <<
-            ogawayama::common::CommandMessage(ogawayama::common::CommandMessage::Type::DUMP_DATABASE, 0, "");
+        stub->get_impl()->get_channel()->send(ogawayama::common::CommandMessage(ogawayama::common::CommandMessage::Type::DUMP_DATABASE, 0, ""));
     }
     if (FLAGS_terminate) {
-        stub->get_impl()->get_channel()->get_binary_oarchive() <<
-            ogawayama::common::CommandMessage(ogawayama::common::CommandMessage::Type::TERMINATE, 0, "");
+        stub->get_impl()->get_channel()->send(ogawayama::common::CommandMessage(ogawayama::common::CommandMessage::Type::TERMINATE, 0, ""));
     }
 
     return 0;

@@ -56,7 +56,7 @@ int backend_main(int argc, char **argv) {
     while(true) {
         ogawayama::common::CommandMessage message;
         try {
-            server_ch->get_binary_iarchive() >> message;
+            server_ch->recv(message);
         } catch (std::exception &ex) {
             std::cerr << __func__ << " " << __LINE__ << ": exiting \"" << ex.what() << "\"" << std::endl;
             return -1;
