@@ -79,21 +79,22 @@ namespace ogawayama::tpcc {
         double i_price;
         VARCHAR50 i_data;
         int idatasiz;
-        std::array<bool, scale::items+1> orig_i{};
+        std::vector<bool> orig_i;
         uint32_t pos;
         unsigned int i;
         
-        for (i=0; i<scale::items; i++) { orig_i.at(i) = false; }
-        for (i=0; i<scale::items/10; i++) {
+        orig_i.resize(scale->items+1);
+        for (i=0; i<scale->items; i++) { orig_i.at(i) = false; }
+        for (i=0; i<scale->items/10; i++) {
             do {
-                pos = randomGenerator->RandomNumber(1L,scale::items);
+                pos = randomGenerator->RandomNumber(1L,scale->items);
             } while (orig_i.at(pos) == true);
             orig_i.at(pos) = true;
         }
 
         TransactionPtr transaction;
         connection->begin(transaction);
-        for (i_id=1; i_id<=scale::items; i_id++) {
+        for (i_id=1; i_id<=scale->items; i_id++) {
             /* Generate Item Data */
             randomGenerator->MakeAlphaString(14,24, static_cast<char *>(i_name));
             i_price=(static_cast<double>(randomGenerator->RandomNumber(100L,10000L)))/100.0;
@@ -151,7 +152,7 @@ namespace ogawayama::tpcc {
         
         TransactionPtr transaction;
         connection->begin(transaction);
-        for (w_id=1L; w_id<=scale::warehouses; w_id++) {
+        for (w_id=1L; w_id<=scale->warehouses; w_id++) {
             /* Generate Warehouse Data */
             randomGenerator->MakeAlphaString( 6, 10,  static_cast<char *>(w_name));
             randomGenerator->MakeAddress(static_cast<char *>(w_street_1), static_cast<char *>(w_street_2), static_cast<char *>(w_city), static_cast<char *>(w_state), static_cast<char *>(w_zip));
@@ -179,7 +180,7 @@ namespace ogawayama::tpcc {
         }
         transaction->commit();
         
-        for (w_id=1L; w_id<=scale::warehouses; w_id++) {  
+        for (w_id=1L; w_id<=scale->warehouses; w_id++) {  
             Stock(connection, w_id);
             District(connection, w_id);
         }
@@ -200,8 +201,8 @@ namespace ogawayama::tpcc {
         uint32_t w_id;
         uint32_t d_id;
         
-        for (w_id=1L; w_id<=scale::warehouses; w_id++) {
-            for (d_id=1L; d_id<=scale::districts; d_id++) {
+        for (w_id=1L; w_id<=scale->warehouses; w_id++) {
+            for (d_id=1L; d_id<=scale->districts; d_id++) {
                 Customer(connection, d_id,w_id);
             }
         }
@@ -221,8 +222,8 @@ namespace ogawayama::tpcc {
         uint32_t w_id;
         uint32_t d_id;
 
-        for (w_id=1L; w_id<=scale::warehouses; w_id++) {
-            for (d_id=1L; d_id<=scale::districts; d_id++) {
+        for (w_id=1L; w_id<=scale->warehouses; w_id++) {
+            for (d_id=1L; d_id<=scale->districts; d_id++) {
                 Orders(connection, d_id, w_id);
             }
         }
@@ -256,23 +257,24 @@ namespace ogawayama::tpcc {
         VARCHAR50 s_dist_10;
         VARCHAR50 s_data;
         int sdatasiz;
-        std::array<uint32_t, scale::items+1> orig_s{};
+        std::vector<bool> orig_s;
         uint32_t pos;
         unsigned int i;
         
+        orig_s.resize(scale->items+1);
         s_w_id=w_id;
-        for (i=0; i<=scale::items; i++) { orig_s.at(i)=false; }
-        for (i=0; i<scale::items/10; i++) {
+        for (i=0; i<=scale->items; i++) { orig_s.at(i)=false; }
+        for (i=0; i<scale->items/10; i++) {
             do
                 {
-                    pos=randomGenerator->RandomNumber(1L,scale::items);
+                    pos=randomGenerator->RandomNumber(1L,scale->items);
                 } while (orig_s.at(pos) == true);
             orig_s.at(pos) = true;
         }
 
         TransactionPtr transaction;
         connection->begin(transaction);
-        for (s_i_id=1; s_i_id<=scale::items; s_i_id++) {
+        for (s_i_id=1; s_i_id<=scale->items; s_i_id++) {
             /* Generate Stock Data */
             s_quantity=randomGenerator->RandomNumber(10L,100L);
             randomGenerator->MakeAlphaString(24,24,static_cast<char *>(s_dist_01));
@@ -355,11 +357,11 @@ namespace ogawayama::tpcc {
         uint32_t d_next_o_id;
         d_w_id=w_id;
         d_ytd=30000.0;
-        d_next_o_id=scale::orders+1;
+        d_next_o_id=scale->orders+1;
         
         TransactionPtr transaction;
         connection->begin(transaction);
-        for (d_id=1; d_id<=scale::districts; d_id++) {
+        for (d_id=1; d_id<=scale->districts; d_id++) {
             /* Generate District Data */
             randomGenerator->MakeAlphaString(6L,10L,static_cast<char *>(d_name));
             randomGenerator->MakeAddress(static_cast<char *>(d_street_1), static_cast<char *>(d_street_2), static_cast<char *>(d_city), static_cast<char *>(d_state), static_cast<char *>(d_zip));
@@ -426,7 +428,7 @@ namespace ogawayama::tpcc {
 
         TransactionPtr transaction;
         connection->begin(transaction);
-        for (c_id=1; c_id<=scale::customers; c_id++) {
+        for (c_id=1; c_id<=scale->customers; c_id++) {
             /* Generate Customer Data */
             c_d_id=d_id;
             c_w_id=w_id;
@@ -503,10 +505,10 @@ namespace ogawayama::tpcc {
         return 0;
     }
     
-    int GetPermutation(randomGeneratorClass *randomGenerator, std::array<bool, scale::customers> &cid_array)
+    int GetPermutation(randomGeneratorClass *randomGenerator, std::vector<bool> &cid_array)
     {
         while (true) {
-            uint32_t r = randomGenerator->RandomNumber(0L, scale::customers-1);
+            uint32_t r = randomGenerator->RandomNumber(0L, scale->customers-1);
             if (cid_array.at(r)) {       /* This number already taken */
                 continue;
             }
@@ -542,17 +544,19 @@ namespace ogawayama::tpcc {
         VARCHAR24 ol_dist_info;
         o_d_id=d_id;
         o_w_id=w_id;
-        std::array<bool, scale::customers> cid_array{};
-        for (unsigned int i = 0; i < scale::customers; i++) cid_array.at(i) = false;
+        std::vector<bool> cid_array;
+
+        cid_array.resize(scale->customers);
+        for (unsigned int i = 0; i < scale->customers; i++) cid_array.at(i) = false;
 
         TransactionPtr transaction;
         connection->begin(transaction);
-        for (o_id=1; o_id<=scale::orders; o_id++) {
+        for (o_id=1; o_id<=scale->orders; o_id++) {
             /* Generate Order Data */
             o_c_id=GetPermutation(randomGenerator.get(), cid_array);
             o_carrier_id=randomGenerator->RandomNumber(1L,10L);
             o_ol_cnt=randomGenerator->RandomNumber(5L,15L);
-            if (o_id > ((scale::orders * 7) / 10)) /* the last 900 orders have not been delivered) */
+            if (o_id > ((scale->orders * 7) / 10)) /* the last 900 orders have not been delivered) */
                 {
                     std::string sql = INSERT;
                     sql += "ORDERS (o_id, o_c_id, o_d_id, o_w_id, "
@@ -627,14 +631,14 @@ namespace ogawayama::tpcc {
             TIMESTAMP datetime; gettimestamp(static_cast<char *>(datetime), randomGenerator->RandomNumber(1L,90L*24L*60L));
             for (ol=1; ol<=o_ol_cnt; ol++) {
                 /* Generate Order Line Data */
-                ol_i_id=randomGenerator->RandomNumber(1L,scale::items);
+                ol_i_id=randomGenerator->RandomNumber(1L,scale->items);
                 ol_supply_w_id=o_w_id;
                 ol_quantity=5;
                 ol_amount=0.0;
                 
                 randomGenerator->MakeAlphaString(24,24,static_cast<char *>(ol_dist_info));
                 
-                if (o_id > ((scale::orders * 7) / 10))
+                if (o_id > ((scale->orders * 7) / 10))
                     {
                         std::string sql = INSERT;
                         sql += "ORDER_LINE (ol_o_id, ol_d_id, ol_w_id, ol_number, "

@@ -36,23 +36,25 @@ Worker::Worker(umikongo::Database *db, ogawayama::common::SharedMemory *shm, std
 void Worker::run()
 {
     while(true) {
-        ogawayama::common::CommandMessage command_message;
+        ogawayama::common::CommandMessage::Type type;
+        std::size_t ivalue;
+        std::string_view string;
         try {
-            request_->recv(command_message);
+            request_->recv(type, ivalue, string);
         } catch (std::exception &ex) {
             std::cerr << __func__ << " " << __LINE__ << ": exiting \"" << ex.what() << "\"" << std::endl;
             return;
         }
         
-        switch (command_message.get_type()) {
+        switch (type) {
         case ogawayama::common::CommandMessage::Type::EXECUTE_STATEMENT:
-            execute_statement(command_message.get_string());
+            execute_statement(string);
             break;
         case ogawayama::common::CommandMessage::Type::EXECUTE_QUERY:
-            execute_query(command_message.get_string(), command_message.get_ivalue());
+            execute_query(string, ivalue);
             break;
         case ogawayama::common::CommandMessage::Type::NEXT:
-            next(command_message.get_ivalue());
+            next(ivalue);
             result_->send(ERROR_CODE::OK);
             break;
         case ogawayama::common::CommandMessage::Type::COMMIT:

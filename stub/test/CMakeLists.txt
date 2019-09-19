@@ -21,7 +21,6 @@ register_tests(
     DEPENDS
       stub-impl
       glog::glog
-      Boost::serialization
       rt
     SOURCES ${TEST_SOURCES}
 )

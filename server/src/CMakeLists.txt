@@ -47,7 +47,6 @@ target_link_libraries(server
     PRIVATE shakujo-common
     PRIVATE gflags::gflags
     PRIVATE Boost::filesystem
-    PRIVATE Boost::serialization
     PRIVATE pthread
     PRIVATE rt
 )

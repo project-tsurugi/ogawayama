@@ -48,7 +48,7 @@ ErrorCode ResultSet::Impl::get_metadata(MetadataPtr &metadata)
  */
 ErrorCode ResultSet::Impl::next()
 {
-    envelope_->get_manager()->get_impl()->get_request_channel()->send(ogawayama::common::CommandMessage(ogawayama::common::CommandMessage::Type::NEXT, id_));
+    envelope_->get_manager()->get_impl()->get_request_channel()->send(ogawayama::common::CommandMessage::Type::NEXT, id_);
     ErrorCode reply;
     envelope_->get_manager()->get_impl()->get_result_channel()->recv(reply);
 

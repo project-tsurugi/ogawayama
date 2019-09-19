@@ -31,7 +31,7 @@ option(ENABLE_COVERAGE "enable coverage on debug build" OFF)
 
 find_package(Threads REQUIRED)
 find_package(Boost
-        COMPONENTS system filesystem serialization
+        COMPONENTS system filesystem
         REQUIRED
 )
 find_package(glog REQUIRED)

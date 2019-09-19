@@ -13,7 +13,6 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-
 #include "tpcc_transaction.h"
 
 #include <iostream>
@@ -23,6 +22,7 @@
 #include "stubImpl.h"
 
 DEFINE_bool(generate, false, "Database contents are randomly generateed and loadded into the database");  //NOLINT
+DEFINE_uint32(warehouse, 0, "TPC-C Scale factor.");  //NOLINT
 
 static StubPtr stub;
 static ConnectionPtr connection;
@@ -43,6 +43,10 @@ int main(int argc, char **argv) {
     if (stub->get_connection(12, connection) != ERROR_CODE::OK) { err_exit(__LINE__); }
     if (ogawayama::tpcc::tpcc_tables(connection.get()) != 0) { err_exit(__LINE__); }
     if (FLAGS_generate) {
+        if (FLAGS_warehouse > 0) {
+            ogawayama::tpcc::normal.warehouses = FLAGS_warehouse;
+            ogawayama::tpcc::scale = &ogawayama::tpcc::normal;
+        }
         if (ogawayama::tpcc::tpcc_load(connection.get()) != 0) { err_exit(__LINE__); }
     }
     connection = nullptr;  // disconnect before terminate the server

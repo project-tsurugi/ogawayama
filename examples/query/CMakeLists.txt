@@ -33,7 +33,6 @@ target_include_directories(query
 
 target_link_libraries(query
     PRIVATE stub
-    PRIVATE Boost::serialization
     PRIVATE pthread
     PRIVATE rt
 )

@@ -13,34 +13,28 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#ifndef TPCC_SCALE_H_
-#define TPCC_SCALE_H_
-
-#include <cstdint>
+#include "tpcc_scale.h"
 
 namespace ogawayama {
 namespace tpcc {
 
-struct Scale {
-    /** Number of warehouses. Does not grow dynamically */
-    std::uint16_t warehouses;
-
-    /** Number of items per warehouse. Does not grow dynamically  */
-    std::uint32_t items;
-
-    /** Number of districts per warehouse. Does not grow dynamically  */
-    std::uint8_t districts;
-
-    /** Number of customers per district. Does not grow dynamically  */
-    std::uint32_t customers;
-
-    /** Number of orders per district. Does grow dynamically. */
-    std::uint32_t orders;
+struct Scale tiny = {
+    .warehouses = 1U,
+    .items = 50U,
+    .districts = 2U,
+    .customers = 30U,
+    .orders = 30U,
 };
 
-extern struct Scale *scale, tiny, normal;
+struct Scale normal = {
+    .warehouses = 1U,
+    .items = 100000U,
+    .districts = 10U,
+    .customers = 3000U,
+    .orders = 3000U,
+};
+    
+struct Scale *scale = &tiny;
 
 }  // namespace tpcc
 }  // namespace ogawayama
-
-#endif  // TPCC_SCALE_H_

@@ -33,7 +33,6 @@ target_include_directories(simple
 
 target_link_libraries(simple
     PUBLIC stub
-    PRIVATE Boost::serialization
     PRIVATE pthread
     PRIVATE rt
 )

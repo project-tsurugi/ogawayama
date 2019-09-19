@@ -30,9 +30,7 @@ Transaction::Impl::Impl(Transaction *transaction) : envelope_(transaction)
  * @return true in error, otherwise false
  */
 ErrorCode Transaction::Impl::execute_statement(std::string_view statement) {
-    request_->send(ogawayama::common::CommandMessage(ogawayama::common::CommandMessage::Type::EXECUTE_STATEMENT,
-                                                     1,
-                                                     statement));
+    request_->send(ogawayama::common::CommandMessage::Type::EXECUTE_STATEMENT, 1, statement);
     ErrorCode reply;
     result_->recv(reply);
     return reply;
@@ -56,9 +54,9 @@ ErrorCode Transaction::Impl::execute_query(std::string_view query, std::shared_p
     result_sets_->emplace_back(result_set);
 
  found:
-    request_->send(ogawayama::common::CommandMessage(ogawayama::common::CommandMessage::Type::EXECUTE_QUERY,
-                                                     static_cast<std::int32_t>(result_set->get_impl()->get_id()),
-                                                     query));
+    request_->send(ogawayama::common::CommandMessage::Type::EXECUTE_QUERY,
+                   static_cast<std::int32_t>(result_set->get_impl()->get_id()),
+                   query);
     ErrorCode reply;
     result_->recv(reply);
     if (reply != ErrorCode::OK) {
@@ -73,7 +71,7 @@ ErrorCode Transaction::Impl::execute_query(std::string_view query, std::shared_p
  */
 ErrorCode Transaction::Impl::commit()
 {
-    request_->send(ogawayama::common::CommandMessage(ogawayama::common::CommandMessage::Type::COMMIT));
+    request_->send(ogawayama::common::CommandMessage::Type::COMMIT);
     ErrorCode reply;
     result_->recv(reply);
     return reply;
@@ -85,7 +83,7 @@ ErrorCode Transaction::Impl::commit()
  */
 ErrorCode Transaction::Impl::rollback()
 {
-    request_->send(ogawayama::common::CommandMessage(ogawayama::common::CommandMessage::Type::ROLLBACK));
+    request_->send(ogawayama::common::CommandMessage::Type::ROLLBACK);
     ErrorCode reply;
     result_->recv(reply);
     return reply;

@@ -34,7 +34,6 @@ target_include_directories(cli
 target_link_libraries(cli
     PRIVATE stub
     PRIVATE gflags::gflags
-    PRIVATE Boost::serialization
     PRIVATE rt
 )
 
