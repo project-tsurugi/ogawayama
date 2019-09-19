@@ -43,7 +43,7 @@ ErrorCode Transaction::Impl::execute_statement(std::string_view statement) {
  */
 ErrorCode Transaction::Impl::execute_query(std::string_view query, std::shared_ptr<ResultSet> &result_set)
 {
-    for( auto rs : *result_sets_ ) {
+    for (auto& rs : *result_sets_) {
         if( rs.use_count() == 1) {
             result_set = rs;
             result_set->get_impl()->clear();
@@ -72,6 +72,7 @@ ErrorCode Transaction::Impl::execute_query(std::string_view query, std::shared_p
 ErrorCode Transaction::Impl::commit()
 {
     request_->send(ogawayama::common::CommandMessage::Type::COMMIT);
+    clear();
     ErrorCode reply;
     result_->recv(reply);
     return reply;
@@ -84,9 +85,17 @@ ErrorCode Transaction::Impl::commit()
 ErrorCode Transaction::Impl::rollback()
 {
     request_->send(ogawayama::common::CommandMessage::Type::ROLLBACK);
+    clear();
     ErrorCode reply;
     result_->recv(reply);
     return reply;
+}
+
+void Transaction::Impl::clear()
+{
+    for (auto& rs: *result_sets_) {
+        rs->get_impl()->clear();
+    }
 }
 
 /**

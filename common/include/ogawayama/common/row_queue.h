@@ -195,7 +195,7 @@ namespace ogawayama::common {
          * @brief put a column value (of other than string) to the row at the back of the queue.
          */
         template<typename T>
-            void put_next_column(T v) {
+        void put_next_column(T v) {
             ShmColumn column = v;
             queue_->get_writing_row().emplace_back(column);
             cindex_++;

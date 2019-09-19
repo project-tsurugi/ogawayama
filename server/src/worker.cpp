@@ -63,7 +63,7 @@ void Worker::run()
             }
             transaction_->commit();
             result_->send(ERROR_CODE::OK);
-            transaction_=nullptr;
+            clear();
             break;
         case ogawayama::common::CommandMessage::Type::ROLLBACK:
             if (!transaction_) {
@@ -71,6 +71,7 @@ void Worker::run()
             }
             transaction_->abort();
             result_->send(ERROR_CODE::OK);
+            clear();
             break;
         case ogawayama::common::CommandMessage::Type::DISCONNECT:
             request_->notify();
@@ -116,7 +117,7 @@ void Worker::execute_query(std::string_view sql, std::size_t rid)
     try {
         cursors_.at(rid).executable_ = db_->compile(sql);
         auto metadata = cursors_.at(rid).executable_->metadata();
-        for (auto t: metadata->column_types()) {
+        for (auto& t: metadata->column_types()) {
             switch(t->kind()) {
             case shakujo::common::core::Type::Kind::INT:
                 switch((static_cast<shakujo::common::core::type::Numeric const *>(t))->size()) {
@@ -171,7 +172,7 @@ void Worker::next(std::size_t rid)
     try {
         auto row = cursors_.at(rid).iterator_->next();
         if (row != nullptr) {
-            for (auto t: cursors_.at(rid).row_queue_->get_metadata_ptr()->get_types()) {
+            for (auto& t: cursors_.at(rid).row_queue_->get_metadata_ptr()->get_types()) {
                 std::size_t cindex = cursors_.at(rid).row_queue_->get_cindex();
                 if (row->is_null(cindex)) {
                     cursors_.at(rid).row_queue_->put_next_column(std::monostate());
@@ -200,6 +201,14 @@ void Worker::next(std::size_t rid)
         std::cerr << e.what() << std::endl;
         result_->send(ERROR_CODE::UNKNOWN);
     }
+}
+
+void Worker::clear()
+{
+    for (auto& c: cursors_) {
+        c.clear();
+    }
+    transaction_ = nullptr;
 }
 
 }  // ogawayama::server
