@@ -115,7 +115,7 @@ pipeline {
         stage ('Lint') {
             steps {
                 sh '''#!/bin/bash
-                    python tools/bin/run-clang-tidy.py -quiet -export-fixes=build/clang-tidy-fix.yaml -p build -extra-arg=-Wno-unknown-warning-option -header-filter=$(pwd)'/(common|server|stub)/.*\\.h$' $(pwd)'/(common|server|stub)/.*' > build/clang-tidy.log 2> build/clang-tidy-error.log
+                    python tools/bin/run-clang-tidy.py -quiet -export-fixes=build/clang-tidy-fix.yaml -p build -extra-arg=-Wno-unknown-warning-option -header-filter=$(pwd)'/(common|server|stub)/.*\\.h$' $(pwd)'/(common|server|stub)/.*\\.cpp$' > build/clang-tidy.log 2> build/clang-tidy-error.log
                 '''
             }
         }
@@ -134,7 +134,7 @@ pipeline {
     post {
         always {
             xunit tools: ([GoogleTest(pattern: '**/*_gtest_result.xml', deleteOutputFiles: false, failIfNotNew: false, skipNoTestFiles: true, stopProcessingIfError: true)]), reduceLog: false
-            recordIssues tool: clangTidy(pattern: 'build/clang-tidy.log'),
+            recordIssues filters: [excludeFile('/usr/include/*')], tool: clangTidy(pattern: 'build/clang-tidy.log'),
                 qualityGates: [[threshold: 1, type: 'TOTAL', unstable: true]]
             recordIssues tool: gcc4(),
                 enabledForFailure: true
