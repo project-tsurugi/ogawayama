@@ -109,13 +109,13 @@ public:
          * @brief get type for this column.
          * @return Type of this column
          */
-        ColumnType::Type get_type() { return type_; }
+        ColumnType::Type get_type() const { return type_; }
     
         /**
          * @brief get type for this column.
          * @return Type of this column
          */
-        std::size_t get_length() { return length_; }
+        std::size_t get_length() const { return length_; }
 
     private:
         Type type_{};

@@ -30,6 +30,10 @@ namespace ogawayama::server {
 class Worker {
     class Cursor {
     public:
+        void clear() {
+            iterator_ = nullptr;
+            executable_ = nullptr;
+        }
         std::unique_ptr<ogawayama::common::RowQueue> row_queue_{};
         std::unique_ptr<umikongo::Iterator> iterator_{};
         std::unique_ptr<umikongo::ExecutableStatement> executable_{};
@@ -59,6 +63,8 @@ class Worker {
     std::packaged_task<void()> task_;
     std::future<void> future_;
     std::thread thread_{};
+
+    void clear();
 };
 
 }  // ogawayama::server
