@@ -345,22 +345,4 @@ private:
 
 };  // namespace ogawayama::common
 
-namespace boost::serialization {
-
-/**
- * @brief Method that does serialization dedicated for ogawayama::stub::ErrorCode
- * @param ar archiver
- * @param d variable in Channel_MessageType
- * @param file_version not used
- */
-template<class Archive>
-inline void serialize(Archive & ar,
-                      ogawayama::stub::ErrorCode & d,
-                      [[maybe_unused]] const unsigned int file_version)
-{
-    ar & d;
-}
-
-};  // namespace boost::serialization
-
 #endif //  CHANNEL_STREAM_H_
