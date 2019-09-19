@@ -139,7 +139,7 @@ public:
         /**
          * @brief Construct a new object.
          */
-        MsgBuffer(VoidAllocator allocator) : message_(allocator), allocator_(allocator) {}
+        MsgBuffer(VoidAllocator allocator) : message_(allocator) {}
         /**
          * @brief Copy and move constructers are deleted.
          */
@@ -193,7 +193,7 @@ public:
             {
                 message_.type_ = type;
                 message_.ivalue_ = ivalue;
-                message_.string_ = ShmString(string.begin(), string.end(), allocator_);
+                message_.string_ = string;
             }
             valid_ = true;
             lock.unlock();
@@ -251,7 +251,6 @@ public:
 
         CommandMessage message_;
         ogawayama::stub::ErrorCode err_code_;
-        VoidAllocator allocator_;
 
         boost::interprocess::interprocess_mutex m_mutex_{};
         boost::interprocess::interprocess_mutex m_notify_mutex_{};
