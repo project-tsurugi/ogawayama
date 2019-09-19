@@ -27,7 +27,7 @@ Connection::Impl::Impl(Connection *connection, std::size_t pgprocno) : envelope_
 
 Connection::Impl::~Impl()
 {
-    request_->send(ogawayama::common::CommandMessage(ogawayama::common::CommandMessage::Type::DISCONNECT));
+    request_->send(ogawayama::common::CommandMessage::Type::DISCONNECT);
     request_->wait();
 }
 

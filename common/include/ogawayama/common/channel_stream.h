@@ -30,8 +30,11 @@
 
 namespace ogawayama::common {
 
-class ChannelStream;
+using VoidAllocator = boost::interprocess::allocator<void, boost::interprocess::managed_shared_memory::segment_manager>;
+using CharAllocator = boost::interprocess::allocator<char, boost::interprocess::managed_shared_memory::segment_manager>;
+using ShmString = boost::interprocess::basic_string<char, std::char_traits<char>, CharAllocator>;
 
+class ChannelStream;
 /**
  * @brief Messages exchanged via channel
  */
@@ -99,11 +102,12 @@ public:
         LOAD_DATABASE,
     };
 
-    CommandMessage() = default;
-    CommandMessage(const CommandMessage&) = default;
-    CommandMessage& operator=(const CommandMessage&) = default;
-    CommandMessage(CommandMessage&&) = default;
-    CommandMessage& operator=(CommandMessage&&) = default;
+    CommandMessage() = delete;
+    CommandMessage(VoidAllocator allocator) : string_(allocator) {}
+    CommandMessage(const CommandMessage&) = delete;
+    CommandMessage& operator=(const CommandMessage&) = delete;
+    CommandMessage(CommandMessage&&) = delete;
+    CommandMessage& operator=(CommandMessage&&) = delete;
 
     CommandMessage( Type type, std::size_t ivalue, std::string_view string ) : type_(type), ivalue_(ivalue), string_(string) {}
     CommandMessage( Type type, std::size_t ivalue ) : CommandMessage(type, ivalue, std::string()) {}
@@ -116,14 +120,10 @@ public:
 private:
     Type type_;
     std::size_t ivalue_;
-    std::string string_;
+    ShmString string_;
 
     friend class ChannelStream;
 };
-
-using VoidAllocator = boost::interprocess::allocator<void, boost::interprocess::managed_shared_memory::segment_manager>;
-using CharAllocator = boost::interprocess::allocator<char, boost::interprocess::managed_shared_memory::segment_manager>;
-using ShmString = boost::interprocess::basic_string<char, std::char_traits<char>, CharAllocator>;
 
 /**
  * @brief one to one communication channel, intended for communication between server and stub through boost binary_archive.
@@ -139,7 +139,7 @@ public:
         /**
          * @brief Construct a new object.
          */
-        MsgBuffer(VoidAllocator allocator) : string_(allocator), allocator_(allocator) {}
+        MsgBuffer(VoidAllocator allocator) : message_(allocator), allocator_(allocator) {}
         /**
          * @brief Copy and move constructers are deleted.
          */
@@ -187,13 +187,13 @@ public:
             m_not_locked_.notify_one();
         }
 
-        void send(ogawayama::common::CommandMessage msg) {
+        void send(ogawayama::common::CommandMessage::Type type, std::size_t ivalue, std::string_view string) {
             boost::interprocess::scoped_lock lock(m_mutex_);
             m_invalid_.wait(lock, boost::bind(&MsgBuffer::is_invalid, this));
             {
-                type_ = msg.type_;
-                ivalue_ = msg.ivalue_;
-                string_ = ShmString(msg.string_.begin(), msg.string_.end(), allocator_);
+                message_.type_ = type;
+                message_.ivalue_ = ivalue;
+                message_.string_ = ShmString(string.begin(), string.end(), allocator_);
             }
             valid_ = true;
             lock.unlock();
@@ -209,13 +209,24 @@ public:
             lock.unlock();
             m_valid_.notify_one();
         }
-        void recv(ogawayama::common::CommandMessage &msg) {
+        void recv(ogawayama::common::CommandMessage::Type &type, std::size_t & ivalue) {
             boost::interprocess::scoped_lock lock(m_mutex_);
             m_valid_.wait(lock, boost::bind(&MsgBuffer::is_valid, this));
             {
-                msg.type_ = type_;
-                msg.ivalue_ = ivalue_;
-                msg.string_ = std::string(string_.begin(), string_.end());
+                type = message_.type_;
+                ivalue = message_.ivalue_;
+            }
+            valid_ = false;
+            lock.unlock();
+            m_invalid_.notify_one();
+        }
+        void recv(ogawayama::common::CommandMessage::Type &type, std::size_t & ivalue, std::string_view & string) {
+            boost::interprocess::scoped_lock lock(m_mutex_);
+            m_valid_.wait(lock, boost::bind(&MsgBuffer::is_valid, this));
+            {
+                type = message_.type_;
+                ivalue = message_.ivalue_;
+                string = message_.string_;
             }
             valid_ = false;
             lock.unlock();
@@ -238,9 +249,7 @@ public:
         bool is_valid() const { return valid_; }
         bool is_invalid() const { return !valid_; }
 
-        CommandMessage::Type type_;
-        std::size_t ivalue_;
-        ShmString string_;
+        CommandMessage message_;
         ogawayama::stub::ErrorCode err_code_;
         VoidAllocator allocator_;
 
@@ -312,17 +321,20 @@ public:
         buffer_->unlock();
     }
 
-    void send(ogawayama::common::CommandMessage msg) {
-        buffer_->send(msg);
+    void send(ogawayama::common::CommandMessage::Type type, std::size_t ivalue = 0, std::string_view string = "") {
+        buffer_->send(type, ivalue, string);
     }
-    void recv(ogawayama::stub::ErrorCode &reply) {
-        buffer_->recv(reply);
+    void recv(ogawayama::common::CommandMessage::Type &type, std::size_t &ivalue) {
+        buffer_->recv(type, ivalue);
+    }
+    void recv(ogawayama::common::CommandMessage::Type &type, std::size_t &ivalue, std::string_view &string) {
+        buffer_->recv(type, ivalue, string);
     }
     void send(ogawayama::stub::ErrorCode err_code) {
         buffer_->send(err_code);
     }
-    void recv(ogawayama::common::CommandMessage &msg) {
-        buffer_->recv(msg);
+    void recv(ogawayama::stub::ErrorCode &reply) {
+        buffer_->recv(reply);
     }
 
 private:

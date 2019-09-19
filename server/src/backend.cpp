@@ -54,17 +54,17 @@ int backend_main(int argc, char **argv) {
     db->open(options);
 
     while(true) {
-        ogawayama::common::CommandMessage message;
+        ogawayama::common::CommandMessage::Type type;
+        std::size_t index;
         try {
-            server_ch->recv(message);
+            server_ch->recv(type, index);
             server_ch->notify();
         } catch (std::exception &ex) {
             std::cerr << __func__ << " " << __LINE__ << ": exiting \"" << ex.what() << "\"" << std::endl;
             return -1;
         }
-        std::size_t index = message.get_ivalue();
 
-        switch (message.get_type()) {
+        switch (type) {
         case ogawayama::common::CommandMessage::Type::CONNECT:
             if (workers.size() < (index + 1)) {
                 workers.resize(index + 1);
