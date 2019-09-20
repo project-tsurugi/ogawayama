@@ -205,9 +205,7 @@ void Worker::next(std::size_t rid)
 
 void Worker::clear()
 {
-    for (auto& c: cursors_) {
-        c.clear();
-    }
+    cursors_.clear();
     transaction_ = nullptr;
 }
 
