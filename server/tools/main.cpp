@@ -77,7 +77,7 @@ int main(int argc, char **argv) {
             switch (result_set->next()) {
             case ERROR_CODE::OK: {
                 std::cout << "| ";
-                for (auto& t: metadata->get_types()) {
+                for (auto t: metadata->get_types()) {
                     switch (t.get_type()) {
                     case TYPE::INT16: {
                         std::int16_t v;
