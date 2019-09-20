@@ -34,10 +34,9 @@ public:
 
     ErrorCode begin(TransactionPtr &transaction);
 
-    void get_channel_streams(ogawayama::common::ChannelStream * & request, ogawayama::common::ChannelStream * & result) const
+    void get_channel_stream(ogawayama::common::ChannelStream * & channel) const
     {
-        request = request_.get();
-        result = result_.get();
+        channel = channel_.get();
     }
 
     std::size_t get_id() const { return pgprocno_; }
@@ -46,8 +45,7 @@ private:
     Connection *envelope_;
 
     std::size_t pgprocno_;
-    std::unique_ptr<ogawayama::common::ChannelStream> request_;
-    std::unique_ptr<ogawayama::common::ChannelStream> result_;
+    std::unique_ptr<ogawayama::common::ChannelStream> channel_;
 };
 
 }  // namespace ogawayama::stub

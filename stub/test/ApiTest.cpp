@@ -53,7 +53,7 @@ TEST_F(ApiTest, use_executable_statement) {
 
     EXPECT_EQ(ERROR_CODE::OK, result_set->get_metadata(metadata));
 
-    auto md = metadata->get_types();
+    auto& md = metadata->get_types();
     EXPECT_EQ(static_cast<std::size_t>(7), md.size());
 
     EXPECT_EQ(TYPE::INT32, md.at(0).get_type());
@@ -144,7 +144,7 @@ TEST_F(ApiTest, mixing_executable_statement) {
     for(int idx=0; idx < 2; ++idx) {
         EXPECT_EQ(ERROR_CODE::OK, transaction->execute_query(query1, result_set1));
         EXPECT_EQ(ERROR_CODE::OK, result_set1->get_metadata(metadata1));
-        auto md1 = metadata1->get_types();
+        auto& md1 = metadata1->get_types();
         EXPECT_EQ(static_cast<std::size_t>(3), md1.size());
         EXPECT_EQ(TYPE::INT32, md1.at(0).get_type());
         EXPECT_EQ(static_cast<std::size_t>(4), md1.at(0).get_length());
@@ -155,7 +155,7 @@ TEST_F(ApiTest, mixing_executable_statement) {
 
         EXPECT_EQ(ERROR_CODE::OK, transaction->execute_query(query2, result_set2));
         EXPECT_EQ(ERROR_CODE::OK, result_set2->get_metadata(metadata2));
-        auto md2 = metadata1->get_types();
+        auto& md2 = metadata1->get_types();
         EXPECT_EQ(static_cast<std::size_t>(3), md2.size());
         EXPECT_EQ(TYPE::INT32, md2.at(0).get_type());
         EXPECT_EQ(static_cast<std::size_t>(4), md2.at(0).get_length());
@@ -239,7 +239,7 @@ TEST_F(ApiTest, fetch_metadata) {
     auto query = "SELECT C1+C1, C2+C2, C3||C3, C1+C2, C1+C4, C1+C5, C2+C6, C3||C7, C8 FROM T5";
     EXPECT_EQ(ERROR_CODE::OK, transaction->execute_query(query, result_set));
     EXPECT_EQ(ERROR_CODE::OK, result_set->get_metadata(metadata));
-    auto md = metadata->get_types();
+    auto& md = metadata->get_types();
     EXPECT_EQ(static_cast<std::size_t>(9), md.size());
 
     EXPECT_EQ(TYPE::INT32, md.at(0).get_type());

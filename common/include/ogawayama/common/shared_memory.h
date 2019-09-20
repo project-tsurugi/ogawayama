@@ -24,13 +24,11 @@ namespace ogawayama::common {
 namespace param {
 
 static constexpr std::size_t SEGMENT_SIZE = 100<<20; // 100 MiB (tantative)
-static constexpr std::size_t BUFFER_SIZE = 4096;     // 4K byte (tantative)
 static constexpr std::size_t MAX_NAME_LENGTH = 32;   // 64 chars (tantative, but probably enough)
 static constexpr std::size_t QUEUE_SIZE = 32;        // 32 rows (tantative) must be greater than or equal to 2
 
 static constexpr char const * server = "server";
-static constexpr char const * request = "request";
-static constexpr char const * result = "result";
+static constexpr char const * channel = "channel";
 static constexpr char const * resultset = "resultset";
 
 };  // namespace ogawayama::common::param

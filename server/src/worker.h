@@ -53,8 +53,7 @@ class Worker {
     ogawayama::common::SharedMemory *shared_memory_ptr_;
     std::size_t id_;
 
-    std::unique_ptr<ogawayama::common::ChannelStream> request_;
-    std::unique_ptr<ogawayama::common::ChannelStream> result_;
+    std::unique_ptr<ogawayama::common::ChannelStream> channel_;
 
     std::unique_ptr<umikongo::Transaction> transaction_;
     umikongo::Context* context_;

@@ -187,79 +187,85 @@ public:
             m_not_locked_.notify_one();
         }
 
-        void send(ogawayama::common::CommandMessage::Type type, std::size_t ivalue, std::string_view string) {
-            boost::interprocess::scoped_lock lock(m_mutex_);
-            m_invalid_.wait(lock, boost::bind(&MsgBuffer::is_invalid, this));
+        void send_req(ogawayama::common::CommandMessage::Type type, std::size_t ivalue, std::string_view string) {
+            boost::interprocess::scoped_lock lock(m_req_mutex_);
+            m_req_invalid_.wait(lock, boost::bind(&MsgBuffer::is_req_invalid, this));
             {
                 message_.type_ = type;
                 message_.ivalue_ = ivalue;
                 message_.string_ = string;
             }
-            valid_ = true;
+            req_valid_ = true;
             lock.unlock();
-            m_valid_.notify_one();
+            m_req_valid_.notify_one();
         }
-        void send(ogawayama::stub::ErrorCode err_code) {
-            boost::interprocess::scoped_lock lock(m_mutex_);
-            m_invalid_.wait(lock, boost::bind(&MsgBuffer::is_invalid, this));
+        void send_ack(ogawayama::stub::ErrorCode err_code) {
+            boost::interprocess::scoped_lock lock(m_ack_mutex_);
+            m_ack_invalid_.wait(lock, boost::bind(&MsgBuffer::is_ack_invalid, this));
             {
                 err_code_ = err_code;
             }
-            valid_ = true;
+            ack_valid_ = true;
             lock.unlock();
-            m_valid_.notify_one();
+            m_ack_valid_.notify_one();
         }
-        void recv(ogawayama::common::CommandMessage::Type &type, std::size_t & ivalue) {
-            boost::interprocess::scoped_lock lock(m_mutex_);
-            m_valid_.wait(lock, boost::bind(&MsgBuffer::is_valid, this));
+        void recv_req(ogawayama::common::CommandMessage::Type &type, std::size_t & ivalue) {
+            boost::interprocess::scoped_lock lock(m_req_mutex_);
+            m_req_valid_.wait(lock, boost::bind(&MsgBuffer::is_req_valid, this));
             {
                 type = message_.type_;
                 ivalue = message_.ivalue_;
             }
-            valid_ = false;
+            req_valid_ = false;
             lock.unlock();
-            m_invalid_.notify_one();
+            m_req_invalid_.notify_one();
         }
-        void recv(ogawayama::common::CommandMessage::Type &type, std::size_t & ivalue, std::string_view & string) {
-            boost::interprocess::scoped_lock lock(m_mutex_);
-            m_valid_.wait(lock, boost::bind(&MsgBuffer::is_valid, this));
+        void recv_req(ogawayama::common::CommandMessage::Type &type, std::size_t & ivalue, std::string_view & string) {
+            boost::interprocess::scoped_lock lock(m_req_mutex_);
+            m_req_valid_.wait(lock, boost::bind(&MsgBuffer::is_req_valid, this));
             {
                 type = message_.type_;
                 ivalue = message_.ivalue_;
                 string = message_.string_;
             }
-            valid_ = false;
+            req_valid_ = false;
             lock.unlock();
-            m_invalid_.notify_one();
+            m_req_invalid_.notify_one();
         }
-        void recv(ogawayama::stub::ErrorCode &reply) {
-            boost::interprocess::scoped_lock lock(m_mutex_);
-            m_valid_.wait(lock, boost::bind(&MsgBuffer::is_valid, this));
+        void recv_ack(ogawayama::stub::ErrorCode &reply) {
+            boost::interprocess::scoped_lock lock(m_ack_mutex_);
+            m_ack_valid_.wait(lock, boost::bind(&MsgBuffer::is_ack_valid, this));
             {
                 reply = err_code_;
             }
-            valid_ = false;
+            ack_valid_ = false;
             lock.unlock();
-            m_invalid_.notify_one();
+            m_ack_invalid_.notify_one();
         }
         
     private:
         bool is_notified() const { return notified_; }
         bool is_not_locked() const { return !locked_; }
-        bool is_valid() const { return valid_; }
-        bool is_invalid() const { return !valid_; }
+        bool is_req_valid() const { return req_valid_; }
+        bool is_ack_valid() const { return ack_valid_; }
+        bool is_req_invalid() const { return !req_valid_; }
+        bool is_ack_invalid() const { return !ack_valid_; }
 
         CommandMessage message_;
         ogawayama::stub::ErrorCode err_code_;
 
-        boost::interprocess::interprocess_mutex m_mutex_{};
+        boost::interprocess::interprocess_mutex m_req_mutex_{};
+        boost::interprocess::interprocess_mutex m_ack_mutex_{};
         boost::interprocess::interprocess_mutex m_notify_mutex_{};
         boost::interprocess::interprocess_mutex m_lock_mutex_{};
         boost::interprocess::interprocess_condition m_not_notify_{};
         boost::interprocess::interprocess_condition m_not_locked_{};
-        boost::interprocess::interprocess_condition m_valid_{};
-        boost::interprocess::interprocess_condition m_invalid_{};
-        bool valid_{false};
+        boost::interprocess::interprocess_condition m_req_valid_{};
+        boost::interprocess::interprocess_condition m_req_invalid_{};
+        boost::interprocess::interprocess_condition m_ack_valid_{};
+        boost::interprocess::interprocess_condition m_ack_invalid_{};
+        bool req_valid_{false};
+        bool ack_valid_{false};
         bool notified_{false};
         bool locked_{false};
     };
@@ -320,20 +326,20 @@ public:
         buffer_->unlock();
     }
 
-    void send(ogawayama::common::CommandMessage::Type type, std::size_t ivalue = 0, std::string_view string = "") {
-        buffer_->send(type, ivalue, string);
+    void send_req(ogawayama::common::CommandMessage::Type type, std::size_t ivalue = 0, std::string_view string = "") {
+        buffer_->send_req(type, ivalue, string);
     }
-    void recv(ogawayama::common::CommandMessage::Type &type, std::size_t &ivalue) {
-        buffer_->recv(type, ivalue);
+    void recv_req(ogawayama::common::CommandMessage::Type &type, std::size_t &ivalue) {
+        buffer_->recv_req(type, ivalue);
     }
-    void recv(ogawayama::common::CommandMessage::Type &type, std::size_t &ivalue, std::string_view &string) {
-        buffer_->recv(type, ivalue, string);
+    void recv_req(ogawayama::common::CommandMessage::Type &type, std::size_t &ivalue, std::string_view &string) {
+        buffer_->recv_req(type, ivalue, string);
     }
-    void send(ogawayama::stub::ErrorCode err_code) {
-        buffer_->send(err_code);
+    void send_ack(ogawayama::stub::ErrorCode err_code) {
+        buffer_->send_ack(err_code);
     }
-    void recv(ogawayama::stub::ErrorCode &reply) {
-        buffer_->recv(reply);
+    void recv_ack(ogawayama::stub::ErrorCode &reply) {
+        buffer_->recv_ack(reply);
     }
 
 private:
