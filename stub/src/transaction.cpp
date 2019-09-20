@@ -21,7 +21,7 @@ namespace ogawayama::stub {
 Transaction::Impl::Impl(Transaction *transaction) : envelope_(transaction)
 {
     result_sets_ = std::make_unique<std::vector<std::shared_ptr<ResultSet>>>();
-    envelope_->get_manager()->get_impl()->get_channel_streams(request_, result_);
+    envelope_->get_manager()->get_impl()->get_channel_stream(channel_);
 }
 
 /**
@@ -30,9 +30,9 @@ Transaction::Impl::Impl(Transaction *transaction) : envelope_(transaction)
  * @return true in error, otherwise false
  */
 ErrorCode Transaction::Impl::execute_statement(std::string_view statement) {
-    request_->send(ogawayama::common::CommandMessage::Type::EXECUTE_STATEMENT, 1, statement);
+    channel_->send_req(ogawayama::common::CommandMessage::Type::EXECUTE_STATEMENT, 1, statement);
     ErrorCode reply;
-    result_->recv(reply);
+    channel_->recv_ack(reply);
     return reply;
 }
 
@@ -54,11 +54,11 @@ ErrorCode Transaction::Impl::execute_query(std::string_view query, std::shared_p
     result_sets_->emplace_back(result_set);
 
  found:
-    request_->send(ogawayama::common::CommandMessage::Type::EXECUTE_QUERY,
+    channel_->send_req(ogawayama::common::CommandMessage::Type::EXECUTE_QUERY,
                    static_cast<std::int32_t>(result_set->get_impl()->get_id()),
                    query);
     ErrorCode reply;
-    result_->recv(reply);
+    channel_->recv_ack(reply);
     if (reply != ErrorCode::OK) {
         return reply;
     }
@@ -71,10 +71,10 @@ ErrorCode Transaction::Impl::execute_query(std::string_view query, std::shared_p
  */
 ErrorCode Transaction::Impl::commit()
 {
-    request_->send(ogawayama::common::CommandMessage::Type::COMMIT);
+    channel_->send_req(ogawayama::common::CommandMessage::Type::COMMIT);
     clear();
     ErrorCode reply;
-    result_->recv(reply);
+    channel_->recv_ack(reply);
     return reply;
 }
 
@@ -84,10 +84,10 @@ ErrorCode Transaction::Impl::commit()
  */
 ErrorCode Transaction::Impl::rollback()
 {
-    request_->send(ogawayama::common::CommandMessage::Type::ROLLBACK);
+    channel_->send_req(ogawayama::common::CommandMessage::Type::ROLLBACK);
     clear();
     ErrorCode reply;
-    result_->recv(reply);
+    channel_->recv_ack(reply);
     return reply;
 }
 

@@ -40,16 +40,12 @@ int main(int argc, char **argv) {
     gflags::ParseCommandLineFlags(&argc, &argv, true);
 
     StubPtr stub = make_stub(FLAGS_dbname.c_str());
-    if (FLAGS_terminate) {
-        stub->get_impl()->get_channel()->send(ogawayama::common::CommandMessage::Type::TERMINATE);
-    }
-
     if (FLAGS_dump) {
-        stub->get_impl()->get_channel()->send(ogawayama::common::CommandMessage::Type::DUMP_DATABASE);
+        stub->get_impl()->get_channel()->send_req(ogawayama::common::CommandMessage::Type::DUMP_DATABASE);
     }
 
     if (FLAGS_load) {
-        stub->get_impl()->get_channel()->send(ogawayama::common::CommandMessage::Type::LOAD_DATABASE);
+        stub->get_impl()->get_channel()->send_req(ogawayama::common::CommandMessage::Type::LOAD_DATABASE);
     }
 
     if (FLAGS_statement != "") {
@@ -152,7 +148,11 @@ int main(int argc, char **argv) {
             }
         }
     }
-
  finish:
+
+    if (FLAGS_terminate) {
+        stub->get_impl()->get_channel()->send_req(ogawayama::common::CommandMessage::Type::TERMINATE);
+    }
+
     return 0;
 }

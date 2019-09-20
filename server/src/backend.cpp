@@ -57,7 +57,7 @@ int backend_main(int argc, char **argv) {
         ogawayama::common::CommandMessage::Type type;
         std::size_t index;
         try {
-            server_ch->recv(type, index);
+            server_ch->recv_req(type, index);
             server_ch->notify();
         } catch (std::exception &ex) {
             std::cerr << __func__ << " " << __LINE__ << ": exiting \"" << ex.what() << "\"" << std::endl;

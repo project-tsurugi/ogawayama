@@ -27,10 +27,8 @@ namespace ogawayama::server {
 Worker::Worker(umikongo::Database *db, ogawayama::common::SharedMemory *shm, std::size_t id) : db_(db), shared_memory_ptr_(shm), id_(id)
 {
     auto managed_shared_memory_ptr = shared_memory_ptr_->get_managed_shared_memory_ptr();
-    request_ = std::make_unique<ogawayama::common::ChannelStream>(shared_memory_ptr_->shm_name(ogawayama::common::param::request, id_).c_str(), managed_shared_memory_ptr);
-    result_ = std::make_unique<ogawayama::common::ChannelStream>(shared_memory_ptr_->shm_name(ogawayama::common::param::result, id_).c_str(), managed_shared_memory_ptr);
-
-    result_->send(ERROR_CODE::OK);
+    channel_ = std::make_unique<ogawayama::common::ChannelStream>(shared_memory_ptr_->shm_name(ogawayama::common::param::channel, id_).c_str(), managed_shared_memory_ptr);
+    channel_->send_ack(ERROR_CODE::OK);
 }
 
 void Worker::run()
@@ -40,7 +38,7 @@ void Worker::run()
         std::size_t ivalue;
         std::string_view string;
         try {
-            request_->recv(type, ivalue, string);
+            channel_->recv_req(type, ivalue, string);
         } catch (std::exception &ex) {
             std::cerr << __func__ << " " << __LINE__ << ": exiting \"" << ex.what() << "\"" << std::endl;
             return;
@@ -55,26 +53,26 @@ void Worker::run()
             break;
         case ogawayama::common::CommandMessage::Type::NEXT:
             next(ivalue);
-            result_->send(ERROR_CODE::OK);
+            channel_->send_ack(ERROR_CODE::OK);
             break;
         case ogawayama::common::CommandMessage::Type::COMMIT:
             if (!transaction_) {
-                result_->send(ERROR_CODE::NO_TRANSACTION);
+                channel_->send_ack(ERROR_CODE::NO_TRANSACTION);
             }
             transaction_->commit();
-            result_->send(ERROR_CODE::OK);
+            channel_->send_ack(ERROR_CODE::OK);
             clear();
             break;
         case ogawayama::common::CommandMessage::Type::ROLLBACK:
             if (!transaction_) {
-                result_->send(ERROR_CODE::NO_TRANSACTION);
+                channel_->send_ack(ERROR_CODE::NO_TRANSACTION);
             }
             transaction_->abort();
-            result_->send(ERROR_CODE::OK);
+            channel_->send_ack(ERROR_CODE::OK);
             clear();
             break;
         case ogawayama::common::CommandMessage::Type::DISCONNECT:
-            request_->notify();
+            channel_->notify();
             return;
         default:
             std::cerr << "recieved an illegal command message" << std::endl;
@@ -91,14 +89,14 @@ void Worker::execute_statement(std::string_view sql)
     }
     try {
         context_->execute_statement(sql);
-        result_->send(ERROR_CODE::OK);
+        channel_->send_ack(ERROR_CODE::OK);
     } catch (umikongo::Exception& e) {
         if (e.reason() == umikongo::Exception::ReasonCode::ERR_UNSUPPORTED) {
-            result_->send(ERROR_CODE::UNSUPPORTED);
+            channel_->send_ack(ERROR_CODE::UNSUPPORTED);
             return;
         }
         std::cerr << e.what() << std::endl;
-        result_->send(ERROR_CODE::UNKNOWN);
+        channel_->send_ack(ERROR_CODE::UNKNOWN);
     }
 }
 
@@ -156,14 +154,14 @@ void Worker::execute_query(std::string_view sql, std::size_t rid)
         }
     
         cursors_.at(rid).iterator_ = context_->execute_query(cursors_.at(rid).executable_.get());
-        result_->send(ERROR_CODE::OK);
+        channel_->send_ack(ERROR_CODE::OK);
     } catch (umikongo::Exception& e) {
         if (e.reason() == umikongo::Exception::ReasonCode::ERR_UNSUPPORTED) {
-            result_->send(ERROR_CODE::UNSUPPORTED);
+            channel_->send_ack(ERROR_CODE::UNSUPPORTED);
             return;
         }
         std::cerr << e.what() << std::endl;
-        result_->send(ERROR_CODE::UNKNOWN);
+        channel_->send_ack(ERROR_CODE::UNKNOWN);
     }
 }
 
@@ -199,7 +197,7 @@ void Worker::next(std::size_t rid)
         cursors_.at(rid).row_queue_->push_writing_row();
     } catch (umikongo::Exception& e) {
         std::cerr << e.what() << std::endl;
-        result_->send(ERROR_CODE::UNKNOWN);
+        channel_->send_ack(ERROR_CODE::UNKNOWN);
     }
 }
 

@@ -34,6 +34,6 @@ int main(int argc, char** argv) {
     StubPtr stub;
     stub = make_stub();
 
-    stub->get_impl()->get_channel()->send(ogawayama::common::CommandMessage::Type::TERMINATE);
+    stub->get_impl()->get_channel()->send_req(ogawayama::common::CommandMessage::Type::TERMINATE);
     return retv;
 }
