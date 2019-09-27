@@ -15,7 +15,7 @@ API仕様としては、一つのStubオブジェクトに複数のConnectionオ
 Stub状態とConnection状態の２種類で規定する。
 
 ### Stub状態
-* Ready：接続先serverの存在を確認し、接続する準備が整った状態
+* Ready：接続先serverの存在を確認し、接続する準備が整った（get_connection()の実行が可能になった）状態
 
 ### Connection状態
 * Undefined：Connectionオブジェクトが取得されていない状態。
@@ -68,14 +68,14 @@ stubがAPI（次節）経由で受け付けたフロントエンドからの処�
 * 条件
   * 事前条件：Connection状態 == Connected
   * 事後条件：error_codeは処理結果を示す値、error_codeがOKの場合はConnection状態はTxStartedとなる
-  * 不変条件：Stub状態（任意）
+  * 不変条件：Stub状態 == Ready
 
 ### error_code = transaction->execute_statement(std::string_view sql_statement)
 * 処理内容：transactionで示されるトランザクション処理としてsql_statementを実行する
 * 条件
   * 事前条件：なし
   * 事後条件：DBサーバにてsql_statementを実行、error_codeには処理結果を示す値が入る
-  * 不変条件：Stub状態（任意）、Connection状態 == TxStarted
+  * 不変条件：Stub状態 == Ready、Connection状態 == TxStarted
 
 ### error_code = transaction->execute_query(std::string_view sql_query, result_set)
 * 処理内容：transactionで示されるトランザクション処理としてsql_queryを実行する
@@ -84,14 +84,14 @@ stubがAPI（次節）経由で受け付けたフロントエンドからの処�
   　　　　　なお、与えられたResultSetオブジェクト状態が（前に実行されたexecute_query()により）Opened等となっている場合、  
   　　　　　TransactionオブジェクトはResultSetオブジェクト状態をInvalidに遷移させたうえでexecute_query()の実行を開始する。
   * 事後条件：error_codeには処理結果を示す値が入る、error_codeがOKの場合はResultSetオブジェクト状態はOpenedとなる。
-  * 不変条件：Stub状態（任意）、Connection状態 == TxStarted
+  * 不変条件：Stub状態 == Ready、Connection状態 == TxStarted
 
 ### error_code = result_set->get_metadata(metadata)
 * 処理内容：result_setのメタデータ（tuple情報）を取り出す
 * 条件
   * 事前条件：なし
   * 事後条件：error_codeは処理結果を示す値、error_codeがOKの場合はmetadataに有効な値が入る。
-  * 不変条件：Stub状態（任意）、Connection状態 == TxStarted、  
+  * 不変条件：Stub状態 == Ready、Connection状態 == TxStarted、  
   　　　　　ResultSetオブジェクト状態 == Opened, Valid, or EndOfRow（変化しない）
 
 ### error_code = result_set->next()
@@ -101,7 +101,7 @@ stubがAPI（次節）経由で受け付けたフロントエンドからの処�
   * 事後条件：error_codeは処理結果を示す値が入る
     * error_codeがOKの場合：ResultSetオブジェクト状態はValid、読み込み対象column番号は1となる
     * error_codeがEndOfRowの場合：ResultSetオブジェクト状態はEndOfRow
-  * 不変条件：Stub状態（任意）、Connection状態 == TxStarted  
+  * 不変条件：Stub状態 == Ready、Connection状態 == TxStarted  
   　　cf. ResultSetオブジェクト状態がEndOfRowのときにnext()を実行したときの動作は不定。  
 
 ### error_code = result_set->next_column(v)
@@ -114,7 +114,7 @@ stubがAPI（次節）経由で受け付けたフロントエンドからの処�
     * error_codeがCOLUMN_WAS_NULLの場合：vは不定、読み込み対象column番号はn+1となる
     * error_codeがEND_OF_COLUMNの場合：vは不定、読み込み対象column番号nは変化しない
     * error_codeがCOLUMN_TYPE_MISMATCHの場合：vは不定、読み込み対象column番号はn+1となる
-  * 不変条件：Stub状態（任意）、Connection状態 == TxStarted、  
+  * 不変条件：Stub状態 == Ready、Connection状態 == TxStarted、  
 　　　　　ResultSetオブジェクト状態 == Valid
 
 ### error_code = transaction->commit()
@@ -123,6 +123,7 @@ stubがAPI（次節）経由で受け付けたフロントエンドからの処�
   * 事前条件：Connection状態 == TxStarted  
   * 事後条件：Connection状態 == Connected、  
   　　　　　トランザクション処理中にopenしたResultSetオブジェクトの状態は総てInvalidとなる。
+  * 不変条件：Stub状態 == Ready
 
 ### error_code = transaction->rollback()
 * 処理内容：transactionで示されるトランザクション処理をabortする
