@@ -32,9 +32,9 @@ void err_exit(int line)
 }
 
 int main() {
-    stub = make_stub();
-    
-    if (stub->get_connection(12, connection) != ERROR_CODE::OK) { err_exit(__LINE__); }
+    if (make_stub(stub) != ERROR_CODE::OK) { err_exit(__LINE__); }
+
+    if (stub->get_connection(connection, 12) != ERROR_CODE::OK) { err_exit(__LINE__); }
 
     if (connection->begin(transaction) != ERROR_CODE::OK) { err_exit(__LINE__); }
 

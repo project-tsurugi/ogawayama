@@ -248,7 +248,8 @@ public:
      * @param connection returns a connection class
      * @return error code defined in error_code.h
      */
-    ErrorCode get_connection(std::size_t, ConnectionPtr &);
+    ErrorCode get_connection(ConnectionPtr &, std::size_t);
+    ErrorCode get_connection(std::size_t n, ConnectionPtr &connection) { return get_connection(connection, n); }  // only for backwark compatibility
 
  private:
     class Impl;
@@ -265,6 +266,7 @@ namespace ogawayama::common::param {
 }  // namespace ogawayama::common::param
 
 using StubPtr = std::unique_ptr<ogawayama::stub::Stub>;
-inline static StubPtr make_stub(std::string_view name = ogawayama::common::param::SHARED_MEMORY_NAME) { return std::make_unique<ogawayama::stub::Stub>(name); }
+ERROR_CODE make_stub(StubPtr &, std::string_view name = ogawayama::common::param::SHARED_MEMORY_NAME);
+inline static StubPtr make_stub(std::string_view name = ogawayama::common::param::SHARED_MEMORY_NAME) { return std::make_unique<ogawayama::stub::Stub>(name); }  // only for backwark compatibility
 
 #endif  // STUB_API_H_
