@@ -51,7 +51,7 @@ Stub::~Stub() = default;
 /**
  * @brief connect to the DB and get Connection class.
  */
-ErrorCode Stub::get_connection(std::size_t pgprocno, ConnectionPtr & connection)
+ErrorCode Stub::get_connection(ConnectionPtr & connection, std::size_t pgprocno)
 {    
     return impl_->get_connection(pgprocno, connection);
 }

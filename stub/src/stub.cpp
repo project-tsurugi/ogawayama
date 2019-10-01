@@ -31,7 +31,7 @@ Stub::Impl::Impl(Stub *stub, std::string_view database_name) : envelope_(stub)
  * @param connection returns a connection class
  * @return true in error, otherwise false
  */
-ErrorCode Stub::Impl::get_connection(std::size_t pgprocno, ConnectionPtr & connection)
+ErrorCode Stub::Impl::get_connection(ConnectionPtr & connection, std::size_t pgprocno)
 {
     connection = std::make_unique<Connection>(this->envelope_, pgprocno);
 
@@ -56,9 +56,16 @@ Stub::~Stub() = default;
 /**
  * @brief connect to the DB and get Connection class.
  */
-ErrorCode Stub::get_connection(std::size_t pgprocno, ConnectionPtr & connection)
+ErrorCode Stub::get_connection(ConnectionPtr & connection, std::size_t pgprocno)
 {    
-    return impl_->get_connection(pgprocno, connection);
+    return impl_->get_connection(connection, pgprocno);
 }
 
 }  // namespace ogawayama::stub
+
+// Outside the namespace
+ERROR_CODE make_stub(StubPtr &stub, std::string_view name)
+{
+    stub = std::make_unique<ogawayama::stub::Stub>(name);
+    return ERROR_CODE::OK;
+}
