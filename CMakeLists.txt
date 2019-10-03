@@ -22,6 +22,7 @@ project(ogawayama
 list(APPEND CMAKE_MODULE_PATH "${PROJECT_SOURCE_DIR}/cmake")
 
 option(BUILD_SHARED_LIBS "build shared libraries instead of static" ON)
+option(BUILD_STUB_ONLY "build the stub only" OFF)
 option(BUILD_TESTS "Build test programs" ON)
 option(FORCE_INSTALL_RPATH "Force add lib dir of custom prefixes to INSTALL_RPATH" OFF)
 
@@ -80,6 +81,8 @@ install(
 )
 
 add_subdirectory(stub)
-add_subdirectory(server)
-add_subdirectory(examples)
-add_subdirectory(third_party)
+if(NOT BUILD_STUB_ONLY)
+    add_subdirectory(server)
+    add_subdirectory(examples)
+    add_subdirectory(third_party)
+endif()

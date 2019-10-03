@@ -19,6 +19,7 @@ ninja
 ```
 
 available options:
+* `-DBUILD_STUB_ONLY=ON` - build the stub only
 * `-DBUILD_TESTS=OFF` - never build test programs
 * `-DCMAKE_PREFIX_PATH=<installation directory>` - indicate prerequiste installation directory
 * for debugging only
