@@ -19,6 +19,7 @@ ninja
 ```
 
 available options:
+* `-DBUILD_STUB_ONLY=ON` - build the stub only
 * `-DBUILD_TESTS=OFF` - never build test programs
 * `-DFORCE_INSTALL_RPATH=ON` - force set RPATH for non-default library paths
 * `-DINSTALL_EXAMPLES=ON` - also install example programs
