@@ -9,7 +9,7 @@ TPC-Cベンチマークの表データを生成するツール
 | オプション名 | 型 | 意味 | デフォルト値 | 
 |-:|:-|:-|:-|
 | generate | bool | 表データを作成する | false |
-| warehouse | bool | TPC-Cのスケールファクタ | 0 |
+| warehouse | int | TPC-Cのスケールファクタ | 0 |
 
 ## TPC-Cデータの作成とセーブ
 ogawayama-serverを立ち上げた状態で、以下を順に実行する。
