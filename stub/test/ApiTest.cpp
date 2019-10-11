@@ -26,10 +26,9 @@ TEST_F(ApiTest, use_executable_statement) {
     ResultSetPtr result_set;
     MetadataPtr metadata;
 
-    stub = make_stub();
-    EXPECT_NE(nullptr, stub);
+    EXPECT_EQ(ERROR_CODE::OK, make_stub(stub));
 
-    EXPECT_EQ(ERROR_CODE::OK, stub->get_connection(12, connection));
+    EXPECT_EQ(ERROR_CODE::OK, stub->get_connection(connection, 12));
 
     EXPECT_EQ(ERROR_CODE::OK, connection->begin(transaction));
 
@@ -115,10 +114,9 @@ TEST_F(ApiTest, mixing_executable_statement) {
     MetadataPtr metadata1;
     MetadataPtr metadata2;
 
-    stub = make_stub();
-    EXPECT_NE(nullptr, stub);
+    EXPECT_EQ(ERROR_CODE::OK, make_stub(stub));
 
-    EXPECT_EQ(ERROR_CODE::OK, stub->get_connection(13, connection));
+    EXPECT_EQ(ERROR_CODE::OK, stub->get_connection(connection, 13));
 
     EXPECT_EQ(ERROR_CODE::OK, connection->begin(transaction));
 
@@ -212,10 +210,9 @@ TEST_F(ApiTest, fetch_metadata) {
     ResultSetPtr result_set;
     MetadataPtr metadata;
 
-    stub = make_stub();
-    EXPECT_NE(nullptr, stub);
+    EXPECT_EQ(ERROR_CODE::OK, make_stub(stub));
 
-    EXPECT_EQ(ERROR_CODE::OK, stub->get_connection(14, connection));
+    EXPECT_EQ(ERROR_CODE::OK, stub->get_connection(connection, 14));
 
     EXPECT_EQ(ERROR_CODE::OK, connection->begin(transaction));
 

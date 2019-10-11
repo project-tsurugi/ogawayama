@@ -32,7 +32,7 @@ int main(int argc, char** argv) {
 
     auto retv = RUN_ALL_TESTS();
     StubPtr stub;
-    stub = make_stub();
+    EXPECT_EQ(ERROR_CODE::OK, make_stub(stub));
 
     stub->get_impl()->get_channel()->send_req(ogawayama::common::CommandMessage::Type::TERMINATE);
     return retv;

@@ -38,9 +38,8 @@ int main(int argc, char **argv) {
     gflags::SetUsageMessage("ogawayama database server");
     gflags::ParseCommandLineFlags(&argc, &argv, true);
 
-    stub = make_stub();
-    
-    if (stub->get_connection(12, connection) != ERROR_CODE::OK) { err_exit(__LINE__); }
+    if (make_stub(stub) != ERROR_CODE::OK) { err_exit(__LINE__); }
+    if (stub->get_connection(connection, 12) != ERROR_CODE::OK) { err_exit(__LINE__); }
     if (ogawayama::tpcc::tpcc_tables(connection.get()) != 0) { err_exit(__LINE__); }
     if (FLAGS_generate) {
         if (FLAGS_warehouse > 0) {
