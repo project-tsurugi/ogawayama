@@ -153,7 +153,11 @@ public:
          */
         void wait() {
             boost::interprocess::scoped_lock lock(m_notify_mutex_);
-            m_not_notify_.wait(lock, boost::bind(&MsgBuffer::is_notified, this));
+            while (true) {
+                if (m_not_notify_.timed_wait(lock, timeout(), boost::bind(&MsgBuffer::is_notified, this))) {
+                    break;
+                }
+            }
             lock.unlock();
         }
 
@@ -172,7 +176,11 @@ public:
          */
         void lock() {
             boost::interprocess::scoped_lock lock(m_lock_mutex_);
-            m_not_locked_.wait(lock, boost::bind(&MsgBuffer::is_not_locked, this));
+            while (true) {
+                if (m_not_locked_.timed_wait(lock, timeout(), boost::bind(&MsgBuffer::is_not_locked, this))) {
+                    break;
+                }
+            }
             locked_ = true;
             lock.unlock();
         }
@@ -189,7 +197,11 @@ public:
 
         void send_req(ogawayama::common::CommandMessage::Type type, std::size_t ivalue, std::string_view string) {
             boost::interprocess::scoped_lock lock(m_req_mutex_);
-            m_req_invalid_.wait(lock, boost::bind(&MsgBuffer::is_req_invalid, this));
+            while (true) {
+                if (m_req_invalid_.timed_wait(lock, timeout(), boost::bind(&MsgBuffer::is_req_invalid, this))) {
+                    break;
+                }
+            }
             {
                 message_.type_ = type;
                 message_.ivalue_ = ivalue;
@@ -201,7 +213,11 @@ public:
         }
         void send_ack(ogawayama::stub::ErrorCode err_code) {
             boost::interprocess::scoped_lock lock(m_ack_mutex_);
-            m_ack_invalid_.wait(lock, boost::bind(&MsgBuffer::is_ack_invalid, this));
+            while (true) {
+                if (m_ack_invalid_.timed_wait(lock, timeout(), boost::bind(&MsgBuffer::is_ack_invalid, this))) {
+                    break;
+                }
+            }
             {
                 err_code_ = err_code;
             }
@@ -211,7 +227,11 @@ public:
         }
         void recv_req(ogawayama::common::CommandMessage::Type &type, std::size_t & ivalue) {
             boost::interprocess::scoped_lock lock(m_req_mutex_);
-            m_req_valid_.wait(lock, boost::bind(&MsgBuffer::is_req_valid, this));
+            while (true) {
+                if (m_req_valid_.timed_wait(lock, timeout(), boost::bind(&MsgBuffer::is_req_valid, this))) {
+                    break;
+                }
+            }
             {
                 type = message_.type_;
                 ivalue = message_.ivalue_;
@@ -222,7 +242,11 @@ public:
         }
         void recv_req(ogawayama::common::CommandMessage::Type &type, std::size_t & ivalue, std::string_view & string) {
             boost::interprocess::scoped_lock lock(m_req_mutex_);
-            m_req_valid_.wait(lock, boost::bind(&MsgBuffer::is_req_valid, this));
+            while (true) {
+                if (m_req_valid_.timed_wait(lock, timeout(), boost::bind(&MsgBuffer::is_req_valid, this))) {
+                    break;
+                }
+            }
             {
                 type = message_.type_;
                 ivalue = message_.ivalue_;
@@ -234,7 +258,11 @@ public:
         }
         void recv_ack(ogawayama::stub::ErrorCode &reply) {
             boost::interprocess::scoped_lock lock(m_ack_mutex_);
-            m_ack_valid_.wait(lock, boost::bind(&MsgBuffer::is_ack_valid, this));
+            while (true) {
+                if (m_ack_valid_.timed_wait(lock, timeout(), boost::bind(&MsgBuffer::is_ack_valid, this))) {
+                    break;
+                }
+            }
             {
                 reply = err_code_;
             }
@@ -250,6 +278,7 @@ public:
         bool is_ack_valid() const { return ack_valid_; }
         bool is_req_invalid() const { return !req_valid_; }
         bool is_ack_invalid() const { return !ack_valid_; }
+        boost::system_time timeout() { return boost::get_system_time() + boost::posix_time::milliseconds(param::TIMEOUT); }
 
         CommandMessage message_;
         ogawayama::stub::ErrorCode err_code_;

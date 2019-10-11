@@ -79,7 +79,11 @@ namespace ogawayama::common {
             {
                 if(!is_not_full()) {
                     boost::interprocess::scoped_lock lock(m_mutex_);
-                    m_not_full_.wait(lock, boost::bind(&SpscQueue::is_not_full, this));
+                    while (true) {
+                        if (m_not_full_.timed_wait(lock, timeout(), boost::bind(&SpscQueue::is_not_full, this))) {
+                            break;
+                        }
+                    }
                 }
                 std::atomic_thread_fence(std::memory_order_acquire);
                 pushed_++;
@@ -96,7 +100,11 @@ namespace ogawayama::common {
                 get_current_row().clear();
                 if(!is_not_empty()) {
                     boost::interprocess::scoped_lock lock(m_mutex_);
-                    m_not_empty_.wait(lock, boost::bind(&SpscQueue::is_not_empty, this));
+                    while (true) {
+                        if (m_not_empty_.timed_wait(lock, timeout(), boost::bind(&SpscQueue::is_not_empty, this))) {
+                            break;
+                        }
+                    }
                 }
                 std::atomic_thread_fence(std::memory_order_acquire);
                 poped_++;
@@ -122,7 +130,11 @@ namespace ogawayama::common {
                 if(!is_not_full()) {
                     boost::interprocess::scoped_lock lock(m_mutex_);
                     if(!is_not_full()) {
-                        m_not_full_.wait(lock, boost::bind(&SpscQueue::is_not_full, this));
+                        while (true) {
+                            if (m_not_full_.timed_wait(lock, timeout(), boost::bind(&SpscQueue::is_not_full, this))) {
+                                break;
+                            }
+                        }
                     }
                     lock.unlock();
                 }
@@ -151,6 +163,7 @@ namespace ogawayama::common {
             bool is_not_full() const { return (pushed_ - poped_) < (param::QUEUE_SIZE - 1); }
             bool was_full() const { return (pushed_ - poped_) == (param::QUEUE_SIZE - 2); }
             std::size_t index(std::size_t n) const { return n %  param::QUEUE_SIZE; }
+            boost::system_time timeout() { return boost::get_system_time() + boost::posix_time::milliseconds(param::TIMEOUT); }
             
             ShmQueue m_container_;
             ogawayama::stub::Metadata m_types_;
