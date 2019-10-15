@@ -159,7 +159,7 @@ public:
                     break;
                 }
                 if (!is_alive_()) {
-                    std::abort();
+                    throw SharedMemoryException("shared memory lost");
                 }
             }
             lock.unlock();
@@ -185,7 +185,7 @@ public:
                     break;
                 }
                 if (!is_alive_()) {
-                    std::abort();
+                    throw SharedMemoryException("shared memory lost");
                 }
             }
             locked_ = true;
@@ -209,7 +209,7 @@ public:
                     break;
                 }
                 if (!is_alive_()) {
-                    std::abort();
+                    throw SharedMemoryException("shared memory lost");
                 }
             }
             {
@@ -228,7 +228,7 @@ public:
                     break;
                 }
                 if (!is_alive_()) {
-                    std::abort();
+                    throw SharedMemoryException("shared memory lost");
                 }
             }
             {
@@ -245,7 +245,7 @@ public:
                     break;
                 }
                 if (!is_alive_()) {
-                    std::abort();
+                    throw SharedMemoryException("shared memory lost");
                 }
             }
             {
@@ -263,7 +263,7 @@ public:
                     break;
                 }
                 if (!is_alive_()) {
-                    std::abort();
+                    throw SharedMemoryException("shared memory lost");
                 }
             }
             {
@@ -282,7 +282,7 @@ public:
                     break;
                 }
                 if (!is_alive_()) {
-                    std::abort();
+                    throw SharedMemoryException("shared memory lost");
                 }
             }
             {
@@ -336,7 +336,9 @@ public:
             strncpy(name_, name, param::MAX_NAME_LENGTH);
         } else {
             buffer_ = mem->find<MsgBuffer>(name).first;
-            assert(buffer_);
+            if (buffer_ == nullptr) {
+                throw SharedMemoryException("can't find shared memory");
+            }
         }
     }
     ChannelStream(char const* name, boost::interprocess::managed_shared_memory *mem) : ChannelStream(name, mem, false) {}

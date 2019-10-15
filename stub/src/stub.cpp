@@ -66,6 +66,12 @@ ErrorCode Stub::get_connection(ConnectionPtr & connection, std::size_t pgprocno)
 // Outside the namespace
 ERROR_CODE make_stub(StubPtr &stub, std::string_view name)
 {
-    stub = std::make_unique<ogawayama::stub::Stub>(name);
+    try {
+        stub = std::make_unique<ogawayama::stub::Stub>(name);
+    }
+    catch (ogawayama::common::SharedMemoryException& e) {
+        std::cerr << e.what() << std::endl;
+        return ERROR_CODE::SERVER_FAILURE;
+    }
     return ERROR_CODE::OK;
 }

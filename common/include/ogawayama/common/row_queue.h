@@ -85,7 +85,7 @@ namespace ogawayama::common {
                             break;
                         }
                         if (!is_alive_()) {
-                            std::abort();
+                            throw SharedMemoryException("shared memory lost");
                         }
                     }
                 }
@@ -109,7 +109,7 @@ namespace ogawayama::common {
                             break;
                         }
                         if (!is_alive_()) {
-                            std::abort();
+                            throw SharedMemoryException("shared memory lost");
                         }
                     }
                 }
@@ -142,7 +142,7 @@ namespace ogawayama::common {
                                 break;
                             }
                             if (!is_alive_()) {
-                                std::abort();
+                                throw SharedMemoryException("shared memory lost");
                             }
                         }
                     }
@@ -201,7 +201,9 @@ namespace ogawayama::common {
                 strncpy(name_, name, param::MAX_NAME_LENGTH);
             } else {
                 queue_ = mem->find<SpscQueue>(name).first;
-                assert(queue_);
+                if (queue_ == nullptr) {
+                    throw SharedMemoryException("can't find shared memory");
+                }
             }
         }
         RowQueue(char const* name, boost::interprocess::managed_shared_memory *mem) : RowQueue(name, mem, false) {}

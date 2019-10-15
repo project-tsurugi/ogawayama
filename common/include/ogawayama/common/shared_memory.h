@@ -36,6 +36,24 @@ static constexpr char const * resultset = "resultset";
 };  // namespace ogawayama::common::param
 
 /**
+ * @brief exception class for shared memory lost
+ */
+class SharedMemoryException : public std::exception {
+public:
+    SharedMemoryException() = default;
+    SharedMemoryException( const std::string &str ) : m_error(str){}
+    ~SharedMemoryException() override = default;
+    SharedMemoryException(const SharedMemoryException& other) = delete;
+    SharedMemoryException(SharedMemoryException&& other) = default;
+    SharedMemoryException& operator=(const SharedMemoryException& other) = delete;
+    SharedMemoryException& operator=(SharedMemoryException&& other) = default;
+    const char* what( void ) const noexcept { return m_error.c_str(); }
+    
+private:
+    std::string m_error;
+};
+
+/**
  * @brief Shared memory manager in charge of creation and destruction of a boost managed shared memory
  */
 class SharedMemory
@@ -53,8 +71,7 @@ public:
                 managed_shared_memory_ = std::make_unique<boost::interprocess::managed_shared_memory>(boost::interprocess::open_only, database_name_.c_str());
             }
             catch(const boost::interprocess::interprocess_exception& ex) {
-                std::cerr << "failed with exception \"" << ex.what() << "\"" << std::endl;
-                exit(-1);
+                throw SharedMemoryException("can't find shared memory");
             }
         }
     }
