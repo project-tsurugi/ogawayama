@@ -26,6 +26,7 @@
 #include "boost/interprocess/sync/interprocess_condition.hpp"
 #include "boost/interprocess/sync/interprocess_mutex.hpp"
 #include "boost/bind.hpp"
+#include "boost/function.hpp"
 #include "boost/interprocess/smart_ptr/shared_ptr.hpp"
 
 #include "ogawayama/stub/metadata.h"
@@ -60,8 +61,8 @@ namespace ogawayama::common {
             /**
              * @brief Construct a new object.
              */
-            SpscQueue(VoidAllocator allocator, std::size_t capacity = param::QUEUE_SIZE)
-                : m_container_(allocator), m_types_(allocator), allocator_(allocator), capacity_(capacity) {
+            SpscQueue(VoidAllocator allocator, boost::function<bool()> is_alive, std::size_t capacity = param::QUEUE_SIZE)
+                : m_container_(allocator), m_types_(allocator), allocator_(allocator), capacity_(capacity), is_alive_(is_alive) {
                 m_container_.resize(capacity, ShmRow(allocator));
             }
             /**
@@ -83,6 +84,9 @@ namespace ogawayama::common {
                         if (m_not_full_.timed_wait(lock, timeout(), boost::bind(&SpscQueue::is_not_full, this))) {
                             break;
                         }
+                        if (!is_alive_()) {
+                            std::abort();
+                        }
                     }
                 }
                 std::atomic_thread_fence(std::memory_order_acquire);
@@ -103,6 +107,9 @@ namespace ogawayama::common {
                     while (true) {
                         if (m_not_empty_.timed_wait(lock, timeout(), boost::bind(&SpscQueue::is_not_empty, this))) {
                             break;
+                        }
+                        if (!is_alive_()) {
+                            std::abort();
                         }
                     }
                 }
@@ -134,6 +141,9 @@ namespace ogawayama::common {
                             if (m_not_full_.timed_wait(lock, timeout(), boost::bind(&SpscQueue::is_not_full, this))) {
                                 break;
                             }
+                            if (!is_alive_()) {
+                                std::abort();
+                            }
                         }
                     }
                     lock.unlock();
@@ -163,7 +173,6 @@ namespace ogawayama::common {
             bool is_not_full() const { return (pushed_ - poped_) < (param::QUEUE_SIZE - 1); }
             bool was_full() const { return (pushed_ - poped_) == (param::QUEUE_SIZE - 2); }
             std::size_t index(std::size_t n) const { return n %  param::QUEUE_SIZE; }
-            boost::system_time timeout() { return boost::get_system_time() + boost::posix_time::milliseconds(param::TIMEOUT); }
             
             ShmQueue m_container_;
             ogawayama::stub::Metadata m_types_;
@@ -171,6 +180,9 @@ namespace ogawayama::common {
             std::size_t capacity_;
             std::size_t pushed_{0};
             std::size_t poped_{0};
+
+            boost::system_time timeout() { return boost::get_system_time() + boost::posix_time::milliseconds(param::TIMEOUT); }
+            boost::function<bool()> is_alive_;
 
             boost::interprocess::interprocess_mutex m_mutex_{};
             boost::interprocess::interprocess_condition m_not_empty_{};
@@ -185,7 +197,7 @@ namespace ogawayama::common {
         {
             if (owner_) {
                 mem->destroy<SpscQueue>(name);
-                queue_ = mem->construct<SpscQueue>(name)(mem->get_segment_manager());
+                queue_ = mem->construct<SpscQueue>(name)(mem->get_segment_manager(), boost::bind(&RowQueue::is_alive, this));
                 strncpy(name_, name, param::MAX_NAME_LENGTH);
             } else {
                 queue_ = mem->find<SpscQueue>(name).first;
@@ -265,6 +277,11 @@ namespace ogawayama::common {
 
         auto get_metadata_ptr() const {
             return queue_->get_metadata_ptr();
+        }
+
+        bool is_alive() {
+            auto queue = mem_->find<SpscQueue>(name_).first;
+            return queue != nullptr;
         }
 
     private:

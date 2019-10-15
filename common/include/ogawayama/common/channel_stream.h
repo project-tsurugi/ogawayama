@@ -19,6 +19,7 @@
 #include <atomic>
 
 #include "boost/bind.hpp"
+#include "boost/function.hpp"
 #include "boost/interprocess/managed_shared_memory.hpp"
 #include "boost/interprocess/allocators/allocator.hpp"
 #include "boost/interprocess/containers/string.hpp"
@@ -139,7 +140,7 @@ public:
         /**
          * @brief Construct a new object.
          */
-        MsgBuffer(VoidAllocator allocator) : message_(allocator) {}
+        MsgBuffer(VoidAllocator allocator, boost::function<bool()> is_alive) : message_(allocator), is_alive_(is_alive) {}
         /**
          * @brief Copy and move constructers are deleted.
          */
@@ -156,6 +157,9 @@ public:
             while (true) {
                 if (m_not_notify_.timed_wait(lock, timeout(), boost::bind(&MsgBuffer::is_notified, this))) {
                     break;
+                }
+                if (!is_alive_()) {
+                    std::abort();
                 }
             }
             lock.unlock();
@@ -180,6 +184,9 @@ public:
                 if (m_not_locked_.timed_wait(lock, timeout(), boost::bind(&MsgBuffer::is_not_locked, this))) {
                     break;
                 }
+                if (!is_alive_()) {
+                    std::abort();
+                }
             }
             locked_ = true;
             lock.unlock();
@@ -201,6 +208,9 @@ public:
                 if (m_req_invalid_.timed_wait(lock, timeout(), boost::bind(&MsgBuffer::is_req_invalid, this))) {
                     break;
                 }
+                if (!is_alive_()) {
+                    std::abort();
+                }
             }
             {
                 message_.type_ = type;
@@ -217,6 +227,9 @@ public:
                 if (m_ack_invalid_.timed_wait(lock, timeout(), boost::bind(&MsgBuffer::is_ack_invalid, this))) {
                     break;
                 }
+                if (!is_alive_()) {
+                    std::abort();
+                }
             }
             {
                 err_code_ = err_code;
@@ -230,6 +243,9 @@ public:
             while (true) {
                 if (m_req_valid_.timed_wait(lock, timeout(), boost::bind(&MsgBuffer::is_req_valid, this))) {
                     break;
+                }
+                if (!is_alive_()) {
+                    std::abort();
                 }
             }
             {
@@ -245,6 +261,9 @@ public:
             while (true) {
                 if (m_req_valid_.timed_wait(lock, timeout(), boost::bind(&MsgBuffer::is_req_valid, this))) {
                     break;
+                }
+                if (!is_alive_()) {
+                    std::abort();
                 }
             }
             {
@@ -262,6 +281,9 @@ public:
                 if (m_ack_valid_.timed_wait(lock, timeout(), boost::bind(&MsgBuffer::is_ack_valid, this))) {
                     break;
                 }
+                if (!is_alive_()) {
+                    std::abort();
+                }
             }
             {
                 reply = err_code_;
@@ -278,10 +300,12 @@ public:
         bool is_ack_valid() const { return ack_valid_; }
         bool is_req_invalid() const { return !req_valid_; }
         bool is_ack_invalid() const { return !ack_valid_; }
-        boost::system_time timeout() { return boost::get_system_time() + boost::posix_time::milliseconds(param::TIMEOUT); }
 
         CommandMessage message_;
         ogawayama::stub::ErrorCode err_code_;
+
+        boost::system_time timeout() { return boost::get_system_time() + boost::posix_time::milliseconds(param::TIMEOUT); }
+        boost::function<bool()> is_alive_;
 
         boost::interprocess::interprocess_mutex m_req_mutex_{};
         boost::interprocess::interprocess_mutex m_ack_mutex_{};
@@ -308,7 +332,7 @@ public:
     {
         if (owner_) {
             mem->destroy<MsgBuffer>(name);
-            buffer_ = mem->construct<MsgBuffer>(name)(mem->get_segment_manager());
+            buffer_ = mem->construct<MsgBuffer>(name)(mem->get_segment_manager(), boost::bind(&ChannelStream::is_alive, this));
             strncpy(name_, name, param::MAX_NAME_LENGTH);
         } else {
             buffer_ = mem->find<MsgBuffer>(name).first;
@@ -370,8 +394,12 @@ public:
     void recv_ack(ogawayama::stub::ErrorCode &reply) {
         buffer_->recv_ack(reply);
     }
+    bool is_alive() {
+        auto buffer = mem_->find<MsgBuffer>(name_).first;
+        return buffer != nullptr;
+    }
 
-private:
+ private:
     MsgBuffer *buffer_;
     const bool owner_;
     boost::interprocess::managed_shared_memory *mem_;
