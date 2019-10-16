@@ -303,12 +303,10 @@ public:
         bool locked_{false};
     };
     
-public:
-    public:
     /**
      * @brief Construct a new object.
      */
- ChannelStream(char const* name, SharedMemory *shared_memory, bool owner) : shared_memory_(shared_memory), owner_(owner)
+    ChannelStream(char const* name, SharedMemory *shared_memory, bool owner) : shared_memory_(shared_memory), owner_(owner)
     {
         strncpy(name_, name, param::MAX_NAME_LENGTH);
         auto mem = shared_memory_->get_managed_shared_memory_ptr();
@@ -413,7 +411,7 @@ public:
         return false;
     }
 
- private:
+private:
     SharedMemory *shared_memory_;
     MsgBuffer *buffer_;
     const bool owner_;
