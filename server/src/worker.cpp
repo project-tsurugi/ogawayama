@@ -38,7 +38,10 @@ void Worker::run()
         std::size_t ivalue;
         std::string_view string;
         try {
-            channel_->recv_req(type, ivalue, string);
+            if (channel_->recv_req(type, ivalue, string) != ERROR_CODE::OK) {
+                std::cerr << __func__ << " " << __LINE__ << ": exiting" << std::endl;
+                return;
+            }
         } catch (std::exception &ex) {
             std::cerr << __func__ << " " << __LINE__ << ": exiting \"" << ex.what() << "\"" << std::endl;
             return;

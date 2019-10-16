@@ -50,6 +50,9 @@ ErrorCode ResultSet::Impl::next()
 {
     envelope_->get_manager()->get_impl()->get_channel()->send_req(ogawayama::common::CommandMessage::Type::NEXT, id_);
     ErrorCode reply = envelope_->get_manager()->get_impl()->get_channel()->recv_ack();
+    if (reply != ErrorCode::OK) {
+        return ErrorCode::SERVER_FAILURE;
+    }
 
     row_queue_->next();
     if (row_queue_->get_current_row().size() == 0) {

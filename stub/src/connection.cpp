@@ -36,8 +36,7 @@ ErrorCode Connection::Impl::confirm()
 {
     ErrorCode reply = channel_->recv_ack();
     if (reply != ErrorCode::OK) {
-        std::cerr << "recieved an illegal message" << std::endl;
-        exit(-1);
+        return ErrorCode::SERVER_FAILURE;
     }
     return reply;
 }

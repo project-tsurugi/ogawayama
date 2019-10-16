@@ -61,9 +61,6 @@ ErrorCode Transaction::Impl::execute_query(std::string_view query, std::shared_p
                    static_cast<std::int32_t>(result_set->get_impl()->get_id()),
                    query);
     ErrorCode reply = channel_->recv_ack();
-    if (reply != ErrorCode::OK) {
-        return reply;
-    }
     return ErrorCode::OK;
 }
 
