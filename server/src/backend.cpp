@@ -45,7 +45,7 @@ int backend_main(int argc, char **argv) {
 
     // communication channel
     auto shared_memory = std::make_unique<ogawayama::common::SharedMemory>(FLAGS_dbname, true);
-    auto server_ch = std::make_unique<ogawayama::common::ChannelStream>(ogawayama::common::param::server, shared_memory->get_managed_shared_memory_ptr(), true);
+    auto server_ch = std::make_unique<ogawayama::common::ChannelStream>(ogawayama::common::param::server, shared_memory.get(), true);
 
     // database
     auto db = umikongo::create_database();

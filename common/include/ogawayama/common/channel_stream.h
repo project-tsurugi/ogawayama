@@ -19,7 +19,6 @@
 #include <atomic>
 
 #include "boost/bind.hpp"
-#include "boost/function.hpp"
 #include "boost/interprocess/managed_shared_memory.hpp"
 #include "boost/interprocess/allocators/allocator.hpp"
 #include "boost/interprocess/containers/string.hpp"
@@ -140,7 +139,7 @@ public:
         /**
          * @brief Construct a new object.
          */
-        MsgBuffer(VoidAllocator allocator, boost::function<bool()> is_alive) : message_(allocator), is_alive_(is_alive) {}
+        MsgBuffer(VoidAllocator allocator) : message_(allocator) {}
         /**
          * @brief Copy and move constructers are deleted.
          */
@@ -157,9 +156,6 @@ public:
             while (true) {
                 if (m_not_notify_.timed_wait(lock, timeout(), boost::bind(&MsgBuffer::is_notified, this))) {
                     break;
-                }
-                if (!is_alive_()) {
-                    throw SharedMemoryException("shared memory lost");
                 }
             }
             lock.unlock();
@@ -184,9 +180,6 @@ public:
                 if (m_not_locked_.timed_wait(lock, timeout(), boost::bind(&MsgBuffer::is_not_locked, this))) {
                     break;
                 }
-                if (!is_alive_()) {
-                    throw SharedMemoryException("shared memory lost");
-                }
             }
             locked_ = true;
             lock.unlock();
@@ -208,9 +201,6 @@ public:
                 if (m_req_invalid_.timed_wait(lock, timeout(), boost::bind(&MsgBuffer::is_req_invalid, this))) {
                     break;
                 }
-                if (!is_alive_()) {
-                    throw SharedMemoryException("shared memory lost");
-                }
             }
             {
                 message_.type_ = type;
@@ -227,9 +217,6 @@ public:
                 if (m_ack_invalid_.timed_wait(lock, timeout(), boost::bind(&MsgBuffer::is_ack_invalid, this))) {
                     break;
                 }
-                if (!is_alive_()) {
-                    throw SharedMemoryException("shared memory lost");
-                }
             }
             {
                 err_code_ = err_code;
@@ -238,15 +225,13 @@ public:
             lock.unlock();
             m_ack_valid_.notify_one();
         }
-        void recv_req(ogawayama::common::CommandMessage::Type &type, std::size_t & ivalue) {
+        ogawayama::stub::ErrorCode recv_req(ogawayama::common::CommandMessage::Type &type, std::size_t & ivalue) {
             boost::interprocess::scoped_lock lock(m_req_mutex_);
             while (true) {
                 if (m_req_valid_.timed_wait(lock, timeout(), boost::bind(&MsgBuffer::is_req_valid, this))) {
                     break;
                 }
-                if (!is_alive_()) {
-                    throw SharedMemoryException("shared memory lost");
-                }
+                return ogawayama::stub::ErrorCode::TIMEOUT;
             }
             {
                 type = message_.type_;
@@ -255,16 +240,15 @@ public:
             req_valid_ = false;
             lock.unlock();
             m_req_invalid_.notify_one();
+            return ogawayama::stub::ErrorCode::OK;
         }
-        void recv_req(ogawayama::common::CommandMessage::Type &type, std::size_t & ivalue, std::string_view & string) {
+        ogawayama::stub::ErrorCode recv_req(ogawayama::common::CommandMessage::Type &type, std::size_t & ivalue, std::string_view & string) {
             boost::interprocess::scoped_lock lock(m_req_mutex_);
             while (true) {
                 if (m_req_valid_.timed_wait(lock, timeout(), boost::bind(&MsgBuffer::is_req_valid, this))) {
                     break;
                 }
-                if (!is_alive_()) {
-                    throw SharedMemoryException("shared memory lost");
-                }
+                return ogawayama::stub::ErrorCode::TIMEOUT;
             }
             {
                 type = message_.type_;
@@ -274,23 +258,20 @@ public:
             req_valid_ = false;
             lock.unlock();
             m_req_invalid_.notify_one();
+            return ogawayama::stub::ErrorCode::OK;
         }
-        void recv_ack(ogawayama::stub::ErrorCode &reply) {
+        ogawayama::stub::ErrorCode recv_ack() {
             boost::interprocess::scoped_lock lock(m_ack_mutex_);
             while (true) {
                 if (m_ack_valid_.timed_wait(lock, timeout(), boost::bind(&MsgBuffer::is_ack_valid, this))) {
                     break;
                 }
-                if (!is_alive_()) {
-                    throw SharedMemoryException("shared memory lost");
-                }
-            }
-            {
-                reply = err_code_;
+                return ogawayama::stub::ErrorCode::TIMEOUT;
             }
             ack_valid_ = false;
             lock.unlock();
             m_ack_invalid_.notify_one();
+            return err_code_;
         }
         
     private:
@@ -305,7 +286,6 @@ public:
         ogawayama::stub::ErrorCode err_code_;
 
         boost::system_time timeout() { return boost::get_system_time() + boost::posix_time::milliseconds(param::TIMEOUT); }
-        boost::function<bool()> is_alive_;
 
         boost::interprocess::interprocess_mutex m_req_mutex_{};
         boost::interprocess::interprocess_mutex m_ack_mutex_{};
@@ -328,20 +308,21 @@ public:
     /**
      * @brief Construct a new object.
      */
-    ChannelStream(char const* name, boost::interprocess::managed_shared_memory *mem, bool owner) : owner_(owner), mem_(mem)
+ ChannelStream(char const* name, SharedMemory *shared_memory, bool owner) : shared_memory_(shared_memory), owner_(owner)
     {
+        strncpy(name_, name, param::MAX_NAME_LENGTH);
+        auto mem = shared_memory_->get_managed_shared_memory_ptr();
         if (owner_) {
-            mem->destroy<MsgBuffer>(name);
-            buffer_ = mem->construct<MsgBuffer>(name)(mem->get_segment_manager(), boost::bind(&ChannelStream::is_alive, this));
-            strncpy(name_, name, param::MAX_NAME_LENGTH);
+            mem->destroy<MsgBuffer>(name_);
+            buffer_ = mem->construct<MsgBuffer>(name_)(mem->get_segment_manager());
         } else {
-            buffer_ = mem->find<MsgBuffer>(name).first;
+            buffer_ = mem->find<MsgBuffer>(name_).first;
             if (buffer_ == nullptr) {
                 throw SharedMemoryException("can't find shared memory");
             }
         }
     }
-    ChannelStream(char const* name, boost::interprocess::managed_shared_memory *mem) : ChannelStream(name, mem, false) {}
+    ChannelStream(char const* name, SharedMemory *shared_memory) : ChannelStream(name, shared_memory, false) {}
 
     /**
      * @brief Destruct this object.
@@ -349,7 +330,7 @@ public:
     ~ChannelStream()
     {
         if (owner_) {
-            mem_->destroy<MsgBuffer>(name_);
+            shared_memory_->get_managed_shared_memory_ptr()->destroy<MsgBuffer>(name_);
         }
     }
 
@@ -384,27 +365,58 @@ public:
     void send_req(ogawayama::common::CommandMessage::Type type, std::size_t ivalue = 0, std::string_view string = "") {
         buffer_->send_req(type, ivalue, string);
     }
-    void recv_req(ogawayama::common::CommandMessage::Type &type, std::size_t &ivalue) {
-        buffer_->recv_req(type, ivalue);
+    ogawayama::stub::ErrorCode recv_req(ogawayama::common::CommandMessage::Type &type, std::size_t &ivalue) {
+        while (true) {
+            auto retv = buffer_->recv_req(type, ivalue);
+            if (retv != ogawayama::stub::ErrorCode::TIMEOUT) {
+                return retv;
+            }
+            if (!is_alive()) {
+                return ogawayama::stub::ErrorCode::SERVER_FAILURE;
+            }
+        }
     }
-    void recv_req(ogawayama::common::CommandMessage::Type &type, std::size_t &ivalue, std::string_view &string) {
-        buffer_->recv_req(type, ivalue, string);
+    ogawayama::stub::ErrorCode recv_req(ogawayama::common::CommandMessage::Type &type, std::size_t &ivalue, std::string_view &string) {
+        while (true) {
+            auto retv =  buffer_->recv_req(type, ivalue, string);
+            if (retv != ogawayama::stub::ErrorCode::TIMEOUT) {
+                return retv;
+            }
+            if (!is_alive()) {
+                return ogawayama::stub::ErrorCode::SERVER_FAILURE;
+            }
+        }
     }
     void send_ack(ogawayama::stub::ErrorCode err_code) {
         buffer_->send_ack(err_code);
     }
-    void recv_ack(ogawayama::stub::ErrorCode &reply) {
-        buffer_->recv_ack(reply);
+    ogawayama::stub::ErrorCode recv_ack() {
+        while (true) {
+            auto retv = buffer_->recv_ack();
+            if (retv != ogawayama::stub::ErrorCode::TIMEOUT) {
+                return retv;
+            }
+            if (!is_alive()) {
+                return ogawayama::stub::ErrorCode::SERVER_FAILURE;
+            }
+        }
     }
     bool is_alive() {
-        auto buffer = mem_->find<MsgBuffer>(name_).first;
-        return buffer != nullptr;
+        if (shared_memory_->is_alive()) {
+            try {
+                return shared_memory_->get_managed_shared_memory_ptr()->find<MsgBuffer>(name_).first != nullptr;
+            }
+            catch(const boost::interprocess::interprocess_exception& ex) {
+                return false;
+            }
+        }
+        return false;
     }
 
  private:
+    SharedMemory *shared_memory_;
     MsgBuffer *buffer_;
     const bool owner_;
-    boost::interprocess::managed_shared_memory *mem_;
     char name_[param::MAX_NAME_LENGTH];
 };
 

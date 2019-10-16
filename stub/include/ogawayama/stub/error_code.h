@@ -68,6 +68,11 @@ enum class ErrorCode {
      */
     SERVER_FAILURE,
 
+    /**
+     * @brief for internal use.
+     */
+    TIMEOUT,
+
 };
 
 }  // namespace ogawayama::stub

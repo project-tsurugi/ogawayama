@@ -31,8 +31,7 @@ Transaction::Impl::Impl(Transaction *transaction) : envelope_(transaction)
  */
 ErrorCode Transaction::Impl::execute_statement(std::string_view statement) {
     channel_->send_req(ogawayama::common::CommandMessage::Type::EXECUTE_STATEMENT, 1, statement);
-    ErrorCode reply;
-    channel_->recv_ack(reply);
+    ErrorCode reply = channel_->recv_ack();
     return reply;
 }
 
@@ -61,8 +60,7 @@ ErrorCode Transaction::Impl::execute_query(std::string_view query, std::shared_p
     channel_->send_req(ogawayama::common::CommandMessage::Type::EXECUTE_QUERY,
                    static_cast<std::int32_t>(result_set->get_impl()->get_id()),
                    query);
-    ErrorCode reply;
-    channel_->recv_ack(reply);
+    ErrorCode reply = channel_->recv_ack();
     if (reply != ErrorCode::OK) {
         return reply;
     }
@@ -77,8 +75,7 @@ ErrorCode Transaction::Impl::commit()
 {
     channel_->send_req(ogawayama::common::CommandMessage::Type::COMMIT);
     clear();
-    ErrorCode reply;
-    channel_->recv_ack(reply);
+    ErrorCode reply = channel_->recv_ack();
     return reply;
 }
 
@@ -90,8 +87,7 @@ ErrorCode Transaction::Impl::rollback()
 {
     channel_->send_req(ogawayama::common::CommandMessage::Type::ROLLBACK);
     clear();
-    ErrorCode reply;
-    channel_->recv_ack(reply);
+    ErrorCode reply = channel_->recv_ack();
     return reply;
 }
 

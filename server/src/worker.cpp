@@ -27,7 +27,7 @@ namespace ogawayama::server {
 Worker::Worker(umikongo::Database *db, ogawayama::common::SharedMemory *shm, std::size_t id) : db_(db), shared_memory_ptr_(shm), id_(id)
 {
     auto managed_shared_memory_ptr = shared_memory_ptr_->get_managed_shared_memory_ptr();
-    channel_ = std::make_unique<ogawayama::common::ChannelStream>(shared_memory_ptr_->shm_name(ogawayama::common::param::channel, id_).c_str(), managed_shared_memory_ptr);
+    channel_ = std::make_unique<ogawayama::common::ChannelStream>(shared_memory_ptr_->shm_name(ogawayama::common::param::channel, id_).c_str(), shared_memory_ptr_);
     channel_->send_ack(ERROR_CODE::OK);
 }
 
@@ -110,7 +110,7 @@ void Worker::execute_query(std::string_view sql, std::size_t rid)
         cursors_.resize(rid + 1);
     }
     cursors_.at(rid).row_queue_ = std::make_unique<ogawayama::common::RowQueue>
-        (shared_memory_ptr_->shm_name(ogawayama::common::param::resultset, id_, rid).c_str(), shared_memory_ptr_->get_managed_shared_memory_ptr());
+        (shared_memory_ptr_->shm_name(ogawayama::common::param::resultset, id_, rid).c_str(), shared_memory_ptr_);
     
     try {
         cursors_.at(rid).executable_ = db_->compile(sql);
