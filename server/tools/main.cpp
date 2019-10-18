@@ -39,7 +39,8 @@ int main(int argc, char **argv) {
     gflags::SetUsageMessage("ogawayama database server");
     gflags::ParseCommandLineFlags(&argc, &argv, true);
 
-    StubPtr stub = make_stub(FLAGS_dbname.c_str());
+    StubPtr stub;
+    if (make_stub(stub, FLAGS_dbname.c_str()) != ERROR_CODE::OK) { err_exit(__LINE__); }
     if (FLAGS_dump) {
         stub->get_impl()->get_channel()->send_req(ogawayama::common::CommandMessage::Type::DUMP_DATABASE);
     }

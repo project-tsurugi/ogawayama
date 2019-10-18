@@ -13,11 +13,29 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+#include <unistd.h>
 #include "TestRoot.h"
 
 namespace ogawayama::testing {
 
-class ApiTest : public ::testing::Test {};
+class ApiTest : public ::testing::Test {
+    virtual void SetUp() {
+        int pid;
+
+        if ((pid = fork()) == 0) {  // child process, execute only at build/stub/test directory.
+            auto retv = execlp("../../server/src/ogawayama-server", "ogawayama-server", nullptr);
+            if (retv != 0) perror("error in ogawayama-server ");
+            _exit(0);
+        }
+        sleep(1);
+    }
+
+    virtual void TearDown() {
+        StubPtr stub;
+        EXPECT_EQ(ERROR_CODE::OK, make_stub(stub));
+        stub->get_impl()->get_channel()->send_req(ogawayama::common::CommandMessage::Type::TERMINATE);
+    }
+};
 
 TEST_F(ApiTest, use_executable_statement) {
     StubPtr stub;

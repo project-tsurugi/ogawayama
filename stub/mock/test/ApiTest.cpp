@@ -28,8 +28,7 @@ TEST_F(ApiTest, select_one) {
     ResultSetPtr result_set;
     MetadataPtr metadata;
 
-    stub = make_stub();
-    EXPECT_NE(nullptr, stub);
+    EXPECT_EQ(ERROR_CODE::OK, make_stub(stub));
     
     EXPECT_EQ(ERROR_CODE::OK, stub->get_connection(12, connection));
 
@@ -61,8 +60,7 @@ TEST_F(ApiTest, select_table) {
     ResultSetPtr result_set;
     MetadataPtr metadata;
 
-    stub = make_stub();
-    EXPECT_NE(nullptr, stub);
+    EXPECT_EQ(ERROR_CODE::OK, make_stub(stub));
     
     EXPECT_EQ(ERROR_CODE::OK, stub->get_connection(12, connection));
 
@@ -111,8 +109,7 @@ TEST_F(ApiTest, select_error) {
     TransactionPtr transaction;
     ResultSetPtr result_set;
 
-    stub = make_stub();
-    EXPECT_NE(nullptr, stub);
+    EXPECT_EQ(ERROR_CODE::OK, make_stub(stub));
     
     EXPECT_EQ(ERROR_CODE::OK, stub->get_connection(12, connection));
 
@@ -126,8 +123,7 @@ TEST_F(ApiTest, statement) {
     ConnectionPtr connection;
     TransactionPtr transaction;
 
-    stub = make_stub();
-    EXPECT_NE(nullptr, stub);
+    EXPECT_EQ(ERROR_CODE::OK, make_stub(stub));
     
     EXPECT_EQ(ERROR_CODE::OK, stub->get_connection(12, connection));
 
@@ -143,8 +139,7 @@ TEST_F(ApiTest, statement_error) {
     ConnectionPtr connection;
     TransactionPtr transaction;
 
-    stub = make_stub();
-    EXPECT_NE(nullptr, stub);
+    EXPECT_EQ(ERROR_CODE::OK, make_stub(stub));
     
     EXPECT_EQ(ERROR_CODE::OK, stub->get_connection(12, connection));
 

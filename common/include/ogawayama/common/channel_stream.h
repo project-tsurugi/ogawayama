@@ -153,7 +153,11 @@ public:
          */
         void wait() {
             boost::interprocess::scoped_lock lock(m_notify_mutex_);
-            m_not_notify_.wait(lock, boost::bind(&MsgBuffer::is_notified, this));
+            while (true) {
+                if (m_not_notify_.timed_wait(lock, timeout(), boost::bind(&MsgBuffer::is_notified, this))) {
+                    break;
+                }
+            }
             lock.unlock();
         }
 
@@ -172,7 +176,11 @@ public:
          */
         void lock() {
             boost::interprocess::scoped_lock lock(m_lock_mutex_);
-            m_not_locked_.wait(lock, boost::bind(&MsgBuffer::is_not_locked, this));
+            while (true) {
+                if (m_not_locked_.timed_wait(lock, timeout(), boost::bind(&MsgBuffer::is_not_locked, this))) {
+                    break;
+                }
+            }
             locked_ = true;
             lock.unlock();
         }
@@ -189,7 +197,11 @@ public:
 
         void send_req(ogawayama::common::CommandMessage::Type type, std::size_t ivalue, std::string_view string) {
             boost::interprocess::scoped_lock lock(m_req_mutex_);
-            m_req_invalid_.wait(lock, boost::bind(&MsgBuffer::is_req_invalid, this));
+            while (true) {
+                if (m_req_invalid_.timed_wait(lock, timeout(), boost::bind(&MsgBuffer::is_req_invalid, this))) {
+                    break;
+                }
+            }
             {
                 message_.type_ = type;
                 message_.ivalue_ = ivalue;
@@ -201,7 +213,11 @@ public:
         }
         void send_ack(ogawayama::stub::ErrorCode err_code) {
             boost::interprocess::scoped_lock lock(m_ack_mutex_);
-            m_ack_invalid_.wait(lock, boost::bind(&MsgBuffer::is_ack_invalid, this));
+            while (true) {
+                if (m_ack_invalid_.timed_wait(lock, timeout(), boost::bind(&MsgBuffer::is_ack_invalid, this))) {
+                    break;
+                }
+            }
             {
                 err_code_ = err_code;
             }
@@ -209,9 +225,14 @@ public:
             lock.unlock();
             m_ack_valid_.notify_one();
         }
-        void recv_req(ogawayama::common::CommandMessage::Type &type, std::size_t & ivalue) {
+        ogawayama::stub::ErrorCode recv_req(ogawayama::common::CommandMessage::Type &type, std::size_t & ivalue) {
             boost::interprocess::scoped_lock lock(m_req_mutex_);
-            m_req_valid_.wait(lock, boost::bind(&MsgBuffer::is_req_valid, this));
+            while (true) {
+                if (m_req_valid_.timed_wait(lock, timeout(), boost::bind(&MsgBuffer::is_req_valid, this))) {
+                    break;
+                }
+                return ogawayama::stub::ErrorCode::TIMEOUT;
+            }
             {
                 type = message_.type_;
                 ivalue = message_.ivalue_;
@@ -219,10 +240,16 @@ public:
             req_valid_ = false;
             lock.unlock();
             m_req_invalid_.notify_one();
+            return ogawayama::stub::ErrorCode::OK;
         }
-        void recv_req(ogawayama::common::CommandMessage::Type &type, std::size_t & ivalue, std::string_view & string) {
+        ogawayama::stub::ErrorCode recv_req(ogawayama::common::CommandMessage::Type &type, std::size_t & ivalue, std::string_view & string) {
             boost::interprocess::scoped_lock lock(m_req_mutex_);
-            m_req_valid_.wait(lock, boost::bind(&MsgBuffer::is_req_valid, this));
+            while (true) {
+                if (m_req_valid_.timed_wait(lock, timeout(), boost::bind(&MsgBuffer::is_req_valid, this))) {
+                    break;
+                }
+                return ogawayama::stub::ErrorCode::TIMEOUT;
+            }
             {
                 type = message_.type_;
                 ivalue = message_.ivalue_;
@@ -231,18 +258,32 @@ public:
             req_valid_ = false;
             lock.unlock();
             m_req_invalid_.notify_one();
+            return ogawayama::stub::ErrorCode::OK;
         }
-        void recv_ack(ogawayama::stub::ErrorCode &reply) {
+        ogawayama::stub::ErrorCode recv_ack() {
             boost::interprocess::scoped_lock lock(m_ack_mutex_);
-            m_ack_valid_.wait(lock, boost::bind(&MsgBuffer::is_ack_valid, this));
-            {
-                reply = err_code_;
+            while (true) {
+                if (m_ack_valid_.timed_wait(lock, timeout(), boost::bind(&MsgBuffer::is_ack_valid, this))) {
+                    break;
+                }
+                return ogawayama::stub::ErrorCode::TIMEOUT;
             }
             ack_valid_ = false;
             lock.unlock();
             m_ack_invalid_.notify_one();
+            return err_code_;
         }
         
+        void hello() {
+            is_partner_ = true;
+        }
+        void bye() {
+            is_partner_ = false;
+        }
+        bool is_partner() {
+            return is_partner_;
+        }
+
     private:
         bool is_notified() const { return notified_; }
         bool is_not_locked() const { return !locked_; }
@@ -253,6 +294,8 @@ public:
 
         CommandMessage message_;
         ogawayama::stub::ErrorCode err_code_;
+
+        boost::system_time timeout() { return boost::get_system_time() + boost::posix_time::milliseconds(param::TIMEOUT); }
 
         boost::interprocess::interprocess_mutex m_req_mutex_{};
         boost::interprocess::interprocess_mutex m_ack_mutex_{};
@@ -268,25 +311,29 @@ public:
         bool ack_valid_{false};
         bool notified_{false};
         bool locked_{false};
+
+        bool is_partner_{false};
     };
     
-public:
-    public:
     /**
      * @brief Construct a new object.
      */
-    ChannelStream(char const* name, boost::interprocess::managed_shared_memory *mem, bool owner) : owner_(owner), mem_(mem)
+    ChannelStream(char const* name, SharedMemory *shared_memory, bool owner) : shared_memory_(shared_memory), owner_(owner)
     {
+        strncpy(name_, name, param::MAX_NAME_LENGTH);
+        auto mem = shared_memory_->get_managed_shared_memory_ptr();
         if (owner_) {
-            mem->destroy<MsgBuffer>(name);
-            buffer_ = mem->construct<MsgBuffer>(name)(mem->get_segment_manager());
-            strncpy(name_, name, param::MAX_NAME_LENGTH);
+            mem->destroy<MsgBuffer>(name_);
+            buffer_ = mem->construct<MsgBuffer>(name_)(mem->get_segment_manager());
         } else {
-            buffer_ = mem->find<MsgBuffer>(name).first;
-            assert(buffer_);
+            buffer_ = mem->find<MsgBuffer>(name_).first;
+            if (buffer_ == nullptr) {
+                throw SharedMemoryException("can't find shared memory");
+            }
+            buffer_->hello();
         }
     }
-    ChannelStream(char const* name, boost::interprocess::managed_shared_memory *mem) : ChannelStream(name, mem, false) {}
+    ChannelStream(char const* name, SharedMemory *shared_memory) : ChannelStream(name, shared_memory, false) {}
 
     /**
      * @brief Destruct this object.
@@ -294,7 +341,11 @@ public:
     ~ChannelStream()
     {
         if (owner_) {
-            mem_->destroy<MsgBuffer>(name_);
+            shared_memory_->get_managed_shared_memory_ptr()->destroy<MsgBuffer>(name_);
+        } else {
+            if (shared_memory_->get_managed_shared_memory_ptr()->find<MsgBuffer>(name_).first != nullptr) {
+                buffer_->bye();
+            }
         }
     }
 
@@ -329,23 +380,61 @@ public:
     void send_req(ogawayama::common::CommandMessage::Type type, std::size_t ivalue = 0, std::string_view string = "") {
         buffer_->send_req(type, ivalue, string);
     }
-    void recv_req(ogawayama::common::CommandMessage::Type &type, std::size_t &ivalue) {
-        buffer_->recv_req(type, ivalue);
+    ogawayama::stub::ErrorCode recv_req(ogawayama::common::CommandMessage::Type &type, std::size_t &ivalue) {
+        while (true) {
+            auto retv = buffer_->recv_req(type, ivalue);
+            if (retv != ogawayama::stub::ErrorCode::TIMEOUT) {
+                return retv;
+            }
+            if (!is_alive()) {
+                return ogawayama::stub::ErrorCode::SERVER_FAILURE;
+            }
+        }
     }
-    void recv_req(ogawayama::common::CommandMessage::Type &type, std::size_t &ivalue, std::string_view &string) {
-        buffer_->recv_req(type, ivalue, string);
+    ogawayama::stub::ErrorCode recv_req(ogawayama::common::CommandMessage::Type &type, std::size_t &ivalue, std::string_view &string) {
+        while (true) {
+            auto retv =  buffer_->recv_req(type, ivalue, string);
+            if (retv != ogawayama::stub::ErrorCode::TIMEOUT) {
+                return retv;
+            }
+            if (!is_alive()) {
+                return ogawayama::stub::ErrorCode::SERVER_FAILURE;
+            }
+        }
     }
     void send_ack(ogawayama::stub::ErrorCode err_code) {
         buffer_->send_ack(err_code);
     }
-    void recv_ack(ogawayama::stub::ErrorCode &reply) {
-        buffer_->recv_ack(reply);
+    ogawayama::stub::ErrorCode recv_ack() {
+        while (true) {
+            auto retv = buffer_->recv_ack();
+            if (retv != ogawayama::stub::ErrorCode::TIMEOUT) {
+                return retv;
+            }
+            if (!is_alive()) {
+                return ogawayama::stub::ErrorCode::SERVER_FAILURE;
+            }
+        }
+    }
+    bool is_alive() {
+        if (owner_) {
+            return buffer_->is_partner();
+        }
+        if (shared_memory_->is_alive()) {
+            try {
+                return shared_memory_->get_managed_shared_memory_ptr()->find<MsgBuffer>(name_).first != nullptr;
+            }
+            catch(const boost::interprocess::interprocess_exception& ex) {
+                return false;
+            }
+        }
+        return false;
     }
 
 private:
+    SharedMemory *shared_memory_;
     MsgBuffer *buffer_;
     const bool owner_;
-    boost::interprocess::managed_shared_memory *mem_;
     char name_[param::MAX_NAME_LENGTH];
 };
 

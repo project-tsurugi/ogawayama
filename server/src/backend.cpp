@@ -45,7 +45,7 @@ int backend_main(int argc, char **argv) {
 
     // communication channel
     auto shared_memory = std::make_unique<ogawayama::common::SharedMemory>(FLAGS_dbname, true);
-    auto server_ch = std::make_unique<ogawayama::common::ChannelStream>(ogawayama::common::param::server, shared_memory->get_managed_shared_memory_ptr(), true);
+    auto server_ch = std::make_unique<ogawayama::common::ChannelStream>(ogawayama::common::param::server, shared_memory.get(), true);
 
     // database
     auto db = umikongo::create_database();
@@ -57,7 +57,10 @@ int backend_main(int argc, char **argv) {
         ogawayama::common::CommandMessage::Type type;
         std::size_t index;
         try {
-            server_ch->recv_req(type, index);
+            if (server_ch->recv_req(type, index) != ERROR_CODE::OK) {
+                std::cerr << __func__ << " " << __LINE__ << std::endl;
+                continue;
+            }
             server_ch->notify();
         } catch (std::exception &ex) {
             std::cerr << __func__ << " " << __LINE__ << ": exiting \"" << ex.what() << "\"" << std::endl;

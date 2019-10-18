@@ -75,11 +75,16 @@ namespace ogawayama::common {
             /**
              * @brief push the writing row into the queue.
              */
-            void push()
+            ogawayama::stub::ErrorCode push()
             {
                 if(!is_not_full()) {
                     boost::interprocess::scoped_lock lock(m_mutex_);
-                    m_not_full_.wait(lock, boost::bind(&SpscQueue::is_not_full, this));
+                    while (true) {
+                        if (m_not_full_.timed_wait(lock, timeout(), boost::bind(&SpscQueue::is_not_full, this))) {
+                            break;
+                        }
+                        return ogawayama::stub::ErrorCode::TIMEOUT;
+                    }
                 }
                 std::atomic_thread_fence(std::memory_order_acquire);
                 pushed_++;
@@ -87,16 +92,22 @@ namespace ogawayama::common {
                     boost::interprocess::scoped_lock lock(m_mutex_);
                     if (was_empty()) { m_not_empty_.notify_one(); }
                 }
+                return ogawayama::stub::ErrorCode::OK;
             }
             
             /**
              * @brief pop and clear the current row.
              */
-            void pop() {
+            ogawayama::stub::ErrorCode pop() {
                 get_current_row().clear();
                 if(!is_not_empty()) {
                     boost::interprocess::scoped_lock lock(m_mutex_);
-                    m_not_empty_.wait(lock, boost::bind(&SpscQueue::is_not_empty, this));
+                    while (true) {
+                        if (m_not_empty_.timed_wait(lock, timeout(), boost::bind(&SpscQueue::is_not_empty, this))) {
+                            break;
+                        }
+                        return ogawayama::stub::ErrorCode::TIMEOUT;
+                    }
                 }
                 std::atomic_thread_fence(std::memory_order_acquire);
                 poped_++;
@@ -104,6 +115,7 @@ namespace ogawayama::common {
                     boost::interprocess::scoped_lock lock(m_mutex_);
                     if (was_full()) { m_not_full_.notify_one(); }
                 }
+                return ogawayama::stub::ErrorCode::OK;
             }
             
             /**
@@ -122,7 +134,12 @@ namespace ogawayama::common {
                 if(!is_not_full()) {
                     boost::interprocess::scoped_lock lock(m_mutex_);
                     if(!is_not_full()) {
-                        m_not_full_.wait(lock, boost::bind(&SpscQueue::is_not_full, this));
+                        while (true) {
+                            if (m_not_full_.timed_wait(lock, timeout(), boost::bind(&SpscQueue::is_not_full, this))) {
+                                break;
+                            }
+                            throw SharedMemoryException("notify of timeout");
+                        }
                     }
                     lock.unlock();
                 }
@@ -135,6 +152,7 @@ namespace ogawayama::common {
                 m_container_.resize(capacity_, ShmRow(allocator_));
                 pushed_ = poped_ = 0;
                 m_types_.clear();
+                is_partner_ = false;
             }
             
             void push_type(ogawayama::stub::Metadata::ColumnType::Type type, std::size_t length) {
@@ -143,6 +161,16 @@ namespace ogawayama::common {
 
             ogawayama::stub::Metadata const * get_metadata_ptr() {
                 return &m_types_;
+            }
+
+            void hello() {
+                is_partner_ = true;
+            }
+            void bye() {
+                is_partner_ = false;
+            }
+            bool is_partner() {
+                return is_partner_;
             }
 
         private:
@@ -159,27 +187,35 @@ namespace ogawayama::common {
             std::size_t pushed_{0};
             std::size_t poped_{0};
 
+            boost::system_time timeout() { return boost::get_system_time() + boost::posix_time::milliseconds(param::TIMEOUT); }
+
             boost::interprocess::interprocess_mutex m_mutex_{};
             boost::interprocess::interprocess_condition m_not_empty_{};
             boost::interprocess::interprocess_condition m_not_full_{};
+
+            bool is_partner_{false};
         };
         
     public:
         /**
          * @brief Construct a new object.
          */
-        RowQueue(char const* name, boost::interprocess::managed_shared_memory *mem, bool owner) : owner_(owner), mem_(mem), cindex_(0)
+        RowQueue(char const* name, SharedMemory *shared_memory, bool owner) : shared_memory_(shared_memory), owner_(owner), cindex_(0)
         {
+            strncpy(name_, name, param::MAX_NAME_LENGTH);
+            auto mem = shared_memory_->get_managed_shared_memory_ptr();
             if (owner_) {
                 mem->destroy<SpscQueue>(name);
                 queue_ = mem->construct<SpscQueue>(name)(mem->get_segment_manager());
-                strncpy(name_, name, param::MAX_NAME_LENGTH);
             } else {
                 queue_ = mem->find<SpscQueue>(name).first;
-                assert(queue_);
+                if (queue_ == nullptr) {
+                    throw SharedMemoryException("can't find shared memory");
+                }
+                queue_->hello();
             }
         }
-        RowQueue(char const* name, boost::interprocess::managed_shared_memory *mem) : RowQueue(name, mem, false) {}
+        RowQueue(char const* name, SharedMemory *shared_memory) : RowQueue(name, shared_memory, false) {}
 
         /**
          * @brief Destruct this object.
@@ -187,7 +223,11 @@ namespace ogawayama::common {
         ~RowQueue()
         {
             if (owner_) {
-                mem_->destroy<SpscQueue>(name_);
+                shared_memory_->get_managed_shared_memory_ptr()->destroy<SpscQueue>(name_);
+            } else {
+                if (shared_memory_->get_managed_shared_memory_ptr()->find<SpscQueue>(name_).first != nullptr) {
+                    queue_->bye();
+                }
             }
         }
 
@@ -195,27 +235,47 @@ namespace ogawayama::common {
          * @brief put a column value (of other than string) to the row at the back of the queue.
          */
         template<typename T>
-        void put_next_column(T v) {
+        ogawayama::stub::ErrorCode put_next_column(T v) {
             ShmColumn column = v;
-            queue_->get_writing_row().emplace_back(column);
+            try {
+                queue_->get_writing_row().emplace_back(column);
+            }
+            catch(const SharedMemoryException& ex) {
+                return ogawayama::stub::ErrorCode::TIMEOUT;
+            }
             cindex_++;
+            return ogawayama::stub::ErrorCode::OK;
         }
         /**
          * @brief put a string column value to the row at the back of the queue.
          */
-        void put_next_column(std::string_view v) {
-            ShmString column_string(mem_->get_segment_manager());
+        ogawayama::stub::ErrorCode put_next_column(std::string_view v) {
+            ShmString column_string(shared_memory_->get_managed_shared_memory_ptr()->get_segment_manager());
             column_string.assign(v.begin(), v.end());
             ShmColumn column = column_string;
-            queue_->get_writing_row().emplace_back(column);
+            try {
+                queue_->get_writing_row().emplace_back(column);
+            }
+            catch(const SharedMemoryException& ex) {
+                return ogawayama::stub::ErrorCode::TIMEOUT;
+            }
             cindex_++;
+            return ogawayama::stub::ErrorCode::OK;
         }
         /**
          * @brief push the row into the queue.
          */
-        void push_writing_row() {
-            queue_->push();
-            cindex_ = 0;
+        ogawayama::stub::ErrorCode push_writing_row() {
+            while (true) {
+                auto retv = queue_->push();
+                if (retv != ogawayama::stub::ErrorCode::TIMEOUT) {
+                    cindex_ = 0;
+                    return retv;
+                }
+                if (!is_alive()) {
+                    return ogawayama::stub::ErrorCode::SERVER_FAILURE;
+                }
+            }
         }
         /**
          * @brief get current column index.
@@ -235,8 +295,16 @@ namespace ogawayama::common {
         /**
          * @brief move current to the next in the queue.
          */
-        void next() {
-            queue_->pop();
+        ogawayama::stub::ErrorCode next() {
+            while (true) {
+                auto retv = queue_->pop();
+                if (retv != ogawayama::stub::ErrorCode::TIMEOUT) {
+                    return retv;
+                }
+                if (!is_alive()) {
+                    return ogawayama::stub::ErrorCode::SERVER_FAILURE;
+                }
+            }
         }
 
         /**
@@ -254,10 +322,25 @@ namespace ogawayama::common {
             return queue_->get_metadata_ptr();
         }
 
+        bool is_alive() {
+            if (owner_) {
+                return queue_->is_partner();
+            }
+            if (shared_memory_->is_alive()) {
+                try {
+                    return shared_memory_->get_managed_shared_memory_ptr()->find<SpscQueue>(name_).first != nullptr;
+                }
+                catch(const boost::interprocess::interprocess_exception& ex) {
+                    return false;
+                }
+            }
+            return false;
+        }
+
     private:
+        SharedMemory *shared_memory_;
         SpscQueue *queue_;
         const bool owner_;
-        boost::interprocess::managed_shared_memory *mem_;
         char name_[param::MAX_NAME_LENGTH];
         std::size_t cindex_{};
     };

@@ -1,5 +1,5 @@
 /*
- * Copyright 2019-2019 tsurugi project.
+ * Copyright 2018-2019 tsurugi project.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -15,10 +15,14 @@
  */
 #include "TestRoot.h"
 
-#include <stdlib.h>
-#include <errno.h>
+namespace ogawayama::testing {
 
-int main(int argc, char **argv) {
-    ::testing::InitGoogleTest(&argc, argv);
-    return RUN_ALL_TESTS();
+class ConnectionErrorTest : public ::testing::Test {};
+
+TEST_F(ConnectionErrorTest, not_find) {
+    StubPtr stub;
+
+    EXPECT_EQ(ERROR_CODE::SERVER_FAILURE, make_stub(stub));
 }
+
+}  // namespace ogawayama::testing

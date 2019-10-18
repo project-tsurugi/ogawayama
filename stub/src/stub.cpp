@@ -23,7 +23,7 @@ namespace ogawayama::stub {
 Stub::Impl::Impl(Stub *stub, std::string_view database_name) : envelope_(stub)
 {
     shared_memory_ = std::make_unique<ogawayama::common::SharedMemory>(database_name);
-    server_ = std::make_unique<ogawayama::common::ChannelStream>(ogawayama::common::param::server, shared_memory_->get_managed_shared_memory_ptr());
+    server_ = std::make_unique<ogawayama::common::ChannelStream>(ogawayama::common::param::server, shared_memory_.get());
 }
 
 /**
@@ -66,6 +66,12 @@ ErrorCode Stub::get_connection(ConnectionPtr & connection, std::size_t pgprocno)
 // Outside the namespace
 ERROR_CODE make_stub(StubPtr &stub, std::string_view name)
 {
-    stub = std::make_unique<ogawayama::stub::Stub>(name);
+    try {
+        stub = std::make_unique<ogawayama::stub::Stub>(name);
+    }
+    catch (ogawayama::common::SharedMemoryException& e) {
+        std::cerr << e.what() << std::endl;
+        return ERROR_CODE::SERVER_FAILURE;
+    }
     return ERROR_CODE::OK;
 }
