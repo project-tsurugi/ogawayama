@@ -47,7 +47,7 @@ public:
     SharedMemoryException(SharedMemoryException&& other) = default;
     SharedMemoryException& operator=(const SharedMemoryException& other) = delete;
     SharedMemoryException& operator=(SharedMemoryException&& other) = default;
-    const char* what( void ) const noexcept { return m_error.c_str(); }
+    const char* what( void ) const noexcept override { return m_error.c_str(); }
 
 private:
     std::string m_error;
