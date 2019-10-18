@@ -152,6 +152,7 @@ namespace ogawayama::common {
                 m_container_.resize(capacity_, ShmRow(allocator_));
                 pushed_ = poped_ = 0;
                 m_types_.clear();
+                is_partner_ = false;
             }
             
             void push_type(ogawayama::stub::Metadata::ColumnType::Type type, std::size_t length) {
@@ -160,6 +161,16 @@ namespace ogawayama::common {
 
             ogawayama::stub::Metadata const * get_metadata_ptr() {
                 return &m_types_;
+            }
+
+            void hello() {
+                is_partner_ = true;
+            }
+            void bye() {
+                is_partner_ = false;
+            }
+            bool is_partner() {
+                return is_partner_;
             }
 
         private:
@@ -181,6 +192,8 @@ namespace ogawayama::common {
             boost::interprocess::interprocess_mutex m_mutex_{};
             boost::interprocess::interprocess_condition m_not_empty_{};
             boost::interprocess::interprocess_condition m_not_full_{};
+
+            bool is_partner_{false};
         };
         
     public:
@@ -199,6 +212,7 @@ namespace ogawayama::common {
                 if (queue_ == nullptr) {
                     throw SharedMemoryException("can't find shared memory");
                 }
+                queue_->hello();
             }
         }
         RowQueue(char const* name, SharedMemory *shared_memory) : RowQueue(name, shared_memory, false) {}
@@ -210,6 +224,10 @@ namespace ogawayama::common {
         {
             if (owner_) {
                 shared_memory_->get_managed_shared_memory_ptr()->destroy<SpscQueue>(name_);
+            } else {
+                if (shared_memory_->get_managed_shared_memory_ptr()->find<SpscQueue>(name_).first != nullptr) {
+                    queue_->bye();
+                }
             }
         }
 
@@ -305,6 +323,9 @@ namespace ogawayama::common {
         }
 
         bool is_alive() {
+            if (owner_) {
+                return queue_->is_partner();
+            }
             if (shared_memory_->is_alive()) {
                 try {
                     return shared_memory_->get_managed_shared_memory_ptr()->find<SpscQueue>(name_).first != nullptr;

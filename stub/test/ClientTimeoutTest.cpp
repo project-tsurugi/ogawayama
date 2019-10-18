@@ -18,18 +18,18 @@
 
 namespace ogawayama::testing {
 
-class TimeoutTest : public ::testing::Test {
+class ClientTimeoutTest : public ::testing::Test {
     virtual void SetUp() {
-        if (fork() == 0) {
+        if (fork() == 0) { // Frontend, soon exit.
             sleep(1);
             {
                 auto shared_memory = std::make_unique<ogawayama::common::SharedMemory>("ogawayama");
-                auto server_ch = std::make_unique<ogawayama::common::ChannelStream>(ogawayama::common::param::server, shared_memory.get(), true);
+                auto server_channel = std::make_unique<ogawayama::common::ChannelStream>(ogawayama::common::param::server, shared_memory.get(), true);
                 auto row_queue = std::make_unique<ogawayama::common::RowQueue>(shared_memory->shm_name(ogawayama::common::param::resultset, 12, 3).c_str(), shared_memory.get(), true);
                 sleep(2);
             }
             exit(0);
-        } else {
+        } else { // Backend, continue to timeout test.
             shared_memory_ = std::make_unique<ogawayama::common::SharedMemory>("ogawayama", true);
             sleep(2);
         }
@@ -42,7 +42,7 @@ protected:
     std::unique_ptr<ogawayama::common::SharedMemory> shared_memory_;
 };
 
-TEST_F(TimeoutTest, channel) {
+TEST_F(ClientTimeoutTest, channel) {
     auto server_channel = std::make_unique<ogawayama::common::ChannelStream>(ogawayama::common::param::server, shared_memory_.get());
 
     ERROR_CODE reply = server_channel->recv_ack();
@@ -50,7 +50,7 @@ TEST_F(TimeoutTest, channel) {
     EXPECT_EQ(ERROR_CODE::SERVER_FAILURE, reply);
 }
 
-TEST_F(TimeoutTest, row_queue) {
+TEST_F(ClientTimeoutTest, row_queue) {
     auto row_queue = std::make_unique<ogawayama::common::RowQueue>(shared_memory_->shm_name(ogawayama::common::param::resultset, 12, 3).c_str(), shared_memory_.get());
 
     ERROR_CODE reply = row_queue->next();

@@ -274,6 +274,16 @@ public:
             return err_code_;
         }
         
+        void hello() {
+            is_partner_ = true;
+        }
+        void bye() {
+            is_partner_ = false;
+        }
+        bool is_partner() {
+            return is_partner_;
+        }
+
     private:
         bool is_notified() const { return notified_; }
         bool is_not_locked() const { return !locked_; }
@@ -301,6 +311,8 @@ public:
         bool ack_valid_{false};
         bool notified_{false};
         bool locked_{false};
+
+        bool is_partner_{false};
     };
     
     /**
@@ -318,6 +330,7 @@ public:
             if (buffer_ == nullptr) {
                 throw SharedMemoryException("can't find shared memory");
             }
+            buffer_->hello();
         }
     }
     ChannelStream(char const* name, SharedMemory *shared_memory) : ChannelStream(name, shared_memory, false) {}
@@ -329,6 +342,10 @@ public:
     {
         if (owner_) {
             shared_memory_->get_managed_shared_memory_ptr()->destroy<MsgBuffer>(name_);
+        } else {
+            if (shared_memory_->get_managed_shared_memory_ptr()->find<MsgBuffer>(name_).first != nullptr) {
+                buffer_->bye();
+            }
         }
     }
 
@@ -400,6 +417,9 @@ public:
         }
     }
     bool is_alive() {
+        if (owner_) {
+            return buffer_->is_partner();
+        }
         if (shared_memory_->is_alive()) {
             try {
                 return shared_memory_->get_managed_shared_memory_ptr()->find<MsgBuffer>(name_).first != nullptr;
