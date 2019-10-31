@@ -30,6 +30,11 @@ target_include_directories(stub
     PRIVATE ../../common/include
 )
 
+target_link_libraries(stub
+    PRIVATE pthread
+    PRIVATE rt
+)
+
 install_custom(stub ${export_name})
 
 #for tests
