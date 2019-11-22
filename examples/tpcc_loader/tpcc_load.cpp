@@ -112,7 +112,7 @@ namespace ogawayama::tpcc {
                     i_data[pos+7]='l';
                 }
             std::string sql = INSERT;
-            sql += "ITEM (i_id, i_name, i_price, i_data)";
+            sql += "item (i_id, i_name, i_price, i_data)";
             sql += VALUESbegin;
             sql += std::to_string(i_id); sql += COMMA;
             sql += "'"; sql += static_cast<char *>(i_name); sql += "'"; sql += COMMA;
@@ -160,7 +160,7 @@ namespace ogawayama::tpcc {
             w_ytd=3000000.00;
             
             std::string sql = INSERT;
-            sql += "WAREHOUSE (w_id, w_name, "
+            sql += "warehouse (w_id, w_name, "
                 "w_street_1, w_street_2, w_city, w_state, w_zip, "
                 "w_tax, w_ytd)";
             sql += VALUESbegin;
@@ -301,7 +301,7 @@ namespace ogawayama::tpcc {
                     s_data[pos+7]='l';
                 }
             std::string sql = INSERT;
-            sql += "STOCK (s_i_id, s_w_id, s_quantity, "
+            sql += "stock (s_i_id, s_w_id, s_quantity, "
                 "s_dist_01, s_dist_02, s_dist_03, s_dist_04, s_dist_05, "
                 "s_dist_06, s_dist_07, s_dist_08, s_dist_09, s_dist_10, "
                 "s_data, s_ytd, s_order_cnt, s_remote_cnt)";
@@ -367,7 +367,7 @@ namespace ogawayama::tpcc {
             randomGenerator->MakeAddress(static_cast<char *>(d_street_1), static_cast<char *>(d_street_2), static_cast<char *>(d_city), static_cast<char *>(d_state), static_cast<char *>(d_zip));
             d_tax=(static_cast<double>(randomGenerator->RandomNumber(10L,20L)))/100.0;
             std::string sql = INSERT;
-            sql += "DISTRICT (d_id, d_w_id, d_name, "
+            sql += "district (d_id, d_w_id, d_name, "
                 "d_street_1, d_street_2, d_city, d_state, d_zip, "
                 "d_tax, d_ytd, d_next_o_id)";
             sql += VALUESbegin;
@@ -453,7 +453,7 @@ namespace ogawayama::tpcc {
             getdatestamp(static_cast<char *>(c_since), randomGenerator->RandomNumber(1L,365L*50L));
             randomGenerator->MakeAlphaString(300,500,static_cast<char *>(c_data));
             std::string sql = INSERT;
-            sql += "CUSTOMER (c_id, c_d_id, c_w_id, "
+            sql += "customer (c_id, c_d_id, c_w_id, "
                 "c_first, c_middle, c_last, "
                 "c_street_1, c_street_2, c_city, c_state, c_zip, "
                 "c_phone, c_since, c_credit, "
@@ -487,7 +487,7 @@ namespace ogawayama::tpcc {
             transaction->execute_statement(sql);
             
             sql = INSERT;
-            sql += "CUSTOMER_SECONDARY (c_d_id, c_w_id, c_last, c_first, c_id)";
+            sql += "customer_secondary (c_d_id, c_w_id, c_last, c_first, c_id)";
             sql += VALUESbegin;
             sql += std::to_string(c_d_id); sql += COMMA;
             sql += std::to_string(c_w_id); sql += COMMA;
@@ -559,7 +559,7 @@ namespace ogawayama::tpcc {
             if (o_id > ((scale->orders * 7) / 10)) /* the last 900 orders have not been delivered) */
                 {
                     std::string sql = INSERT;
-                    sql += "ORDERS (o_id, o_c_id, o_d_id, o_w_id, "
+                    sql += "orders (o_id, o_c_id, o_d_id, o_w_id, "
                         "o_entry_d, o_ol_cnt, o_all_local)";
                     sql += VALUESbegin;
                     sql += std::to_string(o_id); sql += COMMA;
@@ -575,7 +575,7 @@ namespace ogawayama::tpcc {
                     transaction->execute_statement(sql);
                     
                     sql = INSERT;
-                    sql += "ORDERS_SECONDARY (o_d_id, o_w_id, o_c_id, o_id)";
+                    sql += "orders_secondary (o_d_id, o_w_id, o_c_id, o_id)";
                     sql += VALUESbegin;
                     sql += std::to_string(o_d_id); sql += COMMA;
                     sql += std::to_string(o_w_id); sql += COMMA;
@@ -587,7 +587,7 @@ namespace ogawayama::tpcc {
                     transaction->execute_statement(sql);
                     
                     sql = INSERT;
-                    sql += "NEW_ORDER (no_o_id, no_d_id, no_w_id)";
+                    sql += "new_order (no_o_id, no_d_id, no_w_id)";
                     sql += VALUESbegin;
                     sql += std::to_string(o_id); sql += COMMA;
                     sql += std::to_string(o_d_id); sql += COMMA;
@@ -600,7 +600,7 @@ namespace ogawayama::tpcc {
             else
                 {
                     std::string sql = INSERT;
-                    sql += "ORDERS (o_id, o_c_id, o_d_id, o_w_id, "
+                    sql += "orders (o_id, o_c_id, o_d_id, o_w_id, "
                         "o_entry_d, o_carrier_id, o_ol_cnt, o_all_local)";
                     sql += VALUESbegin;
                     sql += std::to_string(o_id); sql += COMMA;
@@ -617,7 +617,7 @@ namespace ogawayama::tpcc {
                     transaction->execute_statement(sql);
                     
                     sql = INSERT;
-                    sql += "ORDERS_SECONDARY (o_d_id, o_w_id, o_c_id, o_id)";
+                    sql += "orders_secondary (o_d_id, o_w_id, o_c_id, o_id)";
                     sql += VALUESbegin;
                     sql += std::to_string(o_d_id); sql += COMMA;
                     sql += std::to_string(o_w_id); sql += COMMA;
@@ -641,7 +641,7 @@ namespace ogawayama::tpcc {
                 if (o_id > ((scale->orders * 7) / 10))
                     {
                         std::string sql = INSERT;
-                        sql += "ORDER_LINE (ol_o_id, ol_d_id, ol_w_id, ol_number, "
+                        sql += "order_line (ol_o_id, ol_d_id, ol_w_id, ol_number, "
                             "ol_i_id, ol_supply_w_id, ol_quantity, ol_amount, "
                             "ol_dist_info)";
                         sql += VALUESbegin;
@@ -663,7 +663,7 @@ namespace ogawayama::tpcc {
                     {
                         ol_amount = (static_cast<double>(randomGenerator->RandomNumber(10L, 10000L)))/100.0;
                         std::string sql = INSERT;
-                        sql += "ORDER_LINE (ol_o_id, ol_d_id, ol_w_id, ol_number, "
+                        sql += "order_line (ol_o_id, ol_d_id, ol_w_id, ol_number, "
                             "ol_i_id, ol_supply_w_id, ol_quantity, ol_amount, "
                             "ol_dist_info, ol_delivery_d)";
                         sql += VALUESbegin;

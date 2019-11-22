@@ -21,7 +21,7 @@ namespace ogawayama {
 namespace tpcc {
 
 std::vector<std::string_view> sql_create_table = {  // NOLINT
-    "CREATE TABLE WAREHOUSE ("
+    "CREATE TABLE warehouse ("
     "w_id INT NOT NULL, "
     "w_name VARCHAR(10) NOT NULL, "
     "w_street_1 VARCHAR(20) NOT NULL, "
@@ -33,7 +33,7 @@ std::vector<std::string_view> sql_create_table = {  // NOLINT
     "w_ytd DOUBLE NOT NULL, "
     "PRIMARY KEY(w_id))",
 
-    "CREATE TABLE DISTRICT ("
+    "CREATE TABLE district ("
     "d_id INT NOT NULL, "
     "d_w_id INT NOT NULL, "
     "d_name VARCHAR(10) NOT NULL, "
@@ -47,7 +47,7 @@ std::vector<std::string_view> sql_create_table = {  // NOLINT
     "d_next_o_id INT NOT NULL, "
     "PRIMARY KEY(d_w_id, d_id))",
 
-    "CREATE TABLE CUSTOMER ("
+    "CREATE TABLE customer ("
     "c_id INT NOT NULL, "
     "c_d_id INT NOT NULL, "
     "c_w_id INT NOT NULL, "
@@ -71,7 +71,7 @@ std::vector<std::string_view> sql_create_table = {  // NOLINT
     "c_data VARCHAR(500) NOT NULL, "
     "PRIMARY KEY(c_w_id, c_d_id, c_id))",
 
-    "CREATE TABLE CUSTOMER_SECONDARY ("
+    "CREATE TABLE customer_secondary ("
     "c_d_id INT NOT NULL, "
     "c_w_id INT NOT NULL, "
     "c_last VARCHAR(16) NOT NULL, "
@@ -79,13 +79,13 @@ std::vector<std::string_view> sql_create_table = {  // NOLINT
     "c_id INT NOT NULL, "
     "PRIMARY KEY(c_w_id, c_d_id, c_last, c_first))",
     
-    "CREATE TABLE NEW_ORDER ("
+    "CREATE TABLE new_order ("
     "no_o_id INT NOT NULL, "
     "no_d_id INT NOT NULL, "
     "no_w_id INT NOT NULL, "
     "PRIMARY KEY(no_w_id, no_d_id, no_o_id))",
     
-    "CREATE TABLE ORDERS (" // ORDER is a reserved word of SQL
+    "CREATE TABLE orders (" // ORDER is a reserved word of SQL
     "o_id INT NOT NULL, "
     "o_d_id INT NOT NULL, "
     "o_w_id INT NOT NULL, "
@@ -96,14 +96,14 @@ std::vector<std::string_view> sql_create_table = {  // NOLINT
     "o_all_local INT NOT NULL, "
     "PRIMARY KEY(o_w_id, o_d_id, o_id))",
     
-    "CREATE TABLE ORDERS_SECONDARY ("
+    "CREATE TABLE orders_secondary ("
     "o_d_id INT NOT NULL, "
     "o_w_id INT NOT NULL, "
     "o_c_id INT NOT NULL, "
     "o_id INT NOT NULL, "
     "PRIMARY KEY(o_w_id, o_d_id, o_c_id, o_id))",
     
-    "CREATE TABLE ORDER_LINE ("
+    "CREATE TABLE order_line ("
     "ol_o_id INT NOT NULL, "
     "ol_d_id INT NOT NULL, "
     "ol_w_id INT NOT NULL, "
@@ -116,7 +116,7 @@ std::vector<std::string_view> sql_create_table = {  // NOLINT
     "ol_dist_info CHAR(24) NOT NULL, "
     "PRIMARY KEY(ol_w_id, ol_d_id, ol_o_id, ol_number))",
     
-    "CREATE TABLE ITEM ("
+    "CREATE TABLE item ("
     "i_id INT NOT NULL, "
     "i_im_id INT, " // not used
     "i_name VARCHAR(24) NOT NULL, "
@@ -124,7 +124,7 @@ std::vector<std::string_view> sql_create_table = {  // NOLINT
     "i_data VARCHAR(50) NOT NULL, "
     "PRIMARY KEY(i_id))",
     
-    "CREATE TABLE STOCK ("
+    "CREATE TABLE stock ("
     "s_i_id INT NOT NULL, "
     "s_w_id INT NOT NULL, "
     "s_quantity INT NOT NULL, "
