@@ -62,10 +62,17 @@ public:
     /**
      * @brief Construct a new object.
      */
-     SharedMemory(std::string_view database_name, bool create_shm) : database_name_(database_name), owner_(create_shm)  {    
+     SharedMemory(std::string_view database_name, bool create_shm, bool remove_shm = true) : database_name_(database_name), owner_(create_shm)  {
         if (create_shm) {
-            boost::interprocess::shared_memory_object::remove(database_name_.c_str());
-            managed_shared_memory_ = std::make_unique<boost::interprocess::managed_shared_memory>(boost::interprocess::create_only, database_name_.c_str(), param::SEGMENT_SIZE);
+            if (remove_shm) {
+                boost::interprocess::shared_memory_object::remove(database_name_.c_str());
+            }
+            try {
+                managed_shared_memory_ = std::make_unique<boost::interprocess::managed_shared_memory>(boost::interprocess::create_only, database_name_.c_str(), param::SEGMENT_SIZE);
+            }
+            catch(const boost::interprocess::interprocess_exception& ex) {
+                throw SharedMemoryException("shared memory already exist");
+            }
         } else {
             try {
                 managed_shared_memory_ = std::make_unique<boost::interprocess::managed_shared_memory>(boost::interprocess::open_only, database_name_.c_str());

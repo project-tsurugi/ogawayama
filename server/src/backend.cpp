@@ -29,80 +29,89 @@ namespace ogawayama::server {
 
 DEFINE_string(dbname, ogawayama::common::param::SHARED_MEMORY_NAME, "database name");  // NOLINT
 DEFINE_string(location, "./db", "database location on file system");  // NOLINT
+DEFINE_bool(remove_shm, false, "remove the shared memory prior to the execution");  // NOLINT
 
 static constexpr std::string_view KEY_LOCATION { "location" };  //NOLINT
 
 int backend_main(int argc, char **argv) {
-    std::vector<std::unique_ptr<Worker>> workers;
+    try {
+        std::vector<std::unique_ptr<Worker>> workers;
 
-    // database environment
-    auto env = umikongo::create_environment();
-    env->initialize();
+        // database environment
+        auto env = umikongo::create_environment();
+        env->initialize();
 
-    // command arguments
-    gflags::SetUsageMessage("ogawayama database server");
-    gflags::ParseCommandLineFlags(&argc, &argv, true);
+        // command arguments
+        gflags::SetUsageMessage("ogawayama database server");
+        gflags::ParseCommandLineFlags(&argc, &argv, true);
 
-    // communication channel
-    auto shared_memory = std::make_unique<ogawayama::common::SharedMemory>(FLAGS_dbname, true);
-    auto server_ch = std::make_unique<ogawayama::common::ChannelStream>(ogawayama::common::param::server, shared_memory.get(), true);
+        // communication channel
+        auto shared_memory = std::make_unique<ogawayama::common::SharedMemory>(FLAGS_dbname, true, FLAGS_remove_shm);
+        auto server_ch = std::make_unique<ogawayama::common::ChannelStream>(ogawayama::common::param::server, shared_memory.get(), true, false);
 
-    // database
-    auto db = umikongo::create_database();
-    std::map<std::string, std::string> options;
-    options.insert_or_assign(std::string(KEY_LOCATION), FLAGS_location);
-    db->open(options);
+        // database
+        auto db = umikongo::create_database();
+        std::map<std::string, std::string> options;
+        options.insert_or_assign(std::string(KEY_LOCATION), FLAGS_location);
+        db->open(options);
 
-    while(true) {
-        ogawayama::common::CommandMessage::Type type;
-        std::size_t index;
-        try {
-            if (server_ch->recv_req(type, index) != ERROR_CODE::OK) {
-                std::cerr << __func__ << " " << __LINE__ << std::endl;
-                continue;
-            }
-            server_ch->notify();
-        } catch (std::exception &ex) {
-            std::cerr << __func__ << " " << __LINE__ << ": exiting \"" << ex.what() << "\"" << std::endl;
-            return -1;
-        }
-
-        switch (type) {
-        case ogawayama::common::CommandMessage::Type::CONNECT:
-            if (workers.size() < (index + 1)) {
-                workers.resize(index + 1);
-            }
+        while(true) {
+            ogawayama::common::CommandMessage::Type type;
+            std::size_t index;
             try {
-                std::unique_ptr<Worker> &worker = workers.at(index);
-                worker = std::make_unique<Worker>(db.get(), shared_memory.get(), index);
-                worker->task_ = std::packaged_task<void()>([&]{worker->run();});
-                worker->future_ = worker->task_.get_future();
-                worker->thread_ = std::thread(std::move(worker->task_));
+                auto rv = server_ch->recv_req(type, index);
+                if (rv != ERROR_CODE::OK) {
+                    if (rv != ERROR_CODE::TIMEOUT) {
+                        std::cerr << __func__ << " " << __LINE__ <<  " " << ogawayama::stub::error_name(rv) << std::endl;
+                    }
+                    continue;
+                }
+                server_ch->notify();
             } catch (std::exception &ex) {
-                std::cerr << ex.what() << std::endl;
+                std::cerr << __func__ << " " << __LINE__ << ": exiting \"" << ex.what() << "\"" << std::endl;
                 return -1;
             }
-            break;
-        case ogawayama::common::CommandMessage::Type::DUMP_DATABASE:
-            try {
-                dump(db.get(), FLAGS_location);
-            } catch (std::exception& e) {
-                std::cerr << e.what() << std::endl;
+
+            switch (type) {
+            case ogawayama::common::CommandMessage::Type::CONNECT:
+                if (workers.size() < (index + 1)) {
+                    workers.resize(index + 1);
+                }
+                try {
+                    std::unique_ptr<Worker> &worker = workers.at(index);
+                    worker = std::make_unique<Worker>(db.get(), shared_memory.get(), index);
+                    worker->task_ = std::packaged_task<void()>([&]{worker->run();});
+                    worker->future_ = worker->task_.get_future();
+                    worker->thread_ = std::thread(std::move(worker->task_));
+                } catch (std::exception &ex) {
+                    std::cerr << ex.what() << std::endl;
+                    return -1;
+                }
+                break;
+            case ogawayama::common::CommandMessage::Type::DUMP_DATABASE:
+                try {
+                    dump(db.get(), FLAGS_location);
+                } catch (std::exception& e) {
+                    std::cerr << e.what() << std::endl;
+                }
+                break;
+            case ogawayama::common::CommandMessage::Type::LOAD_DATABASE:
+                try {
+                    load(db.get(), FLAGS_location);
+                } catch (std::exception& e) {
+                    std::cerr << e.what() << std::endl;
+                }
+                break;
+            case ogawayama::common::CommandMessage::Type::TERMINATE:
+                return 0;
+            default:
+                std::cerr << "unsurpported message" << std::endl;
+                return -1;
             }
-            break;
-        case ogawayama::common::CommandMessage::Type::LOAD_DATABASE:
-            try {
-                load(db.get(), FLAGS_location);
-            } catch (std::exception& e) {
-                std::cerr << e.what() << std::endl;
-            }
-            break;
-        case ogawayama::common::CommandMessage::Type::TERMINATE:
-            return 0;
-        default:
-            std::cerr << "unsurpported message" << std::endl;
-            return -1;
         }
+    } catch (std::exception &ex) {
+        std::cerr << ex.what() << std::endl;
+        return -1;
     }
 }
 

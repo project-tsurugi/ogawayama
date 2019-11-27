@@ -318,7 +318,8 @@ public:
     /**
      * @brief Construct a new object.
      */
-    ChannelStream(char const* name, SharedMemory *shared_memory, bool owner) : shared_memory_(shared_memory), owner_(owner)
+    ChannelStream(char const* name, SharedMemory *shared_memory, bool owner, bool always_connected = true) :
+    shared_memory_(shared_memory), owner_(owner), always_connected_(always_connected)
     {
         strncpy(name_, name, param::MAX_NAME_LENGTH);
         auto mem = shared_memory_->get_managed_shared_memory_ptr();
@@ -417,24 +418,28 @@ public:
         }
     }
     bool is_alive() {
+        if (!shared_memory_->is_alive()) {
+            return false;
+        }
         if (owner_) {
-            return buffer_->is_partner();
-        }
-        if (shared_memory_->is_alive()) {
-            try {
-                return shared_memory_->get_managed_shared_memory_ptr()->find<MsgBuffer>(name_).first != nullptr;
+            if (always_connected_) {
+                return buffer_->is_partner();
             }
-            catch(const boost::interprocess::interprocess_exception& ex) {
-                return false;
-            }
+            return true;
         }
-        return false;
+        try {
+            return shared_memory_->get_managed_shared_memory_ptr()->find<MsgBuffer>(name_).first != nullptr;
+        }
+        catch(const boost::interprocess::interprocess_exception& ex) {
+            return false;
+        }
     }
 
 private:
     SharedMemory *shared_memory_;
     MsgBuffer *buffer_;
     const bool owner_;
+    const bool always_connected_;
     char name_[param::MAX_NAME_LENGTH];
 };
 

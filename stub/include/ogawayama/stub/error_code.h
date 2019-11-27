@@ -75,6 +75,22 @@ enum class ErrorCode {
 
 };
 
+constexpr std::string_view error_name(ErrorCode code) {
+    switch (code) {
+    case ErrorCode::OK: return "OK";
+    case ErrorCode::COLUMN_WAS_NULL: return "COLUMN_WAS_NULL";
+    case ErrorCode::END_OF_ROW: return "END_OF_ROW";
+    case ErrorCode::END_OF_COLUMN: return "END_OF_COLUMN";
+    case ErrorCode::COLUMN_TYPE_MISMATCH: return "COLUMN_TYPE_MISMATCH";
+    case ErrorCode::UNSUPPORTED: return "UNSUPPORTED";
+    case ErrorCode::NO_TRANSACTION: return "NO_TRANSACTION";
+    case ErrorCode::UNKNOWN: return "UNKNOWN";
+    case ErrorCode::SERVER_FAILURE: return "SERVER_FAILURE";
+    case ErrorCode::TIMEOUT: return "TIMEOUT";
+    default: return "UNDEFINED";
+    }
+}
+
 }  // namespace ogawayama::stub
 
 #endif  // STUB_ERROR_CODE_H_
