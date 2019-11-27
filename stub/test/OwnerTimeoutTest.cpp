@@ -21,6 +21,7 @@ namespace ogawayama::testing {
 class OwnerTimeoutTest : public ::testing::Test {
     virtual void SetUp() {
         if (fork() == 0) { // Backend, soon exit.
+            close(0); close(1); close(2);
             auto shared_memory = std::make_unique<ogawayama::common::SharedMemory>("ogawayama", true);
             sleep(2);
             {
