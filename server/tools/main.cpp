@@ -30,7 +30,12 @@ DEFINE_string(query, "", "SQL query");  // NOLINT
 
 void err_exit(int line)
 {
-    std::cerr << "Error at " << line << std::endl;
+    std::cerr << "Error at " << line << ", error was falling into default case" << std::endl;
+    exit(1);
+}
+void err_exit(int line, ERROR_CODE err)
+{
+    std::cerr << "Error at " << line << ", error was " << error_name(err) << std::endl;
     exit(1);
 }
 
@@ -40,7 +45,11 @@ int main(int argc, char **argv) {
     gflags::ParseCommandLineFlags(&argc, &argv, true);
 
     StubPtr stub;
-    if (make_stub(stub, FLAGS_dbname.c_str()) != ERROR_CODE::OK) { err_exit(__LINE__); }
+    {
+        ERROR_CODE err = make_stub(stub, FLAGS_dbname.c_str());
+        if (err != ERROR_CODE::OK) { err_exit(__LINE__, err); }
+    }
+
     if (FLAGS_dump) {
         stub->get_impl()->get_channel()->send_req(ogawayama::common::CommandMessage::Type::DUMP_DATABASE);
     }
@@ -51,82 +60,102 @@ int main(int argc, char **argv) {
 
     if (FLAGS_statement != "") {
         ConnectionPtr connection;
-        if (stub->get_connection(12, connection) != ERROR_CODE::OK) { err_exit(__LINE__); }
+        ERROR_CODE err;
+
+        err = stub->get_connection(12, connection);
+        if (err != ERROR_CODE::OK) { err_exit(__LINE__, err); }
         TransactionPtr transaction;
-        if (connection->begin(transaction) != ERROR_CODE::OK) { err_exit(__LINE__); }
+        err = connection->begin(transaction);
+        if (err != ERROR_CODE::OK) { err_exit(__LINE__, err); }
         std::cerr << "execute_statement \"" << FLAGS_statement << "\"" << std::endl;
-        if (transaction->execute_statement(FLAGS_statement) != ERROR_CODE::OK) { err_exit(__LINE__); }
+        err = transaction->execute_statement(FLAGS_statement);
+        if (err != ERROR_CODE::OK) { err_exit(__LINE__, err); }
         transaction->commit();
     }
 
     if (FLAGS_query != "") {
         ConnectionPtr connection;
-        if (stub->get_connection(12, connection) != ERROR_CODE::OK) { err_exit(__LINE__); }
+        ERROR_CODE err;
+
+        err = stub->get_connection(12, connection);
+        if (err != ERROR_CODE::OK) { err_exit(__LINE__, err); }
         TransactionPtr transaction;
-        if (connection->begin(transaction) != ERROR_CODE::OK) { err_exit(__LINE__); }
+        
+        err = connection->begin(transaction);
+        if (err != ERROR_CODE::OK) { err_exit(__LINE__, err); }
         ResultSetPtr result_set;
         std::cerr << "execute_query \"" << FLAGS_query << "\"" << std::endl;
-        if (transaction->execute_query(FLAGS_query, result_set) != ERROR_CODE::OK) { err_exit(__LINE__); }
+        err = transaction->execute_query(FLAGS_query, result_set);
+        if (err != ERROR_CODE::OK) { err_exit(__LINE__, err); }
+        
         MetadataPtr metadata;
-        if (result_set->get_metadata(metadata) != ERROR_CODE::OK) { err_exit(__LINE__); }
+        err = result_set->get_metadata(metadata);
+        if (err != ERROR_CODE::OK) { err_exit(__LINE__, err); }
 
         while(true) {
-            switch (result_set->next()) {
+            ERROR_CODE err = result_set->next();
+            switch (err) {
             case ERROR_CODE::OK: {
                 std::cout << "| ";
                 for (auto t: metadata->get_types()) {
                     switch (t.get_type()) {
                     case TYPE::INT16: {
                         std::int16_t v;
-                        switch (result_set->next_column(v)) {
+                        err = result_set->next_column(v);
+                        switch (err) {
                         case ERROR_CODE::OK: std::cout << v << " | "; break;
                         case ERROR_CODE::COLUMN_WAS_NULL: std::cout << "(null) | "; break;
-                        default: err_exit(__LINE__);
+                        default: err_exit(__LINE__, err);
                         }
                         break;
                     }
                     case TYPE::INT32: {
                         std::int32_t v;
-                        switch (result_set->next_column(v)) {
+                        err = result_set->next_column(v);
+                        switch (err) {
                         case ERROR_CODE::OK: std::cout << v << " | "; break;
                         case ERROR_CODE::COLUMN_WAS_NULL: std::cout << "(null) | "; break;
-                        default: err_exit(__LINE__);
+                        default: err_exit(__LINE__, err);
                         }
                         break;
                     }
                     case TYPE::INT64: {
                         std::int64_t v;
-                        switch (result_set->next_column(v)) {
+                        err = result_set->next_column(v);
+                        switch (err) {
                         case ERROR_CODE::OK: std::cout << v << " | "; break;
                         case ERROR_CODE::COLUMN_WAS_NULL: std::cout << "(null) | "; break;
-                        default: err_exit(__LINE__);
+                        default: err_exit(__LINE__, err);
                         }
                         break;
                     }
                     case TYPE::FLOAT32: {
                         float v;
-                        switch (result_set->next_column(v)) {
+                        err = result_set->next_column(v);
+                        switch (err) {
                         case ERROR_CODE::OK: std::cout << v << " | "; break;
                         case ERROR_CODE::COLUMN_WAS_NULL: std::cout << "(null) | "; break;
-                        default: err_exit(__LINE__);
+                        default: err_exit(__LINE__, err);
                         }
                         break;
                     }
                     case TYPE::FLOAT64: {
                         double v;
-                        switch (result_set->next_column(v)) {
+                        err = result_set->next_column(v);
+                        switch (err) {
                         case ERROR_CODE::OK: std::cout << v << " | "; break;
                         case ERROR_CODE::COLUMN_WAS_NULL: std::cout << "(null) | "; break;
-                        default: err_exit(__LINE__);
+                        default: err_exit(__LINE__, err);
                         }
                         break;
                     }
                     case TYPE::TEXT: {
                         std::string_view v;
-                        switch (result_set->next_column(v)) {
+                        err = result_set->next_column(v);
+                        switch (err) {
                         case ERROR_CODE::OK: std::cout << v << " | "; break;
                         case ERROR_CODE::COLUMN_WAS_NULL: std::cout << "(null) | "; break;
-                        default: err_exit(__LINE__);
+                        default: err_exit(__LINE__, err);
                         }
                         break;
                     }
