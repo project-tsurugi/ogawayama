@@ -75,6 +75,10 @@ void Worker::run()
             clear();
             break;
         case ogawayama::common::CommandMessage::Type::DISCONNECT:
+            if (transaction_) {
+                transaction_->abort();
+            }
+            clear();
             channel_->bye_and_notify();
             return;
         default:
