@@ -16,6 +16,8 @@
 
 #include <iostream>
 
+#include "glog/logging.h"
+
 #include "shakujo/common/core/type/Int.h"
 #include "shakujo/common/core/type/Float.h"
 #include "shakujo/common/core/type/Char.h"
@@ -42,11 +44,12 @@ void Worker::run()
                 std::cerr << __func__ << " " << __LINE__ << ": exiting" << std::endl;
                 return;
             }
+            VLOG(1) << __func__ << ":" << __LINE__ << " recieved " << ivalue << " " << ogawayama::common::type_name(type) << " \"" << string << "\"";
         } catch (std::exception &ex) {
             std::cerr << __func__ << " " << __LINE__ << ": exiting \"" << ex.what() << "\"" << std::endl;
             return;
         }
-        
+
         switch (type) {
         case ogawayama::common::CommandMessage::Type::EXECUTE_STATEMENT:
             execute_statement(string);

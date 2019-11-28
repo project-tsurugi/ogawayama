@@ -451,6 +451,23 @@ private:
     char name_[param::MAX_NAME_LENGTH];
 };
 
+constexpr std::string_view type_name(CommandMessage::Type type) {
+    switch (type) {
+    case CommandMessage::Type::OK: return "OK";
+    case CommandMessage::Type::CONNECT: return "CONNECT";
+    case CommandMessage::Type::DISCONNECT: return "DISCONNECT";
+    case CommandMessage::Type::EXECUTE_STATEMENT: return "EXECUTE_STATEMENT";
+    case CommandMessage::Type::EXECUTE_QUERY: return "EXECUTE_QUERY";
+    case CommandMessage::Type::NEXT: return "NEXT";
+    case CommandMessage::Type::COMMIT: return "COMMIT";
+    case CommandMessage::Type::ROLLBACK: return "ROLLBACK";
+    case CommandMessage::Type::TERMINATE: return "TERMINATE";
+    case CommandMessage::Type::DUMP_DATABASE: return "DUMP_DATABASE";
+    case CommandMessage::Type::LOAD_DATABASE: return "LOAD_DATABASE";
+    default: return "UNDEFINED";
+    }
+}
+
 };  // namespace ogawayama::common
 
 #endif //  CHANNEL_STREAM_H_
