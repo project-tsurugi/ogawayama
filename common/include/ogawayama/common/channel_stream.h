@@ -319,7 +319,7 @@ public:
      * @brief Construct a new object.
      */
     ChannelStream(char const* name, SharedMemory *shared_memory, bool owner, bool always_connected = true) :
-    shared_memory_(shared_memory), owner_(owner), always_connected_(always_connected)
+    shared_memory_(shared_memory), owner_(owner), always_connected_(always_connected), disconnected_(false)
     {
         strncpy(name_, name, param::MAX_NAME_LENGTH);
         auto mem = shared_memory_->get_managed_shared_memory_ptr();
@@ -344,8 +344,10 @@ public:
         if (owner_) {
             shared_memory_->get_managed_shared_memory_ptr()->destroy<MsgBuffer>(name_);
         } else {
-            if (shared_memory_->get_managed_shared_memory_ptr()->find<MsgBuffer>(name_).first != nullptr) {
-                buffer_->bye();
+            if (!disconnected_) {
+                if (shared_memory_->get_managed_shared_memory_ptr()->find<MsgBuffer>(name_).first != nullptr) {
+                    buffer_->bye();
+                }
             }
         }
     }
@@ -417,6 +419,11 @@ public:
             }
         }
     }
+    void bye_and_notify() {
+        buffer_->bye();
+        disconnected_ = true;
+        buffer_->notify();
+    }
     bool is_alive() {
         if (!shared_memory_->is_alive()) {
             return false;
@@ -440,6 +447,7 @@ private:
     MsgBuffer *buffer_;
     const bool owner_;
     const bool always_connected_;
+    bool disconnected_;
     char name_[param::MAX_NAME_LENGTH];
 };
 

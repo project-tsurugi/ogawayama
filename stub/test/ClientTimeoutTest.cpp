@@ -21,7 +21,6 @@ namespace ogawayama::testing {
 class ClientTimeoutTest : public ::testing::Test {
     virtual void SetUp() {
         if (fork() == 0) { // Frontend, soon exit.
-            close(0); close(1); close(2);
             sleep(1);
             {
                 auto shared_memory = std::make_unique<ogawayama::common::SharedMemory>("ogawayama");

@@ -75,7 +75,7 @@ void Worker::run()
             clear();
             break;
         case ogawayama::common::CommandMessage::Type::DISCONNECT:
-            channel_->notify();
+            channel_->bye_and_notify();
             return;
         default:
             std::cerr << "recieved an illegal command message" << std::endl;
