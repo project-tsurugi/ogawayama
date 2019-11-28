@@ -31,12 +31,12 @@ DEFINE_string(query, "", "SQL query");  // NOLINT
 void err_exit(int line)
 {
     std::cerr << "Error at " << line << ", error was falling into default case" << std::endl;
-    exit(1);
+    _exit(1);
 }
 void err_exit(int line, ERROR_CODE err)
 {
     std::cerr << "Error at " << line << ", error was " << error_name(err) << std::endl;
-    exit(1);
+    _exit(1);
 }
 
 int main(int argc, char **argv) {
