@@ -28,15 +28,13 @@ DEFINE_bool(load, false, "Database contents are loaded from the location just af
 DEFINE_string(statement, "", "SQL statement");  // NOLINT
 DEFINE_string(query, "", "SQL query");  // NOLINT
 
-void err_exit(int line)
+void prt_err(int line)
 {
     std::cerr << "Error at " << line << ", error was falling into default case" << std::endl;
-    _exit(1);
 }
-void err_exit(int line, ERROR_CODE err)
+void prt_err(int line, ERROR_CODE err)
 {
     std::cerr << "Error at " << line << ", error was " << error_name(err) << std::endl;
-    _exit(1);
 }
 
 int main(int argc, char **argv) {
@@ -47,7 +45,7 @@ int main(int argc, char **argv) {
     StubPtr stub;
     {
         ERROR_CODE err = make_stub(stub, FLAGS_dbname.c_str());
-        if (err != ERROR_CODE::OK) { err_exit(__LINE__, err); }
+        if (err != ERROR_CODE::OK) { prt_err(__LINE__, err); return 1; }
     }
 
     if (FLAGS_dump) {
@@ -63,13 +61,13 @@ int main(int argc, char **argv) {
         ERROR_CODE err;
 
         err = stub->get_connection(12, connection);
-        if (err != ERROR_CODE::OK) { err_exit(__LINE__, err); }
+        if (err != ERROR_CODE::OK) { prt_err(__LINE__, err); return 1; }
         TransactionPtr transaction;
         err = connection->begin(transaction);
-        if (err != ERROR_CODE::OK) { err_exit(__LINE__, err); }
+        if (err != ERROR_CODE::OK) { prt_err(__LINE__, err); return 1; }
         std::cerr << "execute_statement \"" << FLAGS_statement << "\"" << std::endl;
         err = transaction->execute_statement(FLAGS_statement);
-        if (err != ERROR_CODE::OK) { err_exit(__LINE__, err); }
+        if (err != ERROR_CODE::OK) { prt_err(__LINE__, err); return 1; }
         transaction->commit();
     }
 
@@ -78,19 +76,19 @@ int main(int argc, char **argv) {
         ERROR_CODE err;
 
         err = stub->get_connection(12, connection);
-        if (err != ERROR_CODE::OK) { err_exit(__LINE__, err); }
+        if (err != ERROR_CODE::OK) { prt_err(__LINE__, err); return 1; }
         TransactionPtr transaction;
         
         err = connection->begin(transaction);
-        if (err != ERROR_CODE::OK) { err_exit(__LINE__, err); }
+        if (err != ERROR_CODE::OK) { prt_err(__LINE__, err); return 1; }
         ResultSetPtr result_set;
         std::cerr << "execute_query \"" << FLAGS_query << "\"" << std::endl;
         err = transaction->execute_query(FLAGS_query, result_set);
-        if (err != ERROR_CODE::OK) { err_exit(__LINE__, err); }
+        if (err != ERROR_CODE::OK) { prt_err(__LINE__, err); return 1; }
         
         MetadataPtr metadata;
         err = result_set->get_metadata(metadata);
-        if (err != ERROR_CODE::OK) { err_exit(__LINE__, err); }
+        if (err != ERROR_CODE::OK) { prt_err(__LINE__, err); return 1; }
 
         while(true) {
             ERROR_CODE err = result_set->next();
@@ -105,7 +103,7 @@ int main(int argc, char **argv) {
                         switch (err) {
                         case ERROR_CODE::OK: std::cout << v << " | "; break;
                         case ERROR_CODE::COLUMN_WAS_NULL: std::cout << "(null) | "; break;
-                        default: err_exit(__LINE__, err);
+                        default: prt_err(__LINE__, err); return 1;
                         }
                         break;
                     }
@@ -115,7 +113,7 @@ int main(int argc, char **argv) {
                         switch (err) {
                         case ERROR_CODE::OK: std::cout << v << " | "; break;
                         case ERROR_CODE::COLUMN_WAS_NULL: std::cout << "(null) | "; break;
-                        default: err_exit(__LINE__, err);
+                        default: prt_err(__LINE__, err); return 1;
                         }
                         break;
                     }
@@ -125,7 +123,7 @@ int main(int argc, char **argv) {
                         switch (err) {
                         case ERROR_CODE::OK: std::cout << v << " | "; break;
                         case ERROR_CODE::COLUMN_WAS_NULL: std::cout << "(null) | "; break;
-                        default: err_exit(__LINE__, err);
+                        default: prt_err(__LINE__, err); return 1;
                         }
                         break;
                     }
@@ -135,7 +133,7 @@ int main(int argc, char **argv) {
                         switch (err) {
                         case ERROR_CODE::OK: std::cout << v << " | "; break;
                         case ERROR_CODE::COLUMN_WAS_NULL: std::cout << "(null) | "; break;
-                        default: err_exit(__LINE__, err);
+                        default: prt_err(__LINE__, err); return 1;
                         }
                         break;
                     }
@@ -145,7 +143,7 @@ int main(int argc, char **argv) {
                         switch (err) {
                         case ERROR_CODE::OK: std::cout << v << " | "; break;
                         case ERROR_CODE::COLUMN_WAS_NULL: std::cout << "(null) | "; break;
-                        default: err_exit(__LINE__, err);
+                        default: prt_err(__LINE__, err); return 1;
                         }
                         break;
                     }
@@ -155,12 +153,12 @@ int main(int argc, char **argv) {
                         switch (err) {
                         case ERROR_CODE::OK: std::cout << v << " | "; break;
                         case ERROR_CODE::COLUMN_WAS_NULL: std::cout << "(null) | "; break;
-                        default: err_exit(__LINE__, err);
+                        default: prt_err(__LINE__, err); return 1;
                         }
                         break;
                     }
                     default: {
-                        err_exit(__LINE__);
+                        prt_err(__LINE__); return 1;
                     }
                     }
                 }
@@ -173,7 +171,7 @@ int main(int argc, char **argv) {
                 goto finish;
             }
             default: {
-                err_exit(__LINE__);
+                prt_err(__LINE__); return 1;
             }
             }
         }
