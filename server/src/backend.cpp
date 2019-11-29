@@ -18,9 +18,13 @@
 #include <exception>
 #include <iostream>
 
+#include <boost/asio.hpp>
+#include "boost/asio/io_service.hpp"
 #include "gflags/gflags.h"
+#include "glog/logging.h"
 
 #include "worker.h"
+#include "SignalHandler.h"
 #include "utils.h"
 
 #include "server.h"
@@ -34,85 +38,98 @@ DEFINE_bool(remove_shm, false, "remove the shared memory prior to the execution"
 static constexpr std::string_view KEY_LOCATION { "location" };  //NOLINT
 
 int backend_main(int argc, char **argv) {
-    try {
-        std::vector<std::unique_ptr<Worker>> workers;
+    boost::asio::io_service ios;
+    bool interrupted = false;
 
-        // database environment
-        auto env = umikongo::create_environment();
-        env->initialize();
+    SignalHandler signal_handler{[&interrupted](){
+            interrupted = true;
+    }};
 
-        // command arguments
-        gflags::SetUsageMessage("ogawayama database server");
-        gflags::ParseCommandLineFlags(&argc, &argv, true);
+    ios.post([&argc, &argv, &interrupted]() {  // ParseCommandLineFlags() requires non const argc and argv
+            // database environment
+            auto env = umikongo::create_environment();
+            env->initialize();
 
-        // communication channel
-        auto shared_memory = std::make_unique<ogawayama::common::SharedMemory>(FLAGS_dbname, true, FLAGS_remove_shm);
-        auto server_ch = std::make_unique<ogawayama::common::ChannelStream>(ogawayama::common::param::server, shared_memory.get(), true, false);
+            // command arguments
+            gflags::SetUsageMessage("ogawayama database server");
+            gflags::ParseCommandLineFlags(&argc, &argv, true);
 
-        // database
-        auto db = umikongo::create_database();
-        std::map<std::string, std::string> options;
-        options.insert_or_assign(std::string(KEY_LOCATION), FLAGS_location);
-        db->open(options);
+            // database
+            auto db = umikongo::create_database();
+            std::map<std::string, std::string> options;
+            options.insert_or_assign(std::string(KEY_LOCATION), FLAGS_location);
+            db->open(options);
 
-        while(true) {
-            ogawayama::common::CommandMessage::Type type;
-            std::size_t index;
             try {
-                auto rv = server_ch->recv_req(type, index);
-                if (rv != ERROR_CODE::OK) {
-                    if (rv != ERROR_CODE::TIMEOUT) {
-                        std::cerr << __func__ << " " << __LINE__ <<  " " << ogawayama::stub::error_name(rv) << std::endl;
+                std::vector<std::unique_ptr<Worker>> workers;
+                
+                // communication channel
+                auto shared_memory = std::make_unique<ogawayama::common::SharedMemory>(FLAGS_dbname, true, FLAGS_remove_shm);
+                auto server_ch = std::make_unique<ogawayama::common::ChannelStream>(ogawayama::common::param::server, shared_memory.get(), true, false);
+                
+                while(!interrupted) {
+                    ogawayama::common::CommandMessage::Type type;
+                    std::size_t index;
+                    try {
+                        auto rv = server_ch->recv_req(type, index);
+                        if (rv != ERROR_CODE::OK) {
+                            if (rv != ERROR_CODE::TIMEOUT) {
+                                std::cerr << __func__ << " " << __LINE__ <<  " " << ogawayama::stub::error_name(rv) << std::endl;
+                            }
+                            continue;
+                        }
+                        server_ch->notify();
+                    } catch (std::exception &ex) {
+                        std::cerr << __func__ << " " << __LINE__ << ": exiting \"" << ex.what() << "\"" << std::endl;
+                        return -1;
                     }
-                    continue;
+                    LOG(INFO) << __func__ << ":" << __LINE__ << " interrupted = " << interrupted;
+                    
+                    switch (type) {
+                    case ogawayama::common::CommandMessage::Type::CONNECT:
+                        if (workers.size() < (index + 1)) {
+                            workers.resize(index + 1);
+                        }
+                        try {
+                            std::unique_ptr<Worker> &worker = workers.at(index);
+                            worker = std::make_unique<Worker>(db.get(), shared_memory.get(), index);
+                            worker->task_ = std::packaged_task<void()>([&]{worker->run();});
+                            worker->future_ = worker->task_.get_future();
+                            worker->thread_ = std::thread(std::move(worker->task_));
+                        } catch (std::exception &ex) {
+                            std::cerr << ex.what() << std::endl;
+                            return -1;
+                        }
+                        break;
+                    case ogawayama::common::CommandMessage::Type::DUMP_DATABASE:
+                        try {
+                            dump(db.get(), FLAGS_location);
+                        } catch (std::exception& e) {
+                            std::cerr << e.what() << std::endl;
+                        }
+                        break;
+                    case ogawayama::common::CommandMessage::Type::LOAD_DATABASE:
+                        try {
+                            load(db.get(), FLAGS_location);
+                        } catch (std::exception& e) {
+                            std::cerr << e.what() << std::endl;
+                        }
+                        break;
+                    case ogawayama::common::CommandMessage::Type::TERMINATE:
+                        return 0;
+                    default:
+                        std::cerr << "unsurpported message" << std::endl;
+                        return -1;
+                    }
                 }
-                server_ch->notify();
             } catch (std::exception &ex) {
-                std::cerr << __func__ << " " << __LINE__ << ": exiting \"" << ex.what() << "\"" << std::endl;
+                std::cerr << ex.what() << std::endl;
                 return -1;
             }
-
-            switch (type) {
-            case ogawayama::common::CommandMessage::Type::CONNECT:
-                if (workers.size() < (index + 1)) {
-                    workers.resize(index + 1);
-                }
-                try {
-                    std::unique_ptr<Worker> &worker = workers.at(index);
-                    worker = std::make_unique<Worker>(db.get(), shared_memory.get(), index);
-                    worker->task_ = std::packaged_task<void()>([&]{worker->run();});
-                    worker->future_ = worker->task_.get_future();
-                    worker->thread_ = std::thread(std::move(worker->task_));
-                } catch (std::exception &ex) {
-                    std::cerr << ex.what() << std::endl;
-                    return -1;
-                }
-                break;
-            case ogawayama::common::CommandMessage::Type::DUMP_DATABASE:
-                try {
-                    dump(db.get(), FLAGS_location);
-                } catch (std::exception& e) {
-                    std::cerr << e.what() << std::endl;
-                }
-                break;
-            case ogawayama::common::CommandMessage::Type::LOAD_DATABASE:
-                try {
-                    load(db.get(), FLAGS_location);
-                } catch (std::exception& e) {
-                    std::cerr << e.what() << std::endl;
-                }
-                break;
-            case ogawayama::common::CommandMessage::Type::TERMINATE:
-                return 0;
-            default:
-                std::cerr << "unsurpported message" << std::endl;
-                return -1;
-            }
-        }
-    } catch (std::exception &ex) {
-        std::cerr << ex.what() << std::endl;
-        return -1;
-    }
+        });
+    
+    ios.run();
+    signal_handler.shutdown();
 }
 
 }  // ogawayama::server

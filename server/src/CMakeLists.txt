@@ -48,6 +48,7 @@ target_link_libraries(server
     PRIVATE gflags::gflags
     PRIVATE glog::glog
     PRIVATE Boost::filesystem
+    PRIVATE Boost::thread
     PRIVATE pthread
     PRIVATE rt
 )
