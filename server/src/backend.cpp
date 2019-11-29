@@ -18,8 +18,6 @@
 #include <exception>
 #include <iostream>
 
-#include <boost/asio.hpp>
-#include "boost/asio/io_service.hpp"
 #include "gflags/gflags.h"
 #include "glog/logging.h"
 
@@ -63,10 +61,7 @@ int backend_main(int argc, char **argv) {
         return -1;
     }
 
-    boost::asio::io_service ios;
-    SignalHandler signal_handler{[&server_ch](){
-            server_ch->send_req(ogawayama::common::CommandMessage::Type::TERMINATE);
-    }};
+    SignalHandler signal_handler{[&server_ch](){ server_ch->send_req(ogawayama::common::CommandMessage::Type::TERMINATE); }};
 
     std::vector<std::unique_ptr<Worker>> workers;
     while(true) {
