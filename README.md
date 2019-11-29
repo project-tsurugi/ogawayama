@@ -4,9 +4,20 @@
 
 * CMake `>= 3.10`
 * C++ Compiler `>= C++17`
+* access to umikongo
+* and see *Dockerfile* sectioni
 
+```sh
+# retrieve third party modules
+git submodule update --init --recursive
 ```
-RUN apt update -y && apt install -y git build-essential cmake ninja-build libboost-system-dev libboost-serialization-dev libgflags-dev
+
+### Dockerfile
+
+```dockerfile
+FROM ubuntu:18.04
+
+RUN apt update -y && apt install -y git build-essential cmake ninja-build libboost-system-dev libboost-thread-dev libboost-serialization-dev libgoogle-glog-dev libgflags-dev
 ```
 
 ## How to build
