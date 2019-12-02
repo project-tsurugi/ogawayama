@@ -318,7 +318,8 @@ public:
     /**
      * @brief Construct a new object.
      */
-    ChannelStream(char const* name, SharedMemory *shared_memory, bool owner) : shared_memory_(shared_memory), owner_(owner)
+    ChannelStream(char const* name, SharedMemory *shared_memory, bool owner, bool always_connected = true) :
+    shared_memory_(shared_memory), owner_(owner), always_connected_(always_connected)
     {
         strncpy(name_, name, param::MAX_NAME_LENGTH);
         auto mem = shared_memory_->get_managed_shared_memory_ptr();
@@ -343,8 +344,10 @@ public:
         if (owner_) {
             shared_memory_->get_managed_shared_memory_ptr()->destroy<MsgBuffer>(name_);
         } else {
-            if (shared_memory_->get_managed_shared_memory_ptr()->find<MsgBuffer>(name_).first != nullptr) {
-                buffer_->bye();
+            if (buffer_ != nullptr) {
+                if (shared_memory_->get_managed_shared_memory_ptr()->find<MsgBuffer>(name_).first != nullptr) {
+                    buffer_->bye();
+                }
             }
         }
     }
@@ -416,27 +419,56 @@ public:
             }
         }
     }
+    void bye_and_notify() {
+        buffer_->bye();
+        buffer_->notify();
+        buffer_ = nullptr;
+    }
+    void bye() {
+        buffer_ = nullptr;
+    }
     bool is_alive() {
+        if (!shared_memory_->is_alive()) {
+            return false;
+        }
         if (owner_) {
-            return buffer_->is_partner();
-        }
-        if (shared_memory_->is_alive()) {
-            try {
-                return shared_memory_->get_managed_shared_memory_ptr()->find<MsgBuffer>(name_).first != nullptr;
+            if (always_connected_) {
+                return buffer_->is_partner();
             }
-            catch(const boost::interprocess::interprocess_exception& ex) {
-                return false;
-            }
+            return true;
         }
-        return false;
+        try {
+            return shared_memory_->get_managed_shared_memory_ptr()->find<MsgBuffer>(name_).first != nullptr;
+        }
+        catch(const boost::interprocess::interprocess_exception& ex) {
+            return false;
+        }
     }
 
 private:
     SharedMemory *shared_memory_;
     MsgBuffer *buffer_;
     const bool owner_;
+    const bool always_connected_;
     char name_[param::MAX_NAME_LENGTH];
 };
+
+constexpr std::string_view type_name(CommandMessage::Type type) {
+    switch (type) {
+    case CommandMessage::Type::OK: return "OK";
+    case CommandMessage::Type::CONNECT: return "CONNECT";
+    case CommandMessage::Type::DISCONNECT: return "DISCONNECT";
+    case CommandMessage::Type::EXECUTE_STATEMENT: return "EXECUTE_STATEMENT";
+    case CommandMessage::Type::EXECUTE_QUERY: return "EXECUTE_QUERY";
+    case CommandMessage::Type::NEXT: return "NEXT";
+    case CommandMessage::Type::COMMIT: return "COMMIT";
+    case CommandMessage::Type::ROLLBACK: return "ROLLBACK";
+    case CommandMessage::Type::TERMINATE: return "TERMINATE";
+    case CommandMessage::Type::DUMP_DATABASE: return "DUMP_DATABASE";
+    case CommandMessage::Type::LOAD_DATABASE: return "LOAD_DATABASE";
+    default: return "UNDEFINED";
+    }
+}
 
 };  // namespace ogawayama::common
 

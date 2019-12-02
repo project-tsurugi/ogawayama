@@ -35,6 +35,7 @@ class Stub::Impl
 public:
     Impl(Stub *, std::string_view);
     ErrorCode get_connection(ConnectionPtr &, std::size_t);
+    ErrorCode send_terminate();
     auto get_managed_shared_memory() const { return shared_memory_.get(); }
     auto get_managed_shared_memory_ptr() const { return shared_memory_->get_managed_shared_memory_ptr(); }
     auto get_channel() const { return server_.get(); }

@@ -46,7 +46,9 @@ target_link_libraries(server
     PRIVATE umikongo-${SHARKSFIN_IMPLEMENTATION}-executor-${SHARKSFIN_IMPLEMENTATION}
     PRIVATE shakujo-common
     PRIVATE gflags::gflags
+    PRIVATE glog::glog
     PRIVATE Boost::filesystem
+    PRIVATE Boost::thread
     PRIVATE pthread
     PRIVATE rt
 )

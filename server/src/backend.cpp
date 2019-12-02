@@ -19,8 +19,10 @@
 #include <iostream>
 
 #include "gflags/gflags.h"
+#include "glog/logging.h"
 
 #include "worker.h"
+#include "SignalHandler.h"
 #include "utils.h"
 
 #include "server.h"
@@ -29,12 +31,11 @@ namespace ogawayama::server {
 
 DEFINE_string(dbname, ogawayama::common::param::SHARED_MEMORY_NAME, "database name");  // NOLINT
 DEFINE_string(location, "./db", "database location on file system");  // NOLINT
+DEFINE_bool(remove_shm, false, "remove the shared memory prior to the execution");  // NOLINT
 
 static constexpr std::string_view KEY_LOCATION { "location" };  //NOLINT
 
 int backend_main(int argc, char **argv) {
-    std::vector<std::unique_ptr<Worker>> workers;
-
     // database environment
     auto env = umikongo::create_environment();
     env->initialize();
@@ -43,28 +44,47 @@ int backend_main(int argc, char **argv) {
     gflags::SetUsageMessage("ogawayama database server");
     gflags::ParseCommandLineFlags(&argc, &argv, true);
 
-    // communication channel
-    auto shared_memory = std::make_unique<ogawayama::common::SharedMemory>(FLAGS_dbname, true);
-    auto server_ch = std::make_unique<ogawayama::common::ChannelStream>(ogawayama::common::param::server, shared_memory.get(), true);
-
     // database
     auto db = umikongo::create_database();
     std::map<std::string, std::string> options;
     options.insert_or_assign(std::string(KEY_LOCATION), FLAGS_location);
     db->open(options);
 
+    // communication channel
+    std::unique_ptr<ogawayama::common::SharedMemory> shared_memory;
+    std::unique_ptr<ogawayama::common::ChannelStream> server_ch;
+    try {
+        shared_memory = std::make_unique<ogawayama::common::SharedMemory>(FLAGS_dbname, true, FLAGS_remove_shm);
+        server_ch = std::make_unique<ogawayama::common::ChannelStream>(ogawayama::common::param::server, shared_memory.get(), true, false);
+    } catch (std::exception &ex) {
+        std::cerr << ex.what() << std::endl;
+        return -1;
+    }
+
+    SignalHandler signal_handler{[&server_ch](){
+            server_ch->lock();
+            server_ch->send_req(ogawayama::common::CommandMessage::Type::TERMINATE);
+            server_ch->wait();
+            server_ch->unlock();
+    }};
+
+    std::vector<std::unique_ptr<Worker>> workers;
+    int rv = 0;
     while(true) {
         ogawayama::common::CommandMessage::Type type;
         std::size_t index;
         try {
-            if (server_ch->recv_req(type, index) != ERROR_CODE::OK) {
-                std::cerr << __func__ << " " << __LINE__ << std::endl;
+            auto rv = server_ch->recv_req(type, index);
+            if (rv != ERROR_CODE::OK) {
+                if (rv != ERROR_CODE::TIMEOUT) {
+                    std::cerr << __func__ << " " << __LINE__ <<  " " << ogawayama::stub::error_name(rv) << std::endl;
+                }
                 continue;
             }
             server_ch->notify();
         } catch (std::exception &ex) {
             std::cerr << __func__ << " " << __LINE__ << ": exiting \"" << ex.what() << "\"" << std::endl;
-            return -1;
+            rv = -1; goto finish;
         }
 
         switch (type) {
@@ -80,7 +100,7 @@ int backend_main(int argc, char **argv) {
                 worker->thread_ = std::thread(std::move(worker->task_));
             } catch (std::exception &ex) {
                 std::cerr << ex.what() << std::endl;
-                return -1;
+                rv = -1; goto finish;
             }
             break;
         case ogawayama::common::CommandMessage::Type::DUMP_DATABASE:
@@ -98,12 +118,18 @@ int backend_main(int argc, char **argv) {
             }
             break;
         case ogawayama::common::CommandMessage::Type::TERMINATE:
-            return 0;
+            server_ch->lock();
+            server_ch->unlock();
+            goto finish;
         default:
             std::cerr << "unsurpported message" << std::endl;
-            return -1;
+            rv = -1; goto finish;
         }
     }
-}
 
+ finish:
+    signal_handler.shutdown();
+    return rv;
+}
+    
 }  // ogawayama::server

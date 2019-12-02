@@ -33,7 +33,7 @@ class ApiTest : public ::testing::Test {
     virtual void TearDown() {
         StubPtr stub;
         EXPECT_EQ(ERROR_CODE::OK, make_stub(stub));
-        stub->get_impl()->get_channel()->send_req(ogawayama::common::CommandMessage::Type::TERMINATE);
+        stub->get_impl()->send_terminate();
     }
 };
 

@@ -28,10 +28,13 @@ DEFINE_bool(load, false, "Database contents are loaded from the location just af
 DEFINE_string(statement, "", "SQL statement");  // NOLINT
 DEFINE_string(query, "", "SQL query");  // NOLINT
 
-void err_exit(int line)
+void prt_err(int line)
 {
-    std::cerr << "Error at " << line << std::endl;
-    exit(1);
+    std::cerr << "Error at " << line << ", error was falling into default case" << std::endl;
+}
+void prt_err(int line, ERROR_CODE err)
+{
+    std::cerr << "Error at " << line << ", error was " << error_name(err) << std::endl;
 }
 
 int main(int argc, char **argv) {
@@ -40,7 +43,11 @@ int main(int argc, char **argv) {
     gflags::ParseCommandLineFlags(&argc, &argv, true);
 
     StubPtr stub;
-    if (make_stub(stub, FLAGS_dbname.c_str()) != ERROR_CODE::OK) { err_exit(__LINE__); }
+    {
+        ERROR_CODE err = make_stub(stub, FLAGS_dbname.c_str());
+        if (err != ERROR_CODE::OK) { prt_err(__LINE__, err); return 1; }
+    }
+
     if (FLAGS_dump) {
         stub->get_impl()->get_channel()->send_req(ogawayama::common::CommandMessage::Type::DUMP_DATABASE);
     }
@@ -51,87 +58,107 @@ int main(int argc, char **argv) {
 
     if (FLAGS_statement != "") {
         ConnectionPtr connection;
-        if (stub->get_connection(12, connection) != ERROR_CODE::OK) { err_exit(__LINE__); }
+        ERROR_CODE err;
+
+        err = stub->get_connection(12, connection);
+        if (err != ERROR_CODE::OK) { prt_err(__LINE__, err); return 1; }
         TransactionPtr transaction;
-        if (connection->begin(transaction) != ERROR_CODE::OK) { err_exit(__LINE__); }
+        err = connection->begin(transaction);
+        if (err != ERROR_CODE::OK) { prt_err(__LINE__, err); return 1; }
         std::cerr << "execute_statement \"" << FLAGS_statement << "\"" << std::endl;
-        if (transaction->execute_statement(FLAGS_statement) != ERROR_CODE::OK) { err_exit(__LINE__); }
+        err = transaction->execute_statement(FLAGS_statement);
+        if (err != ERROR_CODE::OK) { prt_err(__LINE__, err); return 1; }
         transaction->commit();
     }
 
     if (FLAGS_query != "") {
         ConnectionPtr connection;
-        if (stub->get_connection(12, connection) != ERROR_CODE::OK) { err_exit(__LINE__); }
+        ERROR_CODE err;
+
+        err = stub->get_connection(12, connection);
+        if (err != ERROR_CODE::OK) { prt_err(__LINE__, err); return 1; }
         TransactionPtr transaction;
-        if (connection->begin(transaction) != ERROR_CODE::OK) { err_exit(__LINE__); }
+        
+        err = connection->begin(transaction);
+        if (err != ERROR_CODE::OK) { prt_err(__LINE__, err); return 1; }
         ResultSetPtr result_set;
         std::cerr << "execute_query \"" << FLAGS_query << "\"" << std::endl;
-        if (transaction->execute_query(FLAGS_query, result_set) != ERROR_CODE::OK) { err_exit(__LINE__); }
+        err = transaction->execute_query(FLAGS_query, result_set);
+        if (err != ERROR_CODE::OK) { prt_err(__LINE__, err); return 1; }
+        
         MetadataPtr metadata;
-        if (result_set->get_metadata(metadata) != ERROR_CODE::OK) { err_exit(__LINE__); }
+        err = result_set->get_metadata(metadata);
+        if (err != ERROR_CODE::OK) { prt_err(__LINE__, err); return 1; }
 
         while(true) {
-            switch (result_set->next()) {
+            ERROR_CODE err = result_set->next();
+            switch (err) {
             case ERROR_CODE::OK: {
                 std::cout << "| ";
                 for (auto t: metadata->get_types()) {
                     switch (t.get_type()) {
                     case TYPE::INT16: {
                         std::int16_t v;
-                        switch (result_set->next_column(v)) {
+                        err = result_set->next_column(v);
+                        switch (err) {
                         case ERROR_CODE::OK: std::cout << v << " | "; break;
                         case ERROR_CODE::COLUMN_WAS_NULL: std::cout << "(null) | "; break;
-                        default: err_exit(__LINE__);
+                        default: prt_err(__LINE__, err); return 1;
                         }
                         break;
                     }
                     case TYPE::INT32: {
                         std::int32_t v;
-                        switch (result_set->next_column(v)) {
+                        err = result_set->next_column(v);
+                        switch (err) {
                         case ERROR_CODE::OK: std::cout << v << " | "; break;
                         case ERROR_CODE::COLUMN_WAS_NULL: std::cout << "(null) | "; break;
-                        default: err_exit(__LINE__);
+                        default: prt_err(__LINE__, err); return 1;
                         }
                         break;
                     }
                     case TYPE::INT64: {
                         std::int64_t v;
-                        switch (result_set->next_column(v)) {
+                        err = result_set->next_column(v);
+                        switch (err) {
                         case ERROR_CODE::OK: std::cout << v << " | "; break;
                         case ERROR_CODE::COLUMN_WAS_NULL: std::cout << "(null) | "; break;
-                        default: err_exit(__LINE__);
+                        default: prt_err(__LINE__, err); return 1;
                         }
                         break;
                     }
                     case TYPE::FLOAT32: {
                         float v;
-                        switch (result_set->next_column(v)) {
+                        err = result_set->next_column(v);
+                        switch (err) {
                         case ERROR_CODE::OK: std::cout << v << " | "; break;
                         case ERROR_CODE::COLUMN_WAS_NULL: std::cout << "(null) | "; break;
-                        default: err_exit(__LINE__);
+                        default: prt_err(__LINE__, err); return 1;
                         }
                         break;
                     }
                     case TYPE::FLOAT64: {
                         double v;
-                        switch (result_set->next_column(v)) {
+                        err = result_set->next_column(v);
+                        switch (err) {
                         case ERROR_CODE::OK: std::cout << v << " | "; break;
                         case ERROR_CODE::COLUMN_WAS_NULL: std::cout << "(null) | "; break;
-                        default: err_exit(__LINE__);
+                        default: prt_err(__LINE__, err); return 1;
                         }
                         break;
                     }
                     case TYPE::TEXT: {
                         std::string_view v;
-                        switch (result_set->next_column(v)) {
+                        err = result_set->next_column(v);
+                        switch (err) {
                         case ERROR_CODE::OK: std::cout << v << " | "; break;
                         case ERROR_CODE::COLUMN_WAS_NULL: std::cout << "(null) | "; break;
-                        default: err_exit(__LINE__);
+                        default: prt_err(__LINE__, err); return 1;
                         }
                         break;
                     }
                     default: {
-                        err_exit(__LINE__);
+                        prt_err(__LINE__); return 1;
                     }
                     }
                 }
@@ -144,7 +171,7 @@ int main(int argc, char **argv) {
                 goto finish;
             }
             default: {
-                err_exit(__LINE__);
+                prt_err(__LINE__); return 1;
             }
             }
         }
@@ -152,7 +179,7 @@ int main(int argc, char **argv) {
  finish:
 
     if (FLAGS_terminate) {
-        stub->get_impl()->get_channel()->send_req(ogawayama::common::CommandMessage::Type::TERMINATE);
+        stub->get_impl()->send_terminate();
     }
 
     return 0;
