@@ -424,6 +424,9 @@ public:
         buffer_->notify();
         buffer_ = nullptr;
     }
+    void bye() {
+        buffer_ = nullptr;
+    }
     bool is_alive() {
         if (!shared_memory_->is_alive()) {
             return false;

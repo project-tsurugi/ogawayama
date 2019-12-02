@@ -61,9 +61,15 @@ int backend_main(int argc, char **argv) {
         return -1;
     }
 
-    SignalHandler signal_handler{[&server_ch](){ server_ch->send_req(ogawayama::common::CommandMessage::Type::TERMINATE); }};
+    SignalHandler signal_handler{[&server_ch](){
+            server_ch->lock();
+            server_ch->send_req(ogawayama::common::CommandMessage::Type::TERMINATE);
+            server_ch->wait();
+            server_ch->unlock();
+    }};
 
     std::vector<std::unique_ptr<Worker>> workers;
+    int rv = 0;
     while(true) {
         ogawayama::common::CommandMessage::Type type;
         std::size_t index;
@@ -78,7 +84,7 @@ int backend_main(int argc, char **argv) {
             server_ch->notify();
         } catch (std::exception &ex) {
             std::cerr << __func__ << " " << __LINE__ << ": exiting \"" << ex.what() << "\"" << std::endl;
-            return -1;
+            rv = -1; goto finish;
         }
 
         switch (type) {
@@ -94,7 +100,7 @@ int backend_main(int argc, char **argv) {
                 worker->thread_ = std::thread(std::move(worker->task_));
             } catch (std::exception &ex) {
                 std::cerr << ex.what() << std::endl;
-                return -1;
+                rv = -1; goto finish;
             }
             break;
         case ogawayama::common::CommandMessage::Type::DUMP_DATABASE:
@@ -112,13 +118,18 @@ int backend_main(int argc, char **argv) {
             }
             break;
         case ogawayama::common::CommandMessage::Type::TERMINATE:
-            return 0;
+            server_ch->lock();
+            server_ch->unlock();
+            goto finish;
         default:
             std::cerr << "unsurpported message" << std::endl;
-            return -1;
+            rv = -1; goto finish;
         }
     }
+
+ finish:
     signal_handler.shutdown();
+    return rv;
 }
     
 }  // ogawayama::server

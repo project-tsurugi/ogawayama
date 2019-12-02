@@ -179,7 +179,7 @@ int main(int argc, char **argv) {
  finish:
 
     if (FLAGS_terminate) {
-        stub->get_impl()->get_channel()->send_req(ogawayama::common::CommandMessage::Type::TERMINATE);
+        stub->get_impl()->send_terminate();
     }
 
     return 0;

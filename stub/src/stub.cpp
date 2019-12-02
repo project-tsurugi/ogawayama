@@ -61,6 +61,16 @@ ErrorCode Stub::get_connection(ConnectionPtr & connection, std::size_t pgprocno)
     return impl_->get_connection(connection, pgprocno);
 }
 
+ErrorCode Stub::Impl::send_terminate()
+{
+    server_->lock();
+    server_->send_req(ogawayama::common::CommandMessage::Type::TERMINATE);
+    server_->wait();
+    server_->unlock();
+    server_->bye();
+    return ERROR_CODE::OK;
+}
+
 }  // namespace ogawayama::stub
 
 // Outside the namespace
