@@ -27,6 +27,7 @@ DEFINE_bool(dump, false, "Database contents are dumpd to the location just befor
 DEFINE_bool(load, false, "Database contents are loaded from the location just after boot");  //NOLINT
 DEFINE_string(statement, "", "SQL statement");  // NOLINT
 DEFINE_string(query, "", "SQL query");  // NOLINT
+DEFINE_bool(remove_shm, false, "remove the shared memory prior to the execution");  // NOLINT
 
 void prt_err(int line)
 {
@@ -42,8 +43,12 @@ int main(int argc, char **argv) {
     gflags::SetUsageMessage("ogawayama database server");
     gflags::ParseCommandLineFlags(&argc, &argv, true);
 
+    if (FLAGS_remove_shm) {
+        boost::interprocess::shared_memory_object::remove(FLAGS_dbname.c_str());
+    }
+
     StubPtr stub;
-    {
+    if (FLAGS_dump || FLAGS_load || FLAGS_statement != "" || FLAGS_query != "" || FLAGS_terminate) {
         ERROR_CODE err = make_stub(stub, FLAGS_dbname.c_str());
         if (err != ERROR_CODE::OK) { prt_err(__LINE__, err); return 1; }
     }
