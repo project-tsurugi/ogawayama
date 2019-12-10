@@ -347,6 +347,7 @@ namespace ogawayama::common {
             queue_->set_requested(remaining_);
         }
         bool is_need_next() {
+            if (threshold_ == 0) { return true; } // multiple rows transfer is not used 
             if (remaining_ >= threshold_) { return false; }
             std::size_t requested = queue_->get_capacity() - threshold_ - 1;
             remaining_ += requested;
@@ -361,8 +362,8 @@ namespace ogawayama::common {
         const bool owner_;
         char name_[param::MAX_NAME_LENGTH];
         std::size_t cindex_{};
-        std::size_t remaining_;
-        std::size_t threshold_;
+        std::size_t remaining_{0};
+        std::size_t threshold_{0};
     };
     
 };  // namespace ogawayama::common
