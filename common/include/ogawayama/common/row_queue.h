@@ -172,13 +172,16 @@ namespace ogawayama::common {
             bool is_partner() {
                 return is_partner_;
             }
+            void set_requested(std::size_t requested) { requested_ = requested; }
+            std::size_t get_requested() { return requested_; }
+            std::size_t get_capacity() { return capacity_; }
 
         private:
             bool is_not_empty() const { return (pushed_ - poped_) > 0; }
             bool was_empty() const { return (pushed_ - poped_) == 1; }
-            bool is_not_full() const { return (pushed_ - poped_) < (param::QUEUE_SIZE - 1); }
-            bool was_full() const { return (pushed_ - poped_) == (param::QUEUE_SIZE - 2); }
-            std::size_t index(std::size_t n) const { return n %  param::QUEUE_SIZE; }
+            bool is_not_full() const { return (pushed_ - poped_) < (capacity_ - 1); }
+            bool was_full() const { return (pushed_ - poped_) == (capacity_ - 1); }
+            std::size_t index(std::size_t n) const { return n %  capacity_; }
             
             ShmQueue m_container_;
             ogawayama::stub::Metadata m_types_;
@@ -186,6 +189,7 @@ namespace ogawayama::common {
             std::size_t capacity_;
             std::size_t pushed_{0};
             std::size_t poped_{0};
+            std::size_t requested_{1};
 
             boost::system_time timeout() { return boost::get_system_time() + boost::posix_time::milliseconds(param::TIMEOUT); }
 
@@ -299,6 +303,7 @@ namespace ogawayama::common {
             while (true) {
                 auto retv = queue_->pop();
                 if (retv != ogawayama::stub::ErrorCode::TIMEOUT) {
+                    remaining_--;
                     return retv;
                 }
                 if (!is_alive()) {
@@ -336,6 +341,20 @@ namespace ogawayama::common {
             }
             return false;
         }
+        void first_request(std::size_t numerator = 1, std::size_t denominator = 2) {
+            remaining_ = queue_->get_capacity() - 1;
+            threshold_ = (remaining_ * numerator) / denominator;
+            queue_->set_requested(remaining_);
+        }
+        bool is_need_next() {
+            if (threshold_ == 0) { remaining_++; return true; } // multiple rows transfer is not used
+            if (remaining_ >= threshold_) { return false; }
+            std::size_t requested = queue_->get_capacity() - threshold_ - 1;
+            remaining_ += requested;
+            queue_->set_requested(requested);
+            return true;
+        }
+        std::size_t get_requested() { return queue_->get_requested(); }
 
     private:
         SharedMemory *shared_memory_;
@@ -343,6 +362,8 @@ namespace ogawayama::common {
         const bool owner_;
         char name_[param::MAX_NAME_LENGTH];
         std::size_t cindex_{};
+        std::size_t remaining_{0};
+        std::size_t threshold_{0};
     };
     
 };  // namespace ogawayama::common

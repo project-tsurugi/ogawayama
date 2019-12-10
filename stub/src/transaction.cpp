@@ -57,6 +57,7 @@ ErrorCode Transaction::Impl::execute_query(std::string_view query, std::shared_p
         result_sets_->emplace_back(result_set);
     }
  found:
+    result_set->get_impl()->first_request();
     channel_->send_req(ogawayama::common::CommandMessage::Type::EXECUTE_QUERY,
                    static_cast<std::int32_t>(result_set->get_impl()->get_id()),
                    query);
