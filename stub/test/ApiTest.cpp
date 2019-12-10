@@ -321,4 +321,58 @@ TEST_F(ApiTest, fetch_metadata) {
     EXPECT_EQ(ERROR_CODE::OK, transaction->commit());
 }
 
+TEST_F(ApiTest, passing_multiple_row) {
+    StubPtr stub;
+    ConnectionPtr connection;
+    TransactionPtr transaction;
+    ResultSetPtr result_set;
+    MetadataPtr metadata;
+    const std::int32_t limit = 144; // Not a multiple of 32
+
+    EXPECT_EQ(ERROR_CODE::OK, make_stub(stub));
+
+    EXPECT_EQ(ERROR_CODE::OK, stub->get_connection(connection, 15));
+
+    EXPECT_EQ(ERROR_CODE::OK, connection->begin(transaction));
+
+    EXPECT_EQ(ERROR_CODE::OK, transaction->execute_statement(
+                                                             "CREATE TABLE T5 ("
+                                                             "C1 INT NOT NULL PRIMARY KEY, "
+                                                             "C2 DOUBLE NOT NULL"
+                                                             ")"
+                                                             ));
+
+    for(std::int32_t idx=0; idx < limit; ++idx) {
+        char sql[128];
+        sprintf(sql, "INSERT INTO T5 (C1, C2) VALUES(%d, %f)", idx, (double) (idx*10+idx) / 10.0);
+        EXPECT_EQ(ERROR_CODE::OK, transaction->execute_statement(sql));
+    }
+
+    auto query = "SELECT * FROM T5";
+
+    EXPECT_EQ(ERROR_CODE::OK, transaction->execute_query(query, result_set));
+    EXPECT_EQ(ERROR_CODE::OK, result_set->get_metadata(metadata));
+    auto& md = metadata->get_types();
+    EXPECT_EQ(static_cast<std::size_t>(2), md.size());
+    EXPECT_EQ(TYPE::INT32, md.at(0).get_type());
+    EXPECT_EQ(static_cast<std::size_t>(4), md.at(0).get_length());
+    EXPECT_EQ(TYPE::FLOAT64, md.at(1).get_type());
+
+    for(std::int32_t idx=0; idx < limit; ++idx) {
+        std::int32_t i;
+        double d;
+
+        EXPECT_EQ(ERROR_CODE::OK, result_set->next());
+
+        EXPECT_EQ(ERROR_CODE::OK, result_set->next_column(i));
+        EXPECT_EQ(idx, i);
+
+        EXPECT_EQ(ERROR_CODE::OK, result_set->next_column(d));
+        EXPECT_EQ((double)(idx*10+idx) / 10.0, d);
+    }
+    EXPECT_EQ(ERROR_CODE::END_OF_ROW, result_set->next());
+
+    EXPECT_EQ(ERROR_CODE::OK, transaction->commit());
+}
+
 }  // namespace ogawayama::testing
