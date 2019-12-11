@@ -59,8 +59,8 @@ void Worker::run()
             next(ivalue);
             break;
         case ogawayama::common::CommandMessage::Type::NEXT:
-            next(ivalue);
             channel_->send_ack(ERROR_CODE::OK);
+            next(ivalue);
             break;
         case ogawayama::common::CommandMessage::Type::COMMIT:
             if (!transaction_) {
