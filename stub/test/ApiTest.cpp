@@ -375,4 +375,18 @@ TEST_F(ApiTest, passing_multiple_row) {
     EXPECT_EQ(ERROR_CODE::OK, transaction->commit());
 }
 
+TEST_F(ApiTest, empty_transaction) {
+    StubPtr stub;
+    ConnectionPtr connection;
+    TransactionPtr transaction;
+
+    EXPECT_EQ(ERROR_CODE::OK, make_stub(stub));
+
+    EXPECT_EQ(ERROR_CODE::OK, stub->get_connection(connection, 16));
+
+    EXPECT_EQ(ERROR_CODE::OK, connection->begin(transaction));
+
+    EXPECT_EQ(ERROR_CODE::OK, transaction->commit());
+}
+
 }  // namespace ogawayama::testing
