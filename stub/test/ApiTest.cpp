@@ -386,7 +386,7 @@ TEST_F(ApiTest, empty_transaction) {
 
     EXPECT_EQ(ERROR_CODE::OK, connection->begin(transaction));
 
-    EXPECT_EQ(ERROR_CODE::OK, transaction->commit());
+    EXPECT_EQ(ERROR_CODE::NO_TRANSACTION, transaction->commit());
 }
 
 }  // namespace ogawayama::testing
