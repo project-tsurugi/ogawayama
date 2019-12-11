@@ -348,7 +348,7 @@ TEST_F(ApiTest, passing_multiple_row) {
         EXPECT_EQ(ERROR_CODE::OK, transaction->execute_statement(sql));
     }
 
-    auto query = "SELECT * FROM T5";
+    auto query = "SELECT * FROM T5 ORDER by C1";
 
     EXPECT_EQ(ERROR_CODE::OK, transaction->execute_query(query, result_set));
     EXPECT_EQ(ERROR_CODE::OK, result_set->get_metadata(metadata));

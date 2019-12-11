@@ -40,7 +40,7 @@ void prt_err(int line, ERROR_CODE err)
 
 int main(int argc, char **argv) {
     // command arguments
-    gflags::SetUsageMessage("ogawayama database server");
+    gflags::SetUsageMessage("a cli tool for ogawayama database server");
     gflags::ParseCommandLineFlags(&argc, &argv, true);
 
     if (FLAGS_remove_shm) {
