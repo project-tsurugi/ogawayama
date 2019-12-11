@@ -65,6 +65,7 @@ void Worker::run()
         case ogawayama::common::CommandMessage::Type::COMMIT:
             if (!transaction_) {
                 channel_->send_ack(ERROR_CODE::NO_TRANSACTION);
+                break;
             }
             transaction_->commit();
             channel_->send_ack(ERROR_CODE::OK);
