@@ -43,7 +43,7 @@ class Worker {
     ~Worker() { if(thread_.joinable()) thread_.join(); }
     void run();
     void execute_statement(std::string_view);
-    void execute_query(std::string_view, std::size_t);
+    bool execute_query(std::string_view, std::size_t);
     void next(std::size_t);
 
     friend int backend_main(int, char **);

@@ -55,8 +55,9 @@ void Worker::run()
             execute_statement(string);
             break;
         case ogawayama::common::CommandMessage::Type::EXECUTE_QUERY:
-            execute_query(string, ivalue);
-            next(ivalue);
+            if(execute_query(string, ivalue)) {
+                next(ivalue);
+            }
             break;
         case ogawayama::common::CommandMessage::Type::NEXT:
             channel_->send_ack(ERROR_CODE::OK);
@@ -112,7 +113,7 @@ void Worker::execute_statement(std::string_view sql)
     }
 }
 
-void Worker::execute_query(std::string_view sql, std::size_t rid)
+bool Worker::execute_query(std::string_view sql, std::size_t rid)
 {
     if (!transaction_) {
         transaction_ = db_->create_transaction();
@@ -170,11 +171,13 @@ void Worker::execute_query(std::string_view sql, std::size_t rid)
     } catch (umikongo::Exception& e) {
         if (e.reason() == umikongo::Exception::ReasonCode::ERR_UNSUPPORTED) {
             channel_->send_ack(ERROR_CODE::UNSUPPORTED);
-            return;
+            return false;
         }
         std::cerr << e.what() << std::endl;
         channel_->send_ack(ERROR_CODE::UNKNOWN);
+        return false;
     }
+    return true;
 }
 
 void Worker::next(std::size_t rid)
