@@ -23,7 +23,7 @@ class ApiTest : public ::testing::Test {
         int pid;
 
         if ((pid = fork()) == 0) {  // child process, execute only at build/stub/test directory.
-            auto retv = execlp("../../server/src/ogawayama-server", "ogawayama-server", nullptr);
+            auto retv = execlp("../../server/src/ogawayama-server", "ogawayama-server", "-remove_shm", nullptr);
             if (retv != 0) perror("error in ogawayama-server ");
             _exit(0);
         }

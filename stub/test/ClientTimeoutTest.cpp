@@ -36,6 +36,7 @@ class ClientTimeoutTest : public ::testing::Test {
     }
 
     virtual void TearDown() {
+        boost::interprocess::shared_memory_object::remove("ogawayama");
     }
 
 protected:
