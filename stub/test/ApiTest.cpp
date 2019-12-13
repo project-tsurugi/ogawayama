@@ -327,7 +327,7 @@ TEST_F(ApiTest, passing_multiple_row) {
     TransactionPtr transaction;
     ResultSetPtr result_set;
     MetadataPtr metadata;
-    const std::int32_t limit = 144; // Not a multiple of 32
+    const std::int32_t limit = 123; // Not a multiple of 32
 
     EXPECT_EQ(ERROR_CODE::OK, make_stub(stub));
 

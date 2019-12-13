@@ -183,10 +183,12 @@ bool Worker::execute_query(std::string_view sql, std::size_t rid)
 void Worker::next(std::size_t rid)
 {
     try {
-        auto& rq = cursors_.at(rid).row_queue_;
+        auto& cursor = cursors_.at(rid);
+        auto& rq = cursor.row_queue_;
+        if(!cursor.iterator_) { return; }
         std::size_t limit = rq->get_requested();
         for(std::size_t i = 0; i < limit; i++) {
-            auto row = cursors_.at(rid).iterator_->next();
+            auto row = cursor.iterator_->next();
             if (row != nullptr) {
                 for (auto& t: rq->get_metadata_ptr()->get_types()) {
                     std::size_t cindex = rq->get_cindex();
@@ -214,6 +216,7 @@ void Worker::next(std::size_t rid)
                 rq->push_writing_row();
             } else {
                 rq->push_writing_row();
+                cursor.clear();
                 break;
             }
         }
