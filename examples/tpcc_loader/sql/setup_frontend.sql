@@ -1,10 +1,14 @@
+-- EXTENSION
 CREATE EXTENSION ogawayama_fdw;
 
+-- 外部サーバオブジェクト
 CREATE SERVER ogawayama FOREIGN DATA WRAPPER ogawayama_fdw;
 
+-- ユーザマッピングオブジェクト
 CREATE USER MAPPING FOR PUBLIC SERVER ogawayama;
 
-create foreign table warehouse
+-- 各種外部表オブジェクト
+CREATE FOREIGN TABLE warehouse
 (
   w_id       integer,
   w_name     text,
@@ -16,10 +20,10 @@ create foreign table warehouse
   w_tax      double precision,
   w_ytd      double precision
 )
-server ogawayama;
+SERVER ogawayama;
 
 
-create foreign table district
+CREATE FOREIGN TABLE district
 (
   d_id        integer,
   d_w_id      integer,
@@ -32,10 +36,10 @@ create foreign table district
   d_tax       double precision,
   d_ytd       double precision,
   d_next_o_id integer
-) server ogawayama;
+) SERVER ogawayama;
 
 
-create foreign table customer
+CREATE FOREIGN TABLE customer
 (
   c_id            integer,
   c_d_id          integer,
@@ -58,28 +62,33 @@ create foreign table customer
   c_payment_cnt   integer,
   c_delivery_cnt  integer,
   c_data          text
-) server ogawayama;
+) SERVER ogawayama;
 
 
-create foreign table customer_secondary
+CREATE FOREIGN TABLE customer_secondary
 (
   c_d_id          integer,
   c_w_id          integer,
   c_last          text,
   c_first         text,
   c_id            integer
-) server ogawayama;
+) SERVER ogawayama;
 
 
-create foreign table new_order
+CREATE FOREIGN TABLE history
 (
-  no_o_id  integer,
-  no_d_id  integer,
-  no_w_id  integer
-) server ogawayama;
+  h_c_id      integer,
+  h_c_d_id    integer,
+  h_c_w_id    integer,
+  h_d_id      integer,
+  h_w_id      integer,
+  h_date      text,
+  h_amount    double precision,
+  h_data      text
+) SERVER ogawayama;
 
 
-create foreign table orders
+CREATE FOREIGN TABLE orders
 (
   o_id          integer,
   o_d_id        integer,
@@ -89,44 +98,37 @@ create foreign table orders
   o_carrier_id  integer,
   o_ol_cnt      integer,
   o_all_local   integer
-) server ogawayama;
+) SERVER ogawayama;
 
 
-create foreign table orders_secondary
+CREATE FOREIGN TABLE orders_secondary
 (
   o_d_id        integer,
   o_w_id        integer,
   o_c_id        integer,
   o_id          integer
-) server ogawayama;
+) SERVER ogawayama;
 
 
-create foreign table order_line
+CREATE FOREIGN TABLE new_order
 (
-  ol_o_id         integer,
-  ol_d_id         integer,
-  ol_w_id         integer,
-  ol_number       integer,
-  ol_i_id         integer,
-  ol_supply_w_id  integer,
-  ol_delivery_d   text,
-  ol_quantity     integer,
-  ol_amount       double precision,
-  ol_dist_info    text
-) server ogawayama;
+  no_o_id  integer,
+  no_d_id  integer,
+  no_w_id  integer
+) SERVER ogawayama;
 
 
-create foreign table item
+CREATE FOREIGN TABLE item
 (
   i_id      integer,
   i_im_id   integer,
   i_name    text,
   i_price   double precision,
   i_data    text
-) server ogawayama;
+) SERVER ogawayama;
 
 
-create foreign table stock
+CREATE FOREIGN TABLE stock
 (
   s_i_id        integer,
   s_w_id        integer,
@@ -145,4 +147,19 @@ create foreign table stock
   s_order_cnt   integer,
   s_remote_cnt  integer,
   s_data        text
-) server ogawayama;
+) SERVER ogawayama;
+
+
+CREATE FOREIGN TABLE order_line
+(
+  ol_o_id         integer,
+  ol_d_id         integer,
+  ol_w_id         integer,
+  ol_number       integer,
+  ol_i_id         integer,
+  ol_supply_w_id  integer,
+  ol_delivery_d   text,
+  ol_quantity     integer,
+  ol_amount       double precision,
+  ol_dist_info    text
+) SERVER ogawayama;
