@@ -15,35 +15,35 @@
  */
 #pragma once
 
-#include "stubImpl.h"
+#include "ogawayama/common/channel_stream.h"
+#include "ogawayama/common/parameter_set.h"
 #include "transactionImpl.h"
-#include "ogawayama/common/row_queue.h"
+#include "stubImpl.h"
 
 namespace ogawayama::stub {
 
 /**
- * @brief constructor of ResultSet::Impl class
+ * @brief constructor of PreparedStatement::Impl class
  */
-class ResultSet::Impl
+class PreparedStatement::Impl
 {
 public:
-    Impl(ResultSet *, std::size_t);
-    ErrorCode get_metadata(MetadataPtr &);
-    ErrorCode next();
+    Impl(PreparedStatement *prepared_statement, std::size_t sid, ogawayama::common::ParameterSet* parameters)
+        : envelope_(prepared_statement), sid_(sid), parameters_(parameters) {}
+    ~Impl() = default;
+
+    auto get_sid() { return sid_; }
+    void clear() { parameters_->clear(); }
     template<typename T>
-        ErrorCode next_column(T &value);
-    auto get_id() const { return id_; }
-    void clear() { row_queue_->clear(); }
-    void first_request() { row_queue_->first_request(); }
+    void set_parameter(T param) {
+        parameters_->set_parameter(param);
+    }
 
- private:
-    ResultSet *envelope_;
+private:
+    PreparedStatement *envelope_;
 
-    std::size_t id_;
-    std::size_t c_idx_;
-    std::unique_ptr<ogawayama::common::RowQueue> row_queue_;
-
-    friend class transactionImpl;
+    ogawayama::common::ParameterSet* parameters_;
+    std::size_t sid_;
 };
 
 }  // namespace ogawayama::stub

@@ -92,6 +92,11 @@ namespace ogawayama::tpcc {
             orig_i.at(pos) = true;
         }
 
+        static PreparedStatementPtr prepared_item;
+        if (connection->prepare("INSERT INTO item (i_id, i_name, i_price, i_data) VALUES (:p1, :p2, :p3, :p4)", prepared_item) != ERROR_CODE::OK) {
+                                                                                                  // :i_id, :i_name, :i_price, :i_data
+            std::cerr << __func__ << ":" << __LINE__ << std::endl; _exit(-1);
+        }
         TransactionPtr transaction;
         connection->begin(transaction);
         for (i_id=1; i_id<=scale->items; i_id++) {
@@ -111,17 +116,15 @@ namespace ogawayama::tpcc {
                     i_data[pos+6]='a';
                     i_data[pos+7]='l';
                 }
-            std::string sql = INSERT;
-            sql += "item (i_id, i_name, i_price, i_data)";
-            sql += VALUESbegin;
-            sql += std::to_string(i_id); sql += COMMA;
-            sql += "'"; sql += static_cast<char *>(i_name); sql += "'"; sql += COMMA;
-            sql += double_to_string(i_price, 2); sql += COMMA;
-            sql += "'"; sql += static_cast<char *>(i_data); sql += "'"; sql += VALUESend;
+
+            prepared_item->set_parameter(static_cast<std::int32_t>(i_id));
+            prepared_item->set_parameter(i_name);
+            prepared_item->set_parameter(i_price);
+            prepared_item->set_parameter(i_data);
             /*
              * execute_statement()
              */
-            transaction->execute_statement(sql);
+            transaction->execute_statement(prepared_item.get());
         }
         transaction->commit();
         return 0;
@@ -150,6 +153,12 @@ namespace ogawayama::tpcc {
         double w_tax;
         double w_ytd;
         
+        static PreparedStatementPtr prepared_warehouse;
+        if (connection->prepare("INSERT INTO warehouse (w_id, w_name, w_street_1, w_street_2, w_city, w_state, w_zip, w_tax, w_ytd) "
+                                "VALUES (:p1, :p2, :p3, :p4, :p5, :p6, :p7, :p8, :p9)", prepared_warehouse) != ERROR_CODE::OK) {
+                                // :w_id, :w_name, :w_street_1, :w_street_2, :w_city, :w_state, :w_zip, :w_tax, :w_ytd
+            std::cerr << __func__ << ":" << __LINE__ << std::endl; _exit(-1);
+        }
         TransactionPtr transaction;
         connection->begin(transaction);
         for (w_id=1L; w_id<=scale->warehouses; w_id++) {
@@ -159,24 +168,19 @@ namespace ogawayama::tpcc {
             w_tax=(static_cast<double>(randomGenerator->RandomNumber(10L,20L)))/100.0;
             w_ytd=3000000.00;
             
-            std::string sql = INSERT;
-            sql += "warehouse (w_id, w_name, "
-                "w_street_1, w_street_2, w_city, w_state, w_zip, "
-                "w_tax, w_ytd)";
-            sql += VALUESbegin;
-            sql += std::to_string(w_id); sql += COMMA;
-            sql += "'"; sql += static_cast<char*>(w_name); sql += "'"; sql += COMMA;
-            sql += "'"; sql += static_cast<char*>(w_street_1); sql += "'"; sql += COMMA;
-            sql += "'"; sql += static_cast<char*>(w_street_2); sql += "'"; sql += COMMA;
-            sql += "'"; sql += static_cast<char*>(w_city); sql += "'"; sql += COMMA;
-            sql += "'"; sql += static_cast<char*>(w_state); sql += "'"; sql += COMMA;
-            sql += "'"; sql += static_cast<char*>(w_zip); sql += "'"; sql += COMMA;
-            sql += double_to_string(w_tax,2); sql += COMMA;
-            sql += double_to_string(w_ytd,2); sql += VALUESend;
+            prepared_warehouse->set_parameter(static_cast<std::int32_t>(w_id));
+            prepared_warehouse->set_parameter(w_name);
+            prepared_warehouse->set_parameter(w_street_1);
+            prepared_warehouse->set_parameter(w_street_2);
+            prepared_warehouse->set_parameter(w_city);
+            prepared_warehouse->set_parameter(w_state);
+            prepared_warehouse->set_parameter(w_zip);
+            prepared_warehouse->set_parameter(w_tax);
+            prepared_warehouse->set_parameter(w_ytd);
             /*
              * execute_statement()
              */
-            transaction->execute_statement(sql);
+            transaction->execute_statement(prepared_warehouse.get());
         }
         transaction->commit();
         
@@ -272,6 +276,24 @@ namespace ogawayama::tpcc {
             orig_s.at(pos) = true;
         }
 
+        static PreparedStatementPtr prepared_stock;
+        if (connection->prepare(
+            "INSERT INTO "
+            "stock (s_i_id, s_w_id, s_quantity, "
+            "s_dist_01, s_dist_02, s_dist_03, s_dist_04, s_dist_05, "
+            "s_dist_06, s_dist_07, s_dist_08, s_dist_09, s_dist_10, "
+            "s_data, s_ytd, s_order_cnt, s_remote_cnt)"
+            "VALUES (:p1, :p2, :p3, "
+            ":p4, :p5, :p6, :p7, :p8, "
+            ":p9, :p10, :p11, :p12, :p13, "
+            ":p14, 0, 0, 0)",
+            prepared_stock) != ERROR_CODE::OK) {
+            //            "VALUES (:s_i_id, :s_w_id, :s_quantity, "
+            //            ":s_dist_01, :s_dist_02, :s_dist_03, :s_dist_04, :s_dist_05, "
+            //            ":s_dist_06, :s_dist_07, :s_dist_08, :s_dist_09, :s_dist_10, "
+            //            ":s_data, 0, 0, 0)"
+            std::cerr << __func__ << ":" << __LINE__ << std::endl; _exit(-1);
+        }
         TransactionPtr transaction;
         connection->begin(transaction);
         for (s_i_id=1; s_i_id<=scale->items; s_i_id++) {
@@ -300,33 +322,24 @@ namespace ogawayama::tpcc {
                     s_data[pos+6]='a';
                     s_data[pos+7]='l';
                 }
-            std::string sql = INSERT;
-            sql += "stock (s_i_id, s_w_id, s_quantity, "
-                "s_dist_01, s_dist_02, s_dist_03, s_dist_04, s_dist_05, "
-                "s_dist_06, s_dist_07, s_dist_08, s_dist_09, s_dist_10, "
-                "s_data, s_ytd, s_order_cnt, s_remote_cnt)";
-            sql += VALUESbegin;
-            sql += std::to_string(s_i_id); sql += COMMA;
-            sql += std::to_string(s_w_id); sql += COMMA;
-            sql += std::to_string(s_quantity); sql += COMMA;
-            sql += "'"; sql += static_cast<char *>(s_dist_01); sql += "'"; sql += COMMA;
-            sql += "'"; sql += static_cast<char *>(s_dist_02); sql += "'"; sql += COMMA;
-            sql += "'"; sql += static_cast<char *>(s_dist_03); sql += "'"; sql += COMMA;
-            sql += "'"; sql += static_cast<char *>(s_dist_04); sql += "'"; sql += COMMA;
-            sql += "'"; sql += static_cast<char *>(s_dist_05); sql += "'"; sql += COMMA;
-            sql += "'"; sql += static_cast<char *>(s_dist_06); sql += "'"; sql += COMMA;
-            sql += "'"; sql += static_cast<char *>(s_dist_07); sql += "'"; sql += COMMA;
-            sql += "'"; sql += static_cast<char *>(s_dist_08); sql += "'"; sql += COMMA;
-            sql += "'"; sql += static_cast<char *>(s_dist_09); sql += "'"; sql += COMMA;
-            sql += "'"; sql += static_cast<char *>(s_dist_10); sql += "'"; sql += COMMA;
-            sql += "'"; sql += static_cast<char *>(s_data); sql += "'"; sql += COMMA;
-            sql += std::to_string(0); sql += COMMA;
-            sql += std::to_string(0); sql += COMMA;
-            sql += std::to_string(0); sql += VALUESend;
+            prepared_stock->set_parameter(static_cast<std::int32_t>(s_i_id));
+            prepared_stock->set_parameter(static_cast<std::int32_t>(s_w_id));
+            prepared_stock->set_parameter(static_cast<std::int32_t>(s_quantity));
+            prepared_stock->set_parameter(s_dist_01);
+            prepared_stock->set_parameter(s_dist_02);
+            prepared_stock->set_parameter(s_dist_03);
+            prepared_stock->set_parameter(s_dist_04);
+            prepared_stock->set_parameter(s_dist_05);
+            prepared_stock->set_parameter(s_dist_06);
+            prepared_stock->set_parameter(s_dist_07);
+            prepared_stock->set_parameter(s_dist_08);
+            prepared_stock->set_parameter(s_dist_09);
+            prepared_stock->set_parameter(s_dist_10);
+            prepared_stock->set_parameter(s_data);
             /*
              * exexute_statement()
              */
-            transaction->execute_statement(sql);
+            transaction->execute_statement(prepared_stock.get());
         }
         transaction->commit();
         return 0;
@@ -358,7 +371,22 @@ namespace ogawayama::tpcc {
         d_w_id=w_id;
         d_ytd=30000.0;
         d_next_o_id=scale->orders+1;
-        
+
+        static PreparedStatementPtr prepared_district;
+        if (connection->prepare(
+                "INSERT INTO "
+                "district (d_id, d_w_id, d_name, "
+                "d_street_1, d_street_2, d_city, d_state, d_zip, "
+                "d_tax, d_ytd, d_next_o_id)"
+                "VALUES (:p1, :p2, :p3, "
+                ":p4, :p5, :p6, :p7, :p8, "
+                ":p9, :p10, :p11)",
+                prepared_district) != ERROR_CODE::OK) {
+            //                "VALUES (:d_id, :d_w_id, :d_name, "
+            //                ":d_street_1, :d_street_2, :d_city, :d_state, :d_zip, "
+            //                ":d_tax, :d_ytd, :d_next_o_id)",
+            std::cerr << __func__ << ":" << __LINE__ << std::endl; _exit(-1);
+        }
         TransactionPtr transaction;
         connection->begin(transaction);
         for (d_id=1; d_id<=scale->districts; d_id++) {
@@ -366,26 +394,22 @@ namespace ogawayama::tpcc {
             randomGenerator->MakeAlphaString(6L,10L,static_cast<char *>(d_name));
             randomGenerator->MakeAddress(static_cast<char *>(d_street_1), static_cast<char *>(d_street_2), static_cast<char *>(d_city), static_cast<char *>(d_state), static_cast<char *>(d_zip));
             d_tax=(static_cast<double>(randomGenerator->RandomNumber(10L,20L)))/100.0;
-            std::string sql = INSERT;
-            sql += "district (d_id, d_w_id, d_name, "
-                "d_street_1, d_street_2, d_city, d_state, d_zip, "
-                "d_tax, d_ytd, d_next_o_id)";
-            sql += VALUESbegin;
-            sql += std::to_string(d_id); sql += COMMA;
-            sql += std::to_string(d_w_id); sql += COMMA;
-            sql += "'"; sql += static_cast<char *>(d_name); sql += "'"; sql += COMMA;
-            sql += "'"; sql += static_cast<char *>(d_street_1); sql += "'"; sql += COMMA;
-            sql += "'"; sql += static_cast<char *>(d_street_2); sql += "'"; sql += COMMA;
-            sql += "'"; sql += static_cast<char *>(d_city); sql += "'"; sql += COMMA;
-            sql += "'"; sql += static_cast<char *>(d_state); sql += "'"; sql += COMMA;
-            sql += "'"; sql += static_cast<char *>(d_zip); sql += "'"; sql += COMMA;
-            sql += double_to_string(d_tax,2); sql += COMMA;
-            sql += double_to_string(d_ytd,2); sql += COMMA;
-            sql += std::to_string(d_next_o_id); sql += VALUESend;
+            
+            prepared_district->set_parameter(static_cast<std::int32_t>(d_id));
+            prepared_district->set_parameter(static_cast<std::int32_t>(d_w_id));
+            prepared_district->set_parameter(d_name);
+            prepared_district->set_parameter(d_street_1);
+            prepared_district->set_parameter(d_street_2);
+            prepared_district->set_parameter(d_city);
+            prepared_district->set_parameter(d_state);
+            prepared_district->set_parameter(d_zip);
+            prepared_district->set_parameter(d_tax);
+            prepared_district->set_parameter(d_ytd);
+            prepared_district->set_parameter(static_cast<std::int32_t>(d_next_o_id));
             /*
              * exexute_statement()
              */
-            transaction->execute_statement(sql);
+            transaction->execute_statement(prepared_district.get());
         }
         transaction->commit();
         return 0;
@@ -424,8 +448,40 @@ namespace ogawayama::tpcc {
         double c_discount;
         double c_balance;
         VARCHAR500 c_data;
-        VARCHAR24 h_data;
+        //        VARCHAR24 h_data;
 
+        static PreparedStatementPtr prepared_customer;
+        if (connection->prepare(
+            "INSERT INTO customer "
+            "(c_id, c_d_id, c_w_id, "
+            "c_first, c_middle, c_last, "
+            "c_street_1, c_street_2, c_city, c_state, c_zip, "
+            "c_phone, c_since, c_credit, "
+            "c_credit_lim, c_discount, c_balance, c_data, "
+            "c_ytd_payment, c_payment_cnt, c_delivery_cnt) "
+            "VALUES (:p1, :p2, :p3, "
+            ":p4, :p5, :p6, "
+            ":p7, :p8, :p9, :p10, :p11, "
+            ":p12, :p13, :p14, "
+            ":p15, :p16, :p17, :p18, "
+            "10.0, 1, 0)",
+            prepared_customer) != ERROR_CODE::OK) {
+            //            "VALUES (:c_id, :c_d_id, :c_w_id, "
+            //            ":c_first, :c_middle, :c_last, "
+            //            ":c_street_1, :c_street_2, :c_city, :c_state, :c_zip, "
+            //            ":c_phone, :c_since, :c_credit, "
+            //            ":c_credit_lim, :c_discount, :c_balance, :c_data, "
+            //            "10.0, 1, 0) ");
+            std::cerr << __func__ << ":" << __LINE__ << std::endl; _exit(-1);
+        }
+        static PreparedStatementPtr prepared_customer_secondary;
+        if (connection->prepare(
+            "INSERT INTO "
+            "customer_secondary (c_d_id, c_w_id, c_last, c_first, c_id)"
+            "VALUES (:p1, :p2, :p3, :p4, :p5)", prepared_customer_secondary) != ERROR_CODE::OK) {
+            //            "VALUES (:c_d_id, :c_w_id, :c_last, :c_first, :c_id)");
+            std::cerr << __func__ << ":" << __LINE__ << std::endl; _exit(-1);
+        }
         TransactionPtr transaction;
         connection->begin(transaction);
         for (c_id=1; c_id<=scale->customers; c_id++) {
@@ -452,54 +508,41 @@ namespace ogawayama::tpcc {
             c_balance= -10.0;
             getdatestamp(static_cast<char *>(c_since), randomGenerator->RandomNumber(1L,365L*50L));
             randomGenerator->MakeAlphaString(300,500,static_cast<char *>(c_data));
-            std::string sql = INSERT;
-            sql += "customer (c_id, c_d_id, c_w_id, "
-                "c_first, c_middle, c_last, "
-                "c_street_1, c_street_2, c_city, c_state, c_zip, "
-                "c_phone, c_since, c_credit, "
-                "c_credit_lim, c_discount, c_balance, c_data, "
-                "c_ytd_payment, c_payment_cnt, c_delivery_cnt) ";
-            sql += VALUESbegin;
-            sql += std::to_string(c_id); sql += COMMA;
-            sql += std::to_string(c_d_id); sql += COMMA;
-            sql += std::to_string(c_w_id); sql += COMMA;
-            sql += "'"; sql += static_cast<char *>(c_first); sql += "'"; sql += COMMA;
-            sql += "'"; sql += static_cast<char *>(c_middle); sql += "'"; sql += COMMA;
-            sql += "'"; sql += static_cast<char *>(c_last); sql += "'"; sql += COMMA;
-            sql += "'"; sql += static_cast<char *>(c_street_1); sql += "'"; sql += COMMA;
-            sql += "'"; sql += static_cast<char *>(c_street_2); sql += "'"; sql += COMMA;
-            sql += "'"; sql += static_cast<char *>(c_city); sql += "'"; sql += COMMA;
-            sql += "'"; sql += static_cast<char *>(c_state); sql += "'"; sql += COMMA;
-            sql += "'"; sql += static_cast<char *>(c_zip); sql += "'"; sql += COMMA;
-            sql += "'"; sql += static_cast<char *>(c_phone); sql += "'"; sql += COMMA;
-            sql += "'"; sql += static_cast<char *>(c_since); sql += "'"; sql += COMMA;
-            sql += "'"; sql += static_cast<char *>(c_credit); sql += "'"; sql += COMMA;
-            sql += double_to_string(c_credit_lim,2); sql += COMMA;
-            sql += double_to_string(c_discount,2); sql += COMMA;
-            sql += double_to_string(c_balance,2); sql += COMMA;
-            sql += "'"; sql += static_cast<char *>(c_data); sql += "'"; sql += COMMA;
-            sql += std::to_string(10.0); sql += COMMA;
-            sql += std::to_string(1); sql += COMMA;
-            sql += std::to_string(0); sql += VALUESend;
+
+            prepared_customer->set_parameter(static_cast<std::int32_t>(c_id));
+            prepared_customer->set_parameter(static_cast<std::int32_t>(c_d_id));
+            prepared_customer->set_parameter(static_cast<std::int32_t>(c_w_id));
+            prepared_customer->set_parameter(c_first);
+            prepared_customer->set_parameter(c_middle);
+            prepared_customer->set_parameter(c_last);
+            prepared_customer->set_parameter(c_street_1);
+            prepared_customer->set_parameter(c_street_2);
+            prepared_customer->set_parameter(c_city);
+            prepared_customer->set_parameter(c_state);
+            prepared_customer->set_parameter(c_zip);
+            prepared_customer->set_parameter(c_phone);
+            prepared_customer->set_parameter(c_since);
+            prepared_customer->set_parameter(c_credit);
+            prepared_customer->set_parameter(static_cast<double>(c_credit_lim));
+            prepared_customer->set_parameter(c_discount);
+            prepared_customer->set_parameter(c_balance);
+            prepared_customer->set_parameter(c_data);
             /*
              * exexute_statement()
              */
-            transaction->execute_statement(sql);
-            
-            sql = INSERT;
-            sql += "customer_secondary (c_d_id, c_w_id, c_last, c_first, c_id)";
-            sql += VALUESbegin;
-            sql += std::to_string(c_d_id); sql += COMMA;
-            sql += std::to_string(c_w_id); sql += COMMA;
-            sql += "'"; sql += static_cast<char *>(c_last); sql += "'"; sql += COMMA;
-            sql += "'"; sql += static_cast<char *>(c_first); sql += "'"; sql += COMMA;
-            sql += std::to_string(c_id); sql += VALUESend;
+            transaction->execute_statement(prepared_customer.get());
+
+            prepared_customer_secondary->set_parameter(static_cast<std::int32_t>(c_d_id));
+            prepared_customer_secondary->set_parameter(static_cast<std::int32_t>(c_w_id));
+            prepared_customer_secondary->set_parameter(c_last);
+            prepared_customer_secondary->set_parameter(c_first);
+            prepared_customer_secondary->set_parameter(static_cast<std::int32_t>(c_id));
             /*
              * exexute_statement()
              */
-            transaction->execute_statement(sql);
+            transaction->execute_statement(prepared_customer_secondary.get());
             
-            randomGenerator->MakeAlphaString(12,24,static_cast<char *>(h_data));
+            //            randomGenerator->MakeAlphaString(12,24,static_cast<char *>(h_data));
         }
         transaction->commit();
         return 0;
@@ -549,6 +592,51 @@ namespace ogawayama::tpcc {
         cid_array.resize(scale->customers);
         for (unsigned int i = 0; i < scale->customers; i++) cid_array.at(i) = false;
 
+        static PreparedStatementPtr prepared_orders;
+        if (connection->prepare(
+            "INSERT INTO "
+            "orders (o_id, o_c_id, o_d_id, o_w_id, "
+            "o_entry_d, o_carrier_id, o_ol_cnt, o_all_local)"
+            "VALUES (:p1, :p2, :p3, :p4, "
+            ":p5, :p6, :p7, :p8)",
+            prepared_orders) != ERROR_CODE::OK) {
+            //            "VALUES (:o_id, :o_c_id, :o_d_id, :o_w_id, "
+            //            ":o_entry_d, :o_carrier_id, :o_ol_cnt, :o_all_local)");                                
+            std::cerr << __func__ << ":" << __LINE__ << std::endl; _exit(-1);
+        }
+        static PreparedStatementPtr prepared_orders_secondary;
+        if (connection->prepare(
+            "INSERT INTO "
+            "orders_secondary (o_d_id, o_w_id, o_c_id, o_id) "
+            "VALUES (:p1, :p2, :p3, :p4)",
+            prepared_orders_secondary) != ERROR_CODE::OK) {
+            //            "VALUES (:o_d_id, :o_w_id, :o_c_id, :o_id)");
+            std::cerr << __func__ << ":" << __LINE__ << std::endl; _exit(-1);
+        }
+        static PreparedStatementPtr prepared_neworder;
+        if (connection->prepare(
+            "INSERT INTO "
+            "new_order (no_o_id, no_d_id, no_w_id)"
+            "VALUES (:p1, :p2, :p3)",
+            prepared_neworder) != ERROR_CODE::OK) {
+            //            "VALUES (:no_o_id, :no_d_id, :no_w_id)");
+            std::cerr << __func__ << ":" << __LINE__ << std::endl; _exit(-1);
+        }
+        static PreparedStatementPtr prepared_orderline;
+        if (connection->prepare(
+            "INSERT INTO "
+            "order_line (ol_o_id, ol_d_id, ol_w_id, ol_number, "
+            "ol_i_id, ol_supply_w_id, ol_quantity, ol_amount, "
+            "ol_dist_info, ol_delivery_d)"
+            "VALUES (:p1, :p2, :p3, :p4, "
+            ":p5, :p6, :p7, :p8, "
+            ":p9, :p10)",
+            prepared_orderline) != ERROR_CODE::OK) {
+            //            "VALUES (:ol_o_id, :ol_d_id, :ol_w_id, :ol_number, "
+            //            ":ol_i_id, :ol_supply_w_id, :ol_quantity, :ol_amount, "
+            //            ":ol_dist_info, :ol_delivery_d)",
+            std::cerr << __func__ << ":" << __LINE__ << std::endl; _exit(-1);
+        }
         TransactionPtr transaction;
         connection->begin(transaction);
         for (o_id=1; o_id<=scale->orders; o_id++) {
@@ -558,75 +646,59 @@ namespace ogawayama::tpcc {
             o_ol_cnt=randomGenerator->RandomNumber(5L,15L);
             if (o_id > ((scale->orders * 7) / 10)) /* the last 900 orders have not been delivered) */
                 {
-                    std::string sql = INSERT;
-                    sql += "orders (o_id, o_c_id, o_d_id, o_w_id, "
-                        "o_entry_d, o_ol_cnt, o_all_local)";
-                    sql += VALUESbegin;
-                    sql += std::to_string(o_id); sql += COMMA;
-                    sql += std::to_string(o_c_id); sql += COMMA;
-                    sql += std::to_string(o_d_id); sql += COMMA;
-                    sql += std::to_string(o_w_id); sql += COMMA;
-                    sql += "'"; sql += static_cast<char *>(timestamp); sql += "'"; sql += COMMA;
-                    sql += std::to_string(o_ol_cnt); sql += COMMA;
-                    sql += std::to_string(1); sql += VALUESend;
+                    prepared_orders->set_parameter(static_cast<std::int32_t>(o_id));
+                    prepared_orders->set_parameter(static_cast<std::int32_t>(o_c_id));
+                    prepared_orders->set_parameter(static_cast<std::int32_t>(o_d_id));
+                    prepared_orders->set_parameter(static_cast<std::int32_t>(o_w_id));
+                    prepared_orders->set_parameter(timestamp);
+                    prepared_orders->set_parameter(std::monostate());
+                    prepared_orders->set_parameter(static_cast<std::int32_t>(o_ol_cnt));
+                    prepared_orders->set_parameter(static_cast<std::int32_t>(1));
                     /*
                      * exexute_statement()
                      */
-                    transaction->execute_statement(sql);
-                    
-                    sql = INSERT;
-                    sql += "orders_secondary (o_d_id, o_w_id, o_c_id, o_id)";
-                    sql += VALUESbegin;
-                    sql += std::to_string(o_d_id); sql += COMMA;
-                    sql += std::to_string(o_w_id); sql += COMMA;
-                    sql += std::to_string(o_c_id); sql += COMMA;
-                    sql += std::to_string(o_id); sql += VALUESend;
+                    transaction->execute_statement(prepared_orders.get());
+
+                    prepared_orders_secondary->set_parameter(static_cast<std::int32_t>(o_d_id));
+                    prepared_orders_secondary->set_parameter(static_cast<std::int32_t>(o_w_id));
+                    prepared_orders_secondary->set_parameter(static_cast<std::int32_t>(o_c_id));
+                    prepared_orders_secondary->set_parameter(static_cast<std::int32_t>(o_id));
                     /*
                      * exexute_statement()
                      */
-                    transaction->execute_statement(sql);
-                    
-                    sql = INSERT;
-                    sql += "new_order (no_o_id, no_d_id, no_w_id)";
-                    sql += VALUESbegin;
-                    sql += std::to_string(o_id); sql += COMMA;
-                    sql += std::to_string(o_d_id); sql += COMMA;
-                    sql += std::to_string(o_w_id); sql += VALUESend;
+                    transaction->execute_statement(prepared_orders_secondary.get());
+
+                    prepared_neworder->set_parameter(static_cast<std::int32_t>(o_id));
+                    prepared_neworder->set_parameter(static_cast<std::int32_t>(o_d_id));
+                    prepared_neworder->set_parameter(static_cast<std::int32_t>(o_w_id));
                     /*
                      * exexute_statement()
                      */
-                    transaction->execute_statement(sql);
+                    transaction->execute_statement(prepared_neworder.get());
                 }
             else
                 {
-                    std::string sql = INSERT;
-                    sql += "orders (o_id, o_c_id, o_d_id, o_w_id, "
-                        "o_entry_d, o_carrier_id, o_ol_cnt, o_all_local)";
-                    sql += VALUESbegin;
-                    sql += std::to_string(o_id); sql += COMMA;
-                    sql += std::to_string(o_c_id); sql += COMMA;
-                    sql += std::to_string(o_d_id); sql += COMMA;
-                    sql += std::to_string(o_w_id); sql += COMMA;
-                    sql += "'"; sql += static_cast<char *>(timestamp); sql += "'"; sql += COMMA;
-                    sql += std::to_string(o_carrier_id); sql += COMMA;
-                    sql += std::to_string(o_ol_cnt); sql += COMMA;
-                    sql += std::to_string(1); sql += VALUESend;
+                    prepared_orders->set_parameter(static_cast<std::int32_t>(o_id));
+                    prepared_orders->set_parameter(static_cast<std::int32_t>(o_c_id));
+                    prepared_orders->set_parameter(static_cast<std::int32_t>(o_d_id));
+                    prepared_orders->set_parameter(static_cast<std::int32_t>(o_w_id));
+                    prepared_orders->set_parameter(timestamp);
+                    prepared_orders->set_parameter(static_cast<std::int32_t>(o_carrier_id));
+                    prepared_orders->set_parameter(static_cast<std::int32_t>(o_ol_cnt));
+                    prepared_orders->set_parameter(static_cast<std::int32_t>(1));
                     /*
                      * exexute_statement()
                      */
-                    transaction->execute_statement(sql);
+                    transaction->execute_statement(prepared_orders.get());
                     
-                    sql = INSERT;
-                    sql += "orders_secondary (o_d_id, o_w_id, o_c_id, o_id)";
-                    sql += VALUESbegin;
-                    sql += std::to_string(o_d_id); sql += COMMA;
-                    sql += std::to_string(o_w_id); sql += COMMA;
-                    sql += std::to_string(o_c_id); sql += COMMA;
-                    sql += std::to_string(o_id); sql += VALUESend;
+                    prepared_orders_secondary->set_parameter(static_cast<std::int32_t>(o_d_id));
+                    prepared_orders_secondary->set_parameter(static_cast<std::int32_t>(o_w_id));
+                    prepared_orders_secondary->set_parameter(static_cast<std::int32_t>(o_c_id));
+                    prepared_orders_secondary->set_parameter(static_cast<std::int32_t>(o_id));
                     /*
                      * exexute_statement()
                      */
-                    transaction->execute_statement(sql);
+                    transaction->execute_statement(prepared_orders_secondary.get());
                 }
             TIMESTAMP datetime; gettimestamp(static_cast<char *>(datetime), randomGenerator->RandomNumber(1L,90L*24L*60L));
             for (ol=1; ol<=o_ol_cnt; ol++) {
@@ -640,47 +712,39 @@ namespace ogawayama::tpcc {
                 
                 if (o_id > ((scale->orders * 7) / 10))
                     {
-                        std::string sql = INSERT;
-                        sql += "order_line (ol_o_id, ol_d_id, ol_w_id, ol_number, "
-                            "ol_i_id, ol_supply_w_id, ol_quantity, ol_amount, "
-                            "ol_dist_info)";
-                        sql += VALUESbegin;
-                        sql += std::to_string(o_id); sql += COMMA;
-                        sql += std::to_string(o_d_id); sql += COMMA;
-                        sql += std::to_string(o_w_id); sql += COMMA;
-                        sql += std::to_string(ol); sql += COMMA;
-                        sql += std::to_string(ol_i_id); sql += COMMA;
-                        sql += std::to_string(ol_supply_w_id); sql += COMMA;
-                        sql += std::to_string(ol_quantity); sql += COMMA;
-                        sql += double_to_string(ol_amount,2); sql += COMMA;
-                        sql += "'"; sql += static_cast<char *>(ol_dist_info); sql += "'"; sql += VALUESend;
+                        prepared_orderline->set_parameter(static_cast<std::int32_t>(o_id));
+                        prepared_orderline->set_parameter(static_cast<std::int32_t>(o_d_id));
+                        prepared_orderline->set_parameter(static_cast<std::int32_t>(o_w_id));
+                        prepared_orderline->set_parameter(static_cast<std::int32_t>(ol));
+                        prepared_orderline->set_parameter(static_cast<std::int32_t>(ol_i_id));
+                        prepared_orderline->set_parameter(static_cast<std::int32_t>(ol_supply_w_id));
+                        prepared_orderline->set_parameter(static_cast<std::int32_t>(ol_quantity));
+                        prepared_orderline->set_parameter(ol_amount);
+                        prepared_orderline->set_parameter(ol_dist_info);
+                        prepared_orderline->set_parameter(std::monostate());
                         /*
                          * exexute_statement()
                          */
-                        transaction->execute_statement(sql);
+                        transaction->execute_statement(prepared_orderline.get());
                     }
                 else
                     {
                         ol_amount = (static_cast<double>(randomGenerator->RandomNumber(10L, 10000L)))/100.0;
-                        std::string sql = INSERT;
-                        sql += "order_line (ol_o_id, ol_d_id, ol_w_id, ol_number, "
-                            "ol_i_id, ol_supply_w_id, ol_quantity, ol_amount, "
-                            "ol_dist_info, ol_delivery_d)";
-                        sql += VALUESbegin;
-                        sql += std::to_string(o_id); sql += COMMA;
-                        sql += std::to_string(o_d_id); sql += COMMA;
-                        sql += std::to_string(o_w_id); sql += COMMA;
-                        sql += std::to_string(ol); sql += COMMA;
-                        sql += std::to_string(ol_i_id);     sql += COMMA;
-                        sql += std::to_string(ol_supply_w_id); sql += COMMA;
-                        sql += std::to_string(ol_quantity); sql += COMMA;
-                        sql += double_to_string(ol_amount,2); sql += COMMA;
-                        sql += "'"; sql += static_cast<char *>(ol_dist_info); sql += "'"; sql += COMMA;
-                        sql += "'"; sql += static_cast<char *>(datetime); sql += "'"; sql += VALUESend;
+
+                        prepared_orderline->set_parameter(static_cast<std::int32_t>(o_id));
+                        prepared_orderline->set_parameter(static_cast<std::int32_t>(o_d_id));
+                        prepared_orderline->set_parameter(static_cast<std::int32_t>(o_w_id));
+                        prepared_orderline->set_parameter(static_cast<std::int32_t>(ol));
+                        prepared_orderline->set_parameter(static_cast<std::int32_t>(ol_i_id));
+                        prepared_orderline->set_parameter(static_cast<std::int32_t>(ol_supply_w_id));
+                        prepared_orderline->set_parameter(static_cast<std::int32_t>(ol_quantity));
+                        prepared_orderline->set_parameter(ol_amount);
+                        prepared_orderline->set_parameter(ol_dist_info);
+                        prepared_orderline->set_parameter(datetime);
                         /*
                          * exexute_statement()
                          */
-                        transaction->execute_statement(sql);
+                        transaction->execute_statement(prepared_orderline.get());
                     }
             }
         }

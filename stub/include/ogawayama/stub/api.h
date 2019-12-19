@@ -32,6 +32,7 @@ namespace ogawayama::stub {
 
 class ResultSet;
 class Transaction;
+class PreparedStatement;
 class Connection;
 class Stub;
  
@@ -102,6 +103,51 @@ using ResultSetPtr = std::shared_ptr<ogawayama::stub::ResultSet>;
 namespace ogawayama::stub {
 
 /**
+ * @brief Information about a parameter set for a prepared statement.
+ */
+class PreparedStatement {
+public:
+    /**
+     * @brief Construct a new object.
+     */
+    PreparedStatement(Connection*, std::size_t);
+
+    /**
+     * @brief destructs this object.
+     */
+    ~PreparedStatement();
+
+    /**
+     * @brief get the object to which this belongs
+     * @return connection objext
+     */
+    auto get_manager() { return manager_; }
+
+    /**
+     * @brief get the impl class
+     * @return a pointer to the impl class
+     */
+    auto get_impl() { return impl_.get(); }
+
+    template<typename T>
+        void set_parameter(T);
+
+private:
+    class Impl;
+    std::unique_ptr<Impl> impl_;
+    Connection *manager_;
+    friend class Connection;
+    friend class Transaction;
+};
+
+}  // namespace ogawayama::stub
+
+using PreparedStatementPtr = std::unique_ptr<ogawayama::stub::PreparedStatement>;
+
+
+namespace ogawayama::stub {
+
+/**
  * @brief Information about a transaction.
  */
 class Transaction {
@@ -129,6 +175,20 @@ public:
     auto get_impl() { return impl_.get(); }
     
     /**
+     * @brief execute a statement.
+     * @param statement the SQL statement string
+     * @return error code defined in error_code.h
+     */
+    ErrorCode execute_statement(std::string_view);
+
+    /**
+     * @brief execute a prepared statement.
+     * @param pointer to the prepared statement
+     * @return error code defined in error_code.h
+     */
+    ErrorCode execute_statement(PreparedStatement *);
+
+    /**
      * @brief execute a query.
      * @param query the SQL query string
      * @param result_set returns a result set of the query
@@ -137,11 +197,12 @@ public:
     ErrorCode execute_query(std::string_view, ResultSetPtr &);
 
     /**
-     * @brief execute a statement.
-     * @param statement the SQL statement string
+     * @brief execute a query.
+     * @param pointer to the prepared query
+     * @param result_set returns a result set of the query
      * @return error code defined in error_code.h
      */
-    ErrorCode execute_statement(std::string_view);
+    ErrorCode execute_query(PreparedStatement *, ResultSetPtr &);
 
     /**
      * @brief commit the current transaction.
@@ -204,6 +265,14 @@ public:
      * @return error code defined in error_code.h
      */
     ErrorCode begin(TransactionPtr &);
+
+    /**
+     * @brief prepare SQL statement.
+     * @param SQL statement
+     * @param prepared statement returns a prepared statement class
+     * @return error code defined in error_code.h
+     */
+    ErrorCode prepare(std::string_view, PreparedStatementPtr &);
 
 private:
     class Impl;

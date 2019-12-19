@@ -13,8 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#ifndef TRANSACTIONIMPL_H_
-#define TRANSACTIONIMPL_H_
+#pragma once
 
 #include "memory"
 #include "vector"
@@ -33,6 +32,20 @@ public:
     Impl(Transaction *);
 
     /**
+     * @brief execute a statement.
+     * @param statement the SQL statement string
+     * @return true in error, otherwise false
+     */
+    ErrorCode execute_statement(std::string_view statement);
+
+    /**
+     * @brief execute a prepared statement.
+     * @param pointer to the prepared statement
+     * @return error code defined in error_code.h
+     */
+    ErrorCode execute_statement(PreparedStatement *);
+
+    /**
      * @brief execute a query.
      * @param query the SQL query string
      * @param result_set returns a result set of the query
@@ -41,11 +54,12 @@ public:
     ErrorCode execute_query(std::string_view query, std::shared_ptr<ResultSet> &result_set);
 
     /**
-     * @brief execute a statement.
-     * @param statement the SQL statement string
+     * @brief execute a query.
+     * @param pointer to the prepared statement
+     * @param result_set returns a result set of the query
      * @return true in error, otherwise false
      */
-    ErrorCode execute_statement(std::string_view statement);
+    ErrorCode execute_query(PreparedStatement *, std::shared_ptr<ResultSet> &result_set);
 
     /**
      * @brief commit the current transaction.
@@ -71,5 +85,3 @@ private:
 };
 
 }  // namespace ogawayama::stub
-
-#endif  // TRANSACTIONIMPL_H_

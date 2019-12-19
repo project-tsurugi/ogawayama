@@ -24,6 +24,9 @@ Connection::Impl::Impl(Connection *connection, std::size_t pgprocno) : envelope_
     channel_ = std::make_unique<ogawayama::common::ChannelStream>
         (envelope_->get_manager()->get_impl()->get_managed_shared_memory()->shm_name(ogawayama::common::param::channel, pgprocno_).c_str(),
          envelope_->get_manager()->get_impl()->get_managed_shared_memory(), true);
+    parameters_ = std::make_unique<ogawayama::common::ParameterSet>
+        (envelope_->get_manager()->get_impl()->get_managed_shared_memory()->shm_name(ogawayama::common::param::prepared, pgprocno_).c_str(),
+         envelope_->get_manager()->get_impl()->get_managed_shared_memory(), true);
 }
 
 Connection::Impl::~Impl()
@@ -46,10 +49,25 @@ ErrorCode Connection::Impl::confirm()
  * @param connection returns a connection class
  * @return true in error, otherwise false
  */
-ErrorCode Connection::Impl::begin(std::unique_ptr<Transaction> &transaction)
+ErrorCode Connection::Impl::begin(TransactionPtr &transaction)
 {
     transaction = std::make_unique<Transaction>(envelope_);
     return ErrorCode::OK;
+}
+
+/**
+ * @brief prepare statement
+ */
+ErrorCode Connection::Impl::prepare(std::string_view sql, PreparedStatementPtr &prepared)
+{
+    channel_->send_req(ogawayama::common::CommandMessage::Type::PREPARE, sid_, sql);
+    ErrorCode reply = channel_->recv_ack();
+
+    if (reply == ErrorCode::OK) {
+        prepared = std::make_unique<PreparedStatement>(envelope_, sid_);
+        sid_++;
+    }
+    return reply;
 }
 
 /**
@@ -66,8 +84,13 @@ Connection::Connection(Stub *stub, std::size_t pgprocno) : manager_(stub)
 Connection::~Connection() = default;
 
 /**
- * @brief destructor of Stub class
+ * @brief get transaction object, meaning transaction begin
  */
-ErrorCode Connection::begin(std::unique_ptr<Transaction> &transaction) { return impl_->begin(transaction); }
+ErrorCode Connection::begin(TransactionPtr &transaction) { return impl_->begin(transaction); }
+
+/**
+ * @brief prepare statement
+ */
+ErrorCode Connection::prepare(std::string_view sql, PreparedStatementPtr &prepared) { return impl_->prepare(sql, prepared); }
 
 }  // namespace ogawayama::stub

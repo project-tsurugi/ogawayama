@@ -24,6 +24,7 @@
 #include "ogawayama/stub/api.h"
 #include "ogawayama/common/channel_stream.h"
 #include "ogawayama/common/row_queue.h"
+#include "ogawayama/common/parameter_set.h"
 
 namespace ogawayama::server {
 
@@ -38,13 +39,22 @@ class Worker {
         std::unique_ptr<umikongo::Iterator> iterator_{};
         std::unique_ptr<umikongo::ExecutableStatement> executable_{};
     };
+
  public:
     Worker(umikongo::Database *, ogawayama::common::SharedMemory *, std::size_t);
-    ~Worker() { if(thread_.joinable()) thread_.join(); }
+    ~Worker() {
+        clear();
+        prepared_statements_.clear();
+        if(thread_.joinable()) thread_.join();
+    }
     void run();
     void execute_statement(std::string_view);
     bool execute_query(std::string_view, std::size_t);
     void next(std::size_t);
+
+    void prepare(std::string_view, std::size_t);
+    void execute_prepared_statement(std::size_t);
+    bool execute_prepared_query(std::size_t, std::size_t);
 
     friend int backend_main(int, char **);
 
@@ -54,15 +64,19 @@ class Worker {
     std::size_t id_;
 
     std::unique_ptr<ogawayama::common::ChannelStream> channel_;
+    std::unique_ptr<ogawayama::common::ParameterSet> parameters_;
 
     std::unique_ptr<umikongo::Transaction> transaction_;
     umikongo::Context* context_;
     std::vector<Cursor> cursors_;
+    std::vector<std::unique_ptr<umikongo::PreparedStatement>> prepared_statements_{};
 
     std::packaged_task<void()> task_;
     std::future<void> future_;
     std::thread thread_{};
 
+    void send_metadata(std::size_t);
+    void set_params(umikongo::PreparedStatement::Parameters *);
     void clear();
 };
 

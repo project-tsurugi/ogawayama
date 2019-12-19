@@ -18,22 +18,36 @@
 
 #include <iostream>
 #include <string.h>
+
+#include <vector>
+#include <variant>
+#include <string_view>
+#include "boost/interprocess/managed_shared_memory.hpp"
+#include "boost/interprocess/allocators/allocator.hpp"
+#include "boost/interprocess/containers/string.hpp"
 #include "boost/thread/thread_time.hpp"
 
 namespace ogawayama::common {
 
 namespace param {
+    static constexpr std::size_t SEGMENT_SIZE = 100<<20; // 100 MiB (tantative)
+    static constexpr std::size_t MAX_NAME_LENGTH = 32;   // 64 chars (tantative, but probably enough)
+    static constexpr std::size_t QUEUE_SIZE = 32;        // 32 rows (tantative) must be greater than or equal to 2
+    static constexpr long TIMEOUT = 10000;   	     // timeout for condition, currentry set to 10 seconds
 
-static constexpr std::size_t SEGMENT_SIZE = 100<<20; // 100 MiB (tantative)
-static constexpr std::size_t MAX_NAME_LENGTH = 32;   // 64 chars (tantative, but probably enough)
-static constexpr std::size_t QUEUE_SIZE = 32;        // 32 rows (tantative) must be greater than or equal to 2
-static constexpr long TIMEOUT = 10000;   	     // timeout for condition, currentry set to 10 seconds
-
-static constexpr char const * server = "server";
-static constexpr char const * channel = "channel";
-static constexpr char const * resultset = "resultset";
-
+    static constexpr char const * server = "server";
+    static constexpr char const * channel = "channel";
+    static constexpr char const * resultset = "resultset";
+    static constexpr char const * prepared = "prepared";
 };  // namespace ogawayama::common::param
+
+
+using CharAllocator = boost::interprocess::allocator<char, boost::interprocess::managed_shared_memory::segment_manager>;
+using ShmString = boost::interprocess::basic_string<char, std::char_traits<char>, CharAllocator>;
+using ShmClmArg = std::variant<std::monostate, std::int16_t, std::int32_t, std::int64_t, float, double, ShmString>;
+using ShmClmArgAllocator = boost::interprocess::allocator<ShmClmArg, boost::interprocess::managed_shared_memory::segment_manager>;
+using ShmRowArgs = std::vector<ShmClmArg, ShmClmArgAllocator>;
+using ShmRowArgsAllocator = boost::interprocess::allocator<ShmRowArgs, boost::interprocess::managed_shared_memory::segment_manager>;
 
 /**
  * @brief exception class for shared memory lost

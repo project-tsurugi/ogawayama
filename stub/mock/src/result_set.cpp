@@ -70,7 +70,7 @@ ErrorCode ResultSet::Impl::next_column(T &value) {
     if (c_idx_ >= r.size()) {
         return ErrorCode::END_OF_COLUMN;
     }
-    ogawayama::common::ShmColumn c = r.at(c_idx_++);
+    ogawayama::common::ShmClmArg c = r.at(c_idx_++);
     try {
         value = std::get<T>(c);
         return ErrorCode::OK;

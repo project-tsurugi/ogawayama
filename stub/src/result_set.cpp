@@ -72,12 +72,12 @@ ErrorCode ResultSet::Impl::next()
  */
 template<typename T>
 ErrorCode ResultSet::Impl::next_column(T &value) {
-    const ogawayama::common::ShmRow &r = row_queue_->get_current_row();
+    const ogawayama::common::ShmRowArgs &r = row_queue_->get_current_row();
 
     if (c_idx_ >= r.size()) {
         return ErrorCode::END_OF_COLUMN;
     }
-    ogawayama::common::ShmColumn c = r.at(c_idx_++);
+    ogawayama::common::ShmClmArg c = r.at(c_idx_++);
     try {
         value = std::get<T>(c);
         return ErrorCode::OK;
@@ -98,12 +98,12 @@ ErrorCode ResultSet::Impl::next_column(T &value) {
  */
 template<>
 ErrorCode ResultSet::Impl::next_column(std::string_view &s) {
-    const ogawayama::common::ShmRow &r = row_queue_->get_current_row();
+    const ogawayama::common::ShmRowArgs &r = row_queue_->get_current_row();
 
     if (c_idx_ >= r.size()) {
         return ErrorCode::END_OF_COLUMN;
     }
-    const ogawayama::common::ShmColumn &c = r.at(c_idx_++);
+    const ogawayama::common::ShmClmArg &c = r.at(c_idx_++);
     try {
         s = std::get<ogawayama::common::ShmString>(c);
         return ErrorCode::OK;
