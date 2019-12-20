@@ -651,7 +651,7 @@ namespace ogawayama::tpcc {
                     prepared_orders->set_parameter(static_cast<std::int32_t>(o_d_id));
                     prepared_orders->set_parameter(static_cast<std::int32_t>(o_w_id));
                     prepared_orders->set_parameter(timestamp);
-                    prepared_orders->set_parameter(std::monostate());
+                    prepared_orders->set_parameter();
                     prepared_orders->set_parameter(static_cast<std::int32_t>(o_ol_cnt));
                     prepared_orders->set_parameter(static_cast<std::int32_t>(1));
                     /*
@@ -721,7 +721,7 @@ namespace ogawayama::tpcc {
                         prepared_orderline->set_parameter(static_cast<std::int32_t>(ol_quantity));
                         prepared_orderline->set_parameter(ol_amount);
                         prepared_orderline->set_parameter(ol_dist_info);
-                        prepared_orderline->set_parameter(std::monostate());
+                        prepared_orderline->set_parameter();
                         /*
                          * exexute_statement()
                          */

@@ -30,41 +30,26 @@ PreparedStatement::PreparedStatement(Connection *connection, std::size_t sid) : 
  */
 PreparedStatement::~PreparedStatement() = default;
 
-template<>
 void PreparedStatement::set_parameter(std::int16_t param) {
     get_impl()->set_parameter<std::int16_t>(param);
 }
-template<>
 void PreparedStatement::set_parameter(std::int32_t param) {
     get_impl()->set_parameter<std::int32_t>(param);
 }
-template<>
 void PreparedStatement::set_parameter(std::int64_t param) {
     get_impl()->set_parameter<std::int64_t>(param);
 }
-template<>
 void PreparedStatement::set_parameter(float param) {
     get_impl()->set_parameter<float>(param);
 }
-template<>
 void PreparedStatement::set_parameter(double param) {
     get_impl()->set_parameter<double>(param);
 }
-template<>
 void PreparedStatement::set_parameter(std::string_view param) {
     get_impl()->set_parameter<std::string_view>(param);
 }
-template<>
-void PreparedStatement::set_parameter(char const* param) {
-    get_impl()->set_parameter<std::string_view>(std::string_view(param, strlen(param)));
-}
-template<>
-void PreparedStatement::set_parameter(char* param) {
-    get_impl()->set_parameter<std::string_view>(std::string_view(param, strlen(param)));
-}
-template<>
-void PreparedStatement::set_parameter(std::monostate param) {
-    get_impl()->set_parameter<std::monostate>(param);
+void PreparedStatement::set_parameter() {
+    get_impl()->set_parameter<std::monostate>(std::monostate());
 }
 
 }  // namespace ogawayama::stub

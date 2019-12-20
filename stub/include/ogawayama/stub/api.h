@@ -129,8 +129,13 @@ public:
      */
     auto get_impl() { return impl_.get(); }
 
-    template<typename T>
-        void set_parameter(T);
+    void set_parameter(std::int16_t);
+    void set_parameter(std::int32_t);
+    void set_parameter(std::int64_t);
+    void set_parameter(float);
+    void set_parameter(double);
+    void set_parameter(std::string_view);
+    void set_parameter();
 
 private:
     class Impl;
