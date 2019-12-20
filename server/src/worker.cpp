@@ -89,8 +89,11 @@ void Worker::run()
             execute_prepared_statement(ivalue);
             break;
         case ogawayama::common::CommandMessage::Type::EXECUTE_PREPARED_QUERY:
-            if(execute_prepared_query(ivalue, std::stoi(std::string(string)))) {
-                next(ivalue);
+            {
+                std::size_t rid = std::stoi(std::string(string));
+                if(execute_prepared_query(ivalue, rid)) {
+                    next(rid);
+                }
             }
             break;
         case ogawayama::common::CommandMessage::Type::DISCONNECT:
