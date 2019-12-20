@@ -30,11 +30,6 @@ PreparedStatement::PreparedStatement(Connection *connection, std::size_t sid) : 
  */
 PreparedStatement::~PreparedStatement() = default;
 
-template<typename T>
-void PreparedStatement::set_parameter(T param) {
-    get_impl()->set_parameter<T>(param);
-}
-
 template<>
 void PreparedStatement::set_parameter(std::int16_t param) {
     get_impl()->set_parameter<std::int16_t>(param);
@@ -60,7 +55,11 @@ void PreparedStatement::set_parameter(std::string_view param) {
     get_impl()->set_parameter<std::string_view>(param);
 }
 template<>
-void PreparedStatement::set_parameter(char *param) {
+void PreparedStatement::set_parameter(char const* param) {
+    get_impl()->set_parameter<std::string_view>(std::string_view(param, strlen(param)));
+}
+template<>
+void PreparedStatement::set_parameter(char* param) {
     get_impl()->set_parameter<std::string_view>(std::string_view(param, strlen(param)));
 }
 template<>
