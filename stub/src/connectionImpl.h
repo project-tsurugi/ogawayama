@@ -13,10 +13,10 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#ifndef CONNECTIONIMPL_H_
-#define CONNECTIONIMPL_H_
+#pragma once
 
 #include "ogawayama/common/channel_stream.h"
+#include "ogawayama/common/parameter_set.h"
 #include "transactionImpl.h"
 #include "stubImpl.h"
 
@@ -33,6 +33,7 @@ public:
     ErrorCode confirm();
 
     ErrorCode begin(TransactionPtr &transaction);
+    ErrorCode prepare(std::string_view sql, PreparedStatementPtr &prepared);
 
     void get_channel_stream(ogawayama::common::ChannelStream * & channel) const
     {
@@ -41,13 +42,15 @@ public:
 
     std::size_t get_id() const { return pgprocno_; }
     
+    ogawayama::common::ParameterSet * get_parameters() { return parameters_.get(); }
+
 private:
     Connection *envelope_;
 
     std::size_t pgprocno_;
     std::unique_ptr<ogawayama::common::ChannelStream> channel_;
+    std::unique_ptr<ogawayama::common::ParameterSet> parameters_;
+    std::size_t sid_{};
 };
 
 }  // namespace ogawayama::stub
-
-#endif  // CONNECTIONIMPL_H_

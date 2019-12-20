@@ -14,6 +14,7 @@
  * limitations under the License.
  */
 
+#include "prepared_statementImpl.h"
 #include "transactionImpl.h"
 
 namespace ogawayama::stub {
@@ -27,7 +28,7 @@ Transaction::Impl::Impl(Transaction *transaction) : envelope_(transaction)
 /**
  * @brief execute a statement.
  * @param statement the SQL statement string
- * @return true in error, otherwise false
+ * @return error code defined in error_code.h
  */
 ErrorCode Transaction::Impl::execute_statement(std::string_view statement) {
     channel_->send_req(ogawayama::common::CommandMessage::Type::EXECUTE_STATEMENT, 1, statement);
@@ -36,9 +37,21 @@ ErrorCode Transaction::Impl::execute_statement(std::string_view statement) {
 }
 
 /**
+ * @brief execute a prepared statement.
+ * @param prepared statement object with parameters
+ * @return error code defined in error_code.h
+ */
+ErrorCode Transaction::Impl::execute_statement(PreparedStatement* prepared) {
+    channel_->send_req(ogawayama::common::CommandMessage::Type::EXECUTE_PREPARED_STATEMENT, prepared->get_impl()->get_sid());
+    ErrorCode reply = channel_->recv_ack();
+    prepared->get_impl()->clear();
+    return reply;
+}
+
+/**
  * @brief connect to the DB and get Transaction class
  * @param connection returns a connection class
- * @return true in error, otherwise false
+ * @return error code defined in error_code.h
  */
 ErrorCode Transaction::Impl::execute_query(std::string_view query, std::shared_ptr<ResultSet> &result_set)
 {
@@ -62,6 +75,37 @@ ErrorCode Transaction::Impl::execute_query(std::string_view query, std::shared_p
                    static_cast<std::int32_t>(result_set->get_impl()->get_id()),
                    query);
     ErrorCode reply = channel_->recv_ack();
+    return reply;
+}
+
+/**
+ * @brief connect to the DB and get Transaction class
+ * @param connection returns a connection class
+ * @return error code defined in error_code.h
+ */
+ErrorCode Transaction::Impl::execute_query(PreparedStatement* prepared, std::shared_ptr<ResultSet> &result_set)
+{
+    if (result_set) {
+        result_set->get_impl()->clear();
+        goto found;
+    } else {
+        for (auto& rs : *result_sets_) {
+            if( rs.use_count() == 1) {
+                result_set = rs;
+                result_set->get_impl()->clear();
+                goto found;
+            }
+        }
+        result_set = std::make_shared<ResultSet>(envelope_, result_sets_->size());
+        result_sets_->emplace_back(result_set);
+    }
+ found:
+    result_set->get_impl()->first_request();
+    channel_->send_req(ogawayama::common::CommandMessage::Type::EXECUTE_PREPARED_QUERY,
+                       prepared->get_impl()->get_sid(),
+                       std::to_string(result_set->get_impl()->get_id()));
+    ErrorCode reply = channel_->recv_ack();
+    prepared->get_impl()->clear();
     return reply;
 }
 
@@ -109,14 +153,24 @@ Transaction::Transaction(Connection *connection) : manager_(connection)
  */
 Transaction::~Transaction() = default;
 
+ErrorCode Transaction::execute_statement(std::string_view statement)
+{
+    return impl_->execute_statement(statement);
+}
+
+ErrorCode Transaction::execute_statement(PreparedStatement* prepared)
+{
+    return impl_->execute_statement(prepared);
+}
+
 ErrorCode Transaction::execute_query(std::string_view query, std::shared_ptr<ResultSet> &result_set)
 {
     return impl_->execute_query(query, result_set);
 }
 
-ErrorCode Transaction::execute_statement(std::string_view statement)
+ErrorCode Transaction::execute_query(PreparedStatement* prepared, std::shared_ptr<ResultSet> &result_set)
 {
-    return impl_->execute_statement(statement);
+    return impl_->execute_query(prepared, result_set);
 }
 
 ErrorCode Transaction::commit()

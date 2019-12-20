@@ -13,8 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#ifndef STUBIMPL_H_
-#define STUBIMPL_H_
+#pragma once
 
 #include <memory>
 
@@ -47,5 +46,3 @@ private:
 };
 
 }  // namespace ogawayama::stub
-
-#endif  // STUBIMPL_H_

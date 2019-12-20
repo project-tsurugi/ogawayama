@@ -16,12 +16,6 @@
 #ifndef ROW_QUEUE_H_
 #define ROW_QUEUE_H_
 
-#include <vector>
-#include <variant>
-#include <string_view>
-#include "boost/interprocess/managed_shared_memory.hpp"
-#include "boost/interprocess/allocators/allocator.hpp"
-#include "boost/interprocess/containers/string.hpp"
 #include "boost/lockfree/spsc_queue.hpp"
 #include "boost/interprocess/sync/interprocess_condition.hpp"
 #include "boost/interprocess/sync/interprocess_mutex.hpp"
@@ -34,17 +28,8 @@
 namespace ogawayama::common {
 
     using VoidAllocator = boost::interprocess::allocator<void, boost::interprocess::managed_shared_memory::segment_manager>;
-    using CharAllocator = boost::interprocess::allocator<char, boost::interprocess::managed_shared_memory::segment_manager>;
-    using ShmString = boost::interprocess::basic_string<char, std::char_traits<char>, CharAllocator>;
-    
-    using ShmColumn = std::variant<std::monostate, std::int16_t, std::int32_t, std::int64_t, float, double, ShmString>;
-    using ShmColumnAllocator = boost::interprocess::allocator<ShmColumn, boost::interprocess::managed_shared_memory::segment_manager>;
-    
-    using ShmRow = std::vector<ShmColumn, ShmColumnAllocator>;
-    using ShmRowAllocator = boost::interprocess::allocator<ShmRow, boost::interprocess::managed_shared_memory::segment_manager>;
-    using ShmQueue = std::vector<ShmRow, ShmRowAllocator>;
-
     using ShMemRef = boost::shared_ptr<boost::interprocess::managed_shared_memory>;
+    using ShmQueue = std::vector<ShmRowArgs, ShmRowArgsAllocator>;
 
     /**
      * @brief one to one communication channel, intended for communication between server and stub through boost binary_archive.
@@ -62,7 +47,7 @@ namespace ogawayama::common {
              */
             SpscQueue(VoidAllocator allocator, std::size_t capacity = param::QUEUE_SIZE)
                 : m_container_(allocator), m_types_(allocator), allocator_(allocator), capacity_(capacity) {
-                m_container_.resize(capacity, ShmRow(allocator));
+                m_container_.resize(capacity, ShmRowArgs(allocator));
             }
             /**
              * @brief Copy and move constructers are deleted.
@@ -122,7 +107,7 @@ namespace ogawayama::common {
              * @brief get the current row at the front of the queue
              * @return reference of the row at the front of the queue
              */
-            ShmRow & get_current_row() {
+            ShmRowArgs & get_current_row() {
                 return m_container_.at(index(poped_-1));
             }
 
@@ -130,7 +115,7 @@ namespace ogawayama::common {
              * @brief get the row to which column data is to be stored.
              * @return reference of the row at the back of the queue
              */
-            ShmRow & get_writing_row() {
+            ShmRowArgs & get_writing_row() {
                 if(!is_not_full()) {
                     boost::interprocess::scoped_lock lock(m_mutex_);
                     if(!is_not_full()) {
@@ -149,7 +134,7 @@ namespace ogawayama::common {
             void clear()
             {
                 m_container_.clear();
-                m_container_.resize(capacity_, ShmRow(allocator_));
+                m_container_.resize(capacity_, ShmRowArgs(allocator_));
                 pushed_ = poped_ = 0;
                 m_types_.clear();
                 is_partner_ = false;
@@ -240,7 +225,7 @@ namespace ogawayama::common {
          */
         template<typename T>
         ogawayama::stub::ErrorCode put_next_column(T v) {
-            ShmColumn column = v;
+            ShmClmArg column = v;
             try {
                 queue_->get_writing_row().emplace_back(column);
             }
@@ -256,7 +241,7 @@ namespace ogawayama::common {
         ogawayama::stub::ErrorCode put_next_column(std::string_view v) {
             ShmString column_string(shared_memory_->get_managed_shared_memory_ptr()->get_segment_manager());
             column_string.assign(v.begin(), v.end());
-            ShmColumn column = column_string;
+            ShmClmArg column = column_string;
             try {
                 queue_->get_writing_row().emplace_back(column);
             }
@@ -292,7 +277,7 @@ namespace ogawayama::common {
          * @brief get the current row.
          * @return reference to the current row
          */
-        ShmRow & get_current_row() const {
+        ShmRowArgs & get_current_row() const {
             return queue_->get_current_row();
         }
         

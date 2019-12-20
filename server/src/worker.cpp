@@ -30,6 +30,8 @@ Worker::Worker(umikongo::Database *db, ogawayama::common::SharedMemory *shm, std
 {
     auto managed_shared_memory_ptr = shared_memory_ptr_->get_managed_shared_memory_ptr();
     channel_ = std::make_unique<ogawayama::common::ChannelStream>(shared_memory_ptr_->shm_name(ogawayama::common::param::channel, id_).c_str(), shared_memory_ptr_);
+    parameters_ = std::make_unique<ogawayama::common::ParameterSet>(shared_memory_ptr_->shm_name(ogawayama::common::param::prepared, id_).c_str(), shared_memory_ptr_);
+
     channel_->send_ack(ERROR_CODE::OK);
 }
 
@@ -80,6 +82,20 @@ void Worker::run()
             channel_->send_ack(ERROR_CODE::OK);
             clear();
             break;
+        case ogawayama::common::CommandMessage::Type::PREPARE:
+            prepare(string, ivalue);
+            break;
+        case ogawayama::common::CommandMessage::Type::EXECUTE_PREPARED_STATEMENT:
+            execute_prepared_statement(ivalue);
+            break;
+        case ogawayama::common::CommandMessage::Type::EXECUTE_PREPARED_QUERY:
+            {
+                std::size_t rid = std::stoi(std::string(string));
+                if(execute_prepared_query(ivalue, rid)) {
+                    next(rid);
+                }
+            }
+            break;
         case ogawayama::common::CommandMessage::Type::DISCONNECT:
             if (transaction_) {
                 transaction_->abort();
@@ -113,6 +129,48 @@ void Worker::execute_statement(std::string_view sql)
     }
 }
 
+void Worker::send_metadata(std::size_t rid)
+{
+    auto metadata = cursors_.at(rid).executable_->metadata();
+    for (auto& t: metadata->column_types()) {
+        switch(t->kind()) {
+        case shakujo::common::core::Type::Kind::INT:
+            switch((static_cast<shakujo::common::core::type::Numeric const *>(t))->size()) {
+            case 16:
+                cursors_.at(rid).row_queue_->push_type(TYPE::INT16, 2);
+                break;
+            case 32:
+                cursors_.at(rid).row_queue_->push_type(TYPE::INT32, 4);
+                break;
+            case 64:
+                cursors_.at(rid).row_queue_->push_type(TYPE::INT64, 8);
+                break;
+            }
+            break;
+        case shakujo::common::core::Type::Kind::FLOAT:
+            switch((static_cast<shakujo::common::core::type::Float const *>(t))->size()) {
+            case 32:
+                cursors_.at(rid).row_queue_->push_type(TYPE::FLOAT32, 4);
+                break;
+            case 64:
+                cursors_.at(rid).row_queue_->push_type(TYPE::FLOAT64, 8);
+                break;
+            }
+            break;
+        case shakujo::common::core::Type::Kind::CHAR:
+            cursors_.at(rid).row_queue_->push_type(TYPE::TEXT,
+                                                   (static_cast<shakujo::common::core::type::Char const *>(t))->size());
+            break;
+        case shakujo::common::core::Type::Kind::STRING:
+            cursors_.at(rid).row_queue_->push_type(TYPE::TEXT, INT32_MAX);
+            break;
+        default:
+            std::cerr << "unsurpported data type: " << t->kind() << std::endl;
+            break;
+        }
+    }
+}
+
 bool Worker::execute_query(std::string_view sql, std::size_t rid)
 {
     if (!transaction_) {
@@ -127,45 +185,7 @@ bool Worker::execute_query(std::string_view sql, std::size_t rid)
     
     try {
         cursors_.at(rid).executable_ = db_->compile(sql);
-        auto metadata = cursors_.at(rid).executable_->metadata();
-        for (auto& t: metadata->column_types()) {
-            switch(t->kind()) {
-            case shakujo::common::core::Type::Kind::INT:
-                switch((static_cast<shakujo::common::core::type::Numeric const *>(t))->size()) {
-                case 16:
-                    cursors_.at(rid).row_queue_->push_type(TYPE::INT16, 2);
-                    break;
-                case 32:
-                    cursors_.at(rid).row_queue_->push_type(TYPE::INT32, 4);
-                    break;
-                case 64:
-                    cursors_.at(rid).row_queue_->push_type(TYPE::INT64, 8);
-                    break;
-                }
-                break;
-            case shakujo::common::core::Type::Kind::FLOAT:
-                switch((static_cast<shakujo::common::core::type::Float const *>(t))->size()) {
-                case 32:
-                    cursors_.at(rid).row_queue_->push_type(TYPE::FLOAT32, 4);
-                    break;
-                case 64:
-                    cursors_.at(rid).row_queue_->push_type(TYPE::FLOAT64, 8);
-                    break;
-                }
-                break;
-            case shakujo::common::core::Type::Kind::CHAR:
-                cursors_.at(rid).row_queue_->push_type(TYPE::TEXT,
-                                                       (static_cast<shakujo::common::core::type::Char const *>(t))->size());
-                break;
-            case shakujo::common::core::Type::Kind::STRING:
-                cursors_.at(rid).row_queue_->push_type(TYPE::TEXT, INT32_MAX);
-                break;
-            default:
-                std::cerr << "unsurpported data type: " << t->kind() << std::endl;
-                break;
-            }
-        }
-    
+        send_metadata(rid);
         cursors_.at(rid).iterator_ = context_->execute_query(cursors_.at(rid).executable_.get());
         channel_->send_ack(ERROR_CODE::OK);
     } catch (umikongo::Exception& e) {
@@ -224,6 +244,111 @@ void Worker::next(std::size_t rid)
         std::cerr << e.what() << std::endl;
         channel_->send_ack(ERROR_CODE::UNKNOWN);
     }
+}
+
+void Worker::prepare(std::string_view sql, std::size_t sid)
+{
+    if (prepared_statements_.size() < (sid + 1)) {
+        prepared_statements_.resize(sid + 1);
+    }
+    try {
+        prepared_statements_.at(sid) = db_->prepare(sql);
+    } catch (umikongo::Exception& e) {
+        if (e.reason() == umikongo::Exception::ReasonCode::ERR_UNSUPPORTED) {
+            channel_->send_ack(ERROR_CODE::UNSUPPORTED);
+        }
+        std::cerr << e.what() << std::endl;
+        channel_->send_ack(ERROR_CODE::UNKNOWN);
+    }
+    channel_->send_ack(ERROR_CODE::OK);
+}
+
+void Worker::set_params(umikongo::PreparedStatement::Parameters *p)
+{
+    auto& params = parameters_->get_params();
+    for(auto& param: params) {
+        std::size_t idx = &param - &params[0];
+        std::visit([&p, &idx](auto&& arg) {
+                using T = std::decay_t<decltype(arg)>;
+                std::string prefix = "p";
+                if constexpr (std::is_same_v<T, std::int16_t>) {
+                        p->setInt(prefix + std::to_string(idx+1), arg);
+                    }
+                else if constexpr (std::is_same_v<T, std::int32_t>) {
+                        p->setInt32(prefix + std::to_string(idx+1), arg);
+                    }
+                else if constexpr (std::is_same_v<T, std::int64_t>) {
+                        p->setInt64(prefix + std::to_string(idx+1), arg);
+                    }
+                else if constexpr (std::is_same_v<T, float>) {
+                        p->setFloat(prefix + std::to_string(idx+1), arg);
+                    }
+                else if constexpr (std::is_same_v<T, double>) {
+                        p->setDouble(prefix + std::to_string(idx+1), arg);
+                    }
+                else if constexpr (std::is_same_v<T, ogawayama::common::ShmString>) {
+                        p->setString(prefix + std::to_string(idx+1), std::string_view(arg));
+                    }
+                else if constexpr (std::is_same_v<T, std::monostate>) {
+                        p->setNull(prefix + std::to_string(idx+1));
+                    }
+                else {
+                    std::cerr << __func__ << " " << __LINE__ << ": received a type of parameter that cannot be handled" << std::endl;
+                }
+            }, param);
+    }
+}
+
+void Worker::execute_prepared_statement(std::size_t sid)
+{
+    if (!transaction_) {
+        transaction_ = db_->create_transaction();
+        context_ = transaction_->context();
+    }
+    try {
+        auto params = umikongo::PreparedStatement::Parameters::get();
+        set_params(params.get());
+        context_->execute_statement(prepared_statements_.at(sid).get(), std::move(params));
+        channel_->send_ack(ERROR_CODE::OK);
+    } catch (umikongo::Exception& e) {
+        if (e.reason() == umikongo::Exception::ReasonCode::ERR_UNSUPPORTED) {
+            channel_->send_ack(ERROR_CODE::UNSUPPORTED);
+            return;
+        }
+        std::cerr << e.what() << std::endl;
+        channel_->send_ack(ERROR_CODE::UNKNOWN);
+    }
+}
+
+bool Worker::execute_prepared_query(std::size_t sid, std::size_t rid)
+{
+    if (!transaction_) {
+        transaction_ = db_->create_transaction();
+        context_ = transaction_->context();
+    }
+    if (cursors_.size() < (rid + 1)) {
+        cursors_.resize(rid + 1);
+    }
+    cursors_.at(rid).row_queue_ = std::make_unique<ogawayama::common::RowQueue>
+        (shared_memory_ptr_->shm_name(ogawayama::common::param::resultset, id_, rid).c_str(), shared_memory_ptr_);
+
+    try {
+        auto params = umikongo::PreparedStatement::Parameters::get();
+        set_params(params.get());
+        cursors_.at(rid).executable_ = db_->compile(prepared_statements_.at(sid).get(), std::move(params));
+        send_metadata(rid);
+        cursors_.at(rid).iterator_ = context_->execute_query(cursors_.at(rid).executable_.get());
+        channel_->send_ack(ERROR_CODE::OK);
+    } catch (umikongo::Exception& e) {
+        if (e.reason() == umikongo::Exception::ReasonCode::ERR_UNSUPPORTED) {
+            channel_->send_ack(ERROR_CODE::UNSUPPORTED);
+            return false;
+        }
+        std::cerr << e.what() << std::endl;
+        channel_->send_ack(ERROR_CODE::UNKNOWN);
+        return false;
+    }
+    return true;
 }
 
 void Worker::clear()
