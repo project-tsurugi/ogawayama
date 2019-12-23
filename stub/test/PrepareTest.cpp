@@ -62,11 +62,12 @@ TEST_F(PrepareTest, use_executable_statement) {
                                                              ")"
                                                              ));
     PreparedStatementPtr prepared_insert;
-    EXPECT_EQ(ERROR_CODE::OK, connection->prepare( "INSERT INTO T2 (C1, C2, C3) VALUES(:p1, :p2, :p3)", prepared_insert));
+    EXPECT_EQ(ERROR_CODE::OK, connection->prepare( "INSERT INTO T2 (C1, C2, C3, C4) VALUES(:p1, :p2, :p3, :p4)", prepared_insert));
     
     prepared_insert->set_parameter(1);
     prepared_insert->set_parameter(1.1);
     prepared_insert->set_parameter("ABCDE");
+    prepared_insert->set_parameter();
     EXPECT_EQ(ERROR_CODE::OK, transaction->execute_statement(prepared_insert.get()));
 
     PreparedStatementPtr prepared_query;
