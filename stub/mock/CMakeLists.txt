@@ -13,4 +13,6 @@
 # limitations under the License.
 
 add_subdirectory(src)
+if(NOT BUILD_STUB_ONLY)
 add_subdirectory(test)
+endif()
