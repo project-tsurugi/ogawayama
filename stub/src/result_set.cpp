@@ -153,5 +153,14 @@ template<>
 ErrorCode ResultSet::next_column(double &value) { return impl_->next_column(value); }
 template<>
 ErrorCode ResultSet::next_column(std::string_view &value) { return impl_->next_column(value); }
+template<>
+ErrorCode ResultSet::next_column(std::string &value) {
+    std::string_view sv;
+    ErrorCode err = impl_->next_column(sv);
+    if( err == ErrorCode::OK) {
+        value = sv;
+    }
+    return err;
+}
 
 }  // namespace ogawayama::stub
