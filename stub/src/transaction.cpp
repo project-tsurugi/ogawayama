@@ -44,7 +44,6 @@ ErrorCode Transaction::Impl::execute_statement(std::string_view statement) {
 ErrorCode Transaction::Impl::execute_statement(PreparedStatement* prepared) {
     channel_->send_req(ogawayama::common::CommandMessage::Type::EXECUTE_PREPARED_STATEMENT, prepared->get_impl()->get_sid());
     ErrorCode reply = channel_->recv_ack();
-    prepared->get_impl()->clear();
     return reply;
 }
 
@@ -55,21 +54,8 @@ ErrorCode Transaction::Impl::execute_statement(PreparedStatement* prepared) {
  */
 ErrorCode Transaction::Impl::execute_query(std::string_view query, std::shared_ptr<ResultSet> &result_set)
 {
-    if (result_set) {
-        result_set->get_impl()->clear();
-        goto found;
-    } else {
-        for (auto& rs : *result_sets_) {
-            if( rs.use_count() == 1) {
-                result_set = rs;
-                result_set->get_impl()->clear();
-                goto found;
-            }
-        }
-        result_set = std::make_shared<ResultSet>(envelope_, result_sets_->size());
-        result_sets_->emplace_back(result_set);
-    }
- found:
+    result_set = std::make_shared<ResultSet>(envelope_, result_sets_->size());
+    result_sets_->emplace_back(result_set);
     result_set->get_impl()->first_request();
     channel_->send_req(ogawayama::common::CommandMessage::Type::EXECUTE_QUERY,
                    static_cast<std::int32_t>(result_set->get_impl()->get_id()),
@@ -85,21 +71,8 @@ ErrorCode Transaction::Impl::execute_query(std::string_view query, std::shared_p
  */
 ErrorCode Transaction::Impl::execute_query(PreparedStatement* prepared, std::shared_ptr<ResultSet> &result_set)
 {
-    if (result_set) {
-        result_set->get_impl()->clear();
-        goto found;
-    } else {
-        for (auto& rs : *result_sets_) {
-            if( rs.use_count() == 1) {
-                result_set = rs;
-                result_set->get_impl()->clear();
-                goto found;
-            }
-        }
-        result_set = std::make_shared<ResultSet>(envelope_, result_sets_->size());
-        result_sets_->emplace_back(result_set);
-    }
- found:
+    result_set = std::make_shared<ResultSet>(envelope_, result_sets_->size());
+    result_sets_->emplace_back(result_set);
     result_set->get_impl()->first_request();
     channel_->send_req(ogawayama::common::CommandMessage::Type::EXECUTE_PREPARED_QUERY,
                        prepared->get_impl()->get_sid(),
@@ -116,7 +89,6 @@ ErrorCode Transaction::Impl::execute_query(PreparedStatement* prepared, std::sha
 ErrorCode Transaction::Impl::commit()
 {
     channel_->send_req(ogawayama::common::CommandMessage::Type::COMMIT);
-    clear();
     ErrorCode reply = channel_->recv_ack();
     return reply;
 }
@@ -128,16 +100,8 @@ ErrorCode Transaction::Impl::commit()
 ErrorCode Transaction::Impl::rollback()
 {
     channel_->send_req(ogawayama::common::CommandMessage::Type::ROLLBACK);
-    clear();
     ErrorCode reply = channel_->recv_ack();
     return reply;
-}
-
-void Transaction::Impl::clear()
-{
-    for (auto& rs: *result_sets_) {
-        rs->get_impl()->clear();
-    }
 }
 
 /**

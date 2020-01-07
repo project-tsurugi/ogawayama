@@ -33,7 +33,6 @@ public:
     template<typename T>
         ErrorCode next_column(T &value);
     auto get_id() const { return id_; }
-    void clear() { row_queue_->clear(); }
     void first_request() { row_queue_->first_request(); }
 
  private:

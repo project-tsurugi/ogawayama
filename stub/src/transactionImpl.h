@@ -80,8 +80,6 @@ private:
 
     std::unique_ptr<std::vector<std::shared_ptr<ResultSet>>> result_sets_;
     ogawayama::common::ChannelStream *channel_; // copy of unique_ptr<ChannelStream> channel_ belongs to Connection (and its Impl)
-
-    void clear();
 };
 
 }  // namespace ogawayama::stub

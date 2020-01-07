@@ -131,15 +131,6 @@ namespace ogawayama::common {
                 return m_container_.at(index(pushed_));
             }
 
-            void clear()
-            {
-                m_container_.clear();
-                m_container_.resize(capacity_, ShmRowArgs(allocator_));
-                pushed_ = poped_ = 0;
-                m_types_.clear();
-                is_partner_ = false;
-            }
-            
             void push_type(ogawayama::stub::Metadata::ColumnType::Type type, std::size_t length) {
                 m_types_.push(type, length);
             }
@@ -295,13 +286,6 @@ namespace ogawayama::common {
                     return ogawayama::stub::ErrorCode::SERVER_FAILURE;
                 }
             }
-        }
-
-        /**
-         * @brief move current to the next in the queue.
-         */
-        void clear() {
-            queue_->clear();
         }
 
         void push_type(ogawayama::stub::Metadata::ColumnType::Type type, std::size_t length) {
