@@ -44,6 +44,7 @@ ErrorCode Transaction::Impl::execute_statement(std::string_view statement) {
 ErrorCode Transaction::Impl::execute_statement(PreparedStatement* prepared) {
     channel_->send_req(ogawayama::common::CommandMessage::Type::EXECUTE_PREPARED_STATEMENT, prepared->get_impl()->get_sid());
     ErrorCode reply = channel_->recv_ack();
+    prepared->get_impl()->clear();
     return reply;
 }
 
