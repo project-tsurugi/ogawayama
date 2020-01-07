@@ -31,7 +31,7 @@ Worker::Worker(umikongo::Database *db, ogawayama::common::SharedMemory *shm, std
     auto managed_shared_memory_ptr = shared_memory_ptr_->get_managed_shared_memory_ptr();
     channel_ = std::make_unique<ogawayama::common::ChannelStream>(shared_memory_ptr_->shm_name(ogawayama::common::param::channel, id_).c_str(), shared_memory_ptr_);
     parameters_ = std::make_unique<ogawayama::common::ParameterSet>(shared_memory_ptr_->shm_name(ogawayama::common::param::prepared, id_).c_str(), shared_memory_ptr_);
-
+    shm4_row_queue_ = std::make_unique<ogawayama::common::SharedMemory>(shared_memory_ptr_->shm4_row_queue_name(id));
     channel_->send_ack(ERROR_CODE::OK);
 }
 
@@ -180,13 +180,21 @@ bool Worker::execute_query(std::string_view sql, std::size_t rid)
     if (cursors_.size() < (rid + 1)) {
         cursors_.resize(rid + 1);
     }
-    cursors_.at(rid).row_queue_ = std::make_unique<ogawayama::common::RowQueue>
-        (shared_memory_ptr_->shm_name(ogawayama::common::param::resultset, id_, rid).c_str(), shared_memory_ptr_);
+
+    auto& cursor = cursors_.at(rid);
     
     try {
-        cursors_.at(rid).executable_ = db_->compile(sql);
+        cursor.row_queue_ = std::make_unique<ogawayama::common::RowQueue>
+            (shm4_row_queue_->shm_name(ogawayama::common::param::resultset, rid).c_str(), shm4_row_queue_.get());
+    } catch (umikongo::Exception& e) {
+        std::cerr << e.what() << std::endl;
+        channel_->send_ack(ERROR_CODE::UNKNOWN);
+        return false;
+    }
+    try {
+        cursor.executable_ = db_->compile(sql);
         send_metadata(rid);
-        cursors_.at(rid).iterator_ = context_->execute_query(cursors_.at(rid).executable_.get());
+        cursor.iterator_ = context_->execute_query(cursor.executable_.get());
         channel_->send_ack(ERROR_CODE::OK);
     } catch (umikongo::Exception& e) {
         if (e.reason() == umikongo::Exception::ReasonCode::ERR_UNSUPPORTED) {
@@ -329,15 +337,23 @@ bool Worker::execute_prepared_query(std::size_t sid, std::size_t rid)
     if (cursors_.size() < (rid + 1)) {
         cursors_.resize(rid + 1);
     }
-    cursors_.at(rid).row_queue_ = std::make_unique<ogawayama::common::RowQueue>
-        (shared_memory_ptr_->shm_name(ogawayama::common::param::resultset, id_, rid).c_str(), shared_memory_ptr_);
 
+    auto& cursor = cursors_.at(rid);
+
+    try {
+        cursor.row_queue_ = std::make_unique<ogawayama::common::RowQueue>
+            (shm4_row_queue_->shm_name(ogawayama::common::param::resultset, rid).c_str(), shm4_row_queue_.get());
+    } catch (umikongo::Exception& e) {
+        std::cerr << e.what() << std::endl;
+        channel_->send_ack(ERROR_CODE::UNKNOWN);
+        return false;
+    }
     try {
         auto params = umikongo::PreparedStatement::Parameters::get();
         set_params(params.get());
-        cursors_.at(rid).executable_ = db_->compile(prepared_statements_.at(sid).get(), std::move(params));
+        cursor.executable_ = db_->compile(prepared_statements_.at(sid).get(), std::move(params));
         send_metadata(rid);
-        cursors_.at(rid).iterator_ = context_->execute_query(cursors_.at(rid).executable_.get());
+        cursor.iterator_ = context_->execute_query(cursor.executable_.get());
         channel_->send_ack(ERROR_CODE::OK);
     } catch (umikongo::Exception& e) {
         if (e.reason() == umikongo::Exception::ReasonCode::ERR_UNSUPPORTED) {

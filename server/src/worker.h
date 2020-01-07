@@ -75,6 +75,8 @@ class Worker {
     std::future<void> future_;
     std::thread thread_{};
 
+    std::unique_ptr<ogawayama::common::SharedMemory> shm4_row_queue_;
+
     void send_metadata(std::size_t);
     void set_params(umikongo::PreparedStatement::Parameters *);
     void clear();

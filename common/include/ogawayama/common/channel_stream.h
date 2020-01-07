@@ -344,7 +344,7 @@ public:
         } else {
             buffer_ = mem->find<MsgBuffer>(name_).first;
             if (buffer_ == nullptr) {
-                throw SharedMemoryException("can't find shared memory");
+                throw SharedMemoryException("can't find shared memory for ChannelStream");
             }
             buffer_->hello();
         }

@@ -125,6 +125,13 @@ public:
         return ss.str();
     }
 
+    std::string shm4_row_queue_name(std::size_t i)
+    {
+        std::stringstream ss;
+        ss << database_name_ << "-" << i;
+        return ss.str();
+    }
+
     bool is_alive()
     {
         try {

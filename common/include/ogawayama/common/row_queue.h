@@ -190,7 +190,7 @@ namespace ogawayama::common {
             } else {
                 queue_ = mem->find<SpscQueue>(name).first;
                 if (queue_ == nullptr) {
-                    throw SharedMemoryException("can't find shared memory");
+                    throw SharedMemoryException("can't find shared memory for RowQueue");
                 }
                 queue_->hello();
             }
