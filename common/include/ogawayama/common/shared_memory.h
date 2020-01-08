@@ -30,8 +30,8 @@
 namespace ogawayama::common {
 
 namespace param {
-    static constexpr std::size_t SEGMENT_SIZE = 100<<20; // 100 MiB (tantative)
-    static constexpr std::size_t MAX_NAME_LENGTH = 32;   // 64 chars (tantative, but probably enough)
+    static constexpr std::size_t SEGMENT_SIZE = 1<<16;   // 64 KB (for channel stream, tantative)
+    static constexpr std::size_t MAX_NAME_LENGTH = 64;   // 64 chars (tantative, but probably enough)
     static constexpr std::size_t QUEUE_SIZE = 32;        // 32 rows (tantative) must be greater than or equal to 2
     static constexpr long TIMEOUT = 10000;   	     // timeout for condition, currentry set to 10 seconds
 
@@ -76,13 +76,13 @@ public:
     /**
      * @brief Construct a new object.
      */
-     SharedMemory(std::string_view database_name, bool create_shm, bool remove_shm = true) : database_name_(database_name), owner_(create_shm)  {
+    SharedMemory(std::string_view database_name, bool create_shm, bool remove_shm = true, std::size_t magnification = 1) : database_name_(database_name), owner_(create_shm)  {
         if (create_shm) {
             if (remove_shm) {
                 boost::interprocess::shared_memory_object::remove(database_name_.c_str());
             }
             try {
-                managed_shared_memory_ = std::make_unique<boost::interprocess::managed_shared_memory>(boost::interprocess::create_only, database_name_.c_str(), param::SEGMENT_SIZE);
+                managed_shared_memory_ = std::make_unique<boost::interprocess::managed_shared_memory>(boost::interprocess::create_only, database_name_.c_str(), param::SEGMENT_SIZE * magnification);
             }
             catch(const boost::interprocess::interprocess_exception& ex) {
                 throw SharedMemoryException("shared memory already exist");
@@ -122,6 +122,13 @@ public:
     {
         std::stringstream ss;
         ss << prefix << "-" << i << "-" << j;
+        return ss.str();
+    }
+
+    std::string shm4_row_queue_name(std::size_t i)
+    {
+        std::stringstream ss;
+        ss << database_name_ << "-" << i;
         return ss.str();
     }
 

@@ -30,6 +30,7 @@ class Transaction::Impl
 {
 public:
     Impl(Transaction *);
+    ~Impl();
 
     /**
      * @brief execute a statement.
@@ -78,10 +79,8 @@ public:
 private:
     Transaction *envelope_;
 
-    std::unique_ptr<std::vector<std::shared_ptr<ResultSet>>> result_sets_;
     ogawayama::common::ChannelStream *channel_; // copy of unique_ptr<ChannelStream> channel_ belongs to Connection (and its Impl)
-
-    void clear();
+    std::vector<std::shared_ptr<ResultSet>>* result_sets_; // copy of std::vector<std::shared_ptr<ResultSet>> belongs to Connection (and its Impl)
 };
 
 }  // namespace ogawayama::stub

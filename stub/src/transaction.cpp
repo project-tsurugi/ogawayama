@@ -21,8 +21,17 @@ namespace ogawayama::stub {
 
 Transaction::Impl::Impl(Transaction *transaction) : envelope_(transaction)
 {
-    result_sets_ = std::make_unique<std::vector<std::shared_ptr<ResultSet>>>();
     envelope_->get_manager()->get_impl()->get_channel_stream(channel_);
+    envelope_->get_manager()->get_impl()->get_result_sets(result_sets_);
+}
+
+Transaction::Impl::~Impl()
+{
+    for (auto& rs : *result_sets_) {
+        if( rs.use_count() == 1) {
+            rs = nullptr;
+        }
+    }
 }
 
 /**
@@ -55,20 +64,19 @@ ErrorCode Transaction::Impl::execute_statement(PreparedStatement* prepared) {
  */
 ErrorCode Transaction::Impl::execute_query(std::string_view query, std::shared_ptr<ResultSet> &result_set)
 {
-    if (result_set) {
-        result_set->get_impl()->clear();
-        goto found;
-    } else {
-        for (auto& rs : *result_sets_) {
-            if( rs.use_count() == 1) {
-                result_set = rs;
-                result_set->get_impl()->clear();
-                goto found;
-            }
+    for (auto& rs : *result_sets_) {
+        if(rs == nullptr) {
+            result_set = std::make_shared<ResultSet>(envelope_, &rs - &(*result_sets_)[0]);
+            rs = result_set;
+            goto found;
         }
-        result_set = std::make_shared<ResultSet>(envelope_, result_sets_->size());
-        result_sets_->emplace_back(result_set);
+        if(rs.use_count() == 1) {
+            result_set = rs;
+            goto found;
+        }
     }
+    result_set = std::make_shared<ResultSet>(envelope_, result_sets_->size());
+    result_sets_->emplace_back(result_set);
  found:
     result_set->get_impl()->first_request();
     channel_->send_req(ogawayama::common::CommandMessage::Type::EXECUTE_QUERY,
@@ -85,20 +93,19 @@ ErrorCode Transaction::Impl::execute_query(std::string_view query, std::shared_p
  */
 ErrorCode Transaction::Impl::execute_query(PreparedStatement* prepared, std::shared_ptr<ResultSet> &result_set)
 {
-    if (result_set) {
-        result_set->get_impl()->clear();
-        goto found;
-    } else {
-        for (auto& rs : *result_sets_) {
-            if( rs.use_count() == 1) {
-                result_set = rs;
-                result_set->get_impl()->clear();
-                goto found;
-            }
+    for (auto& rs : *result_sets_) {
+        if(rs == nullptr) {
+            result_set = std::make_shared<ResultSet>(envelope_, &rs - &(*result_sets_)[0]);
+            rs = result_set;
+            goto found;
         }
-        result_set = std::make_shared<ResultSet>(envelope_, result_sets_->size());
-        result_sets_->emplace_back(result_set);
+        if(rs.use_count() == 1) {
+            result_set = rs;
+            goto found;
+        }
     }
+    result_set = std::make_shared<ResultSet>(envelope_, result_sets_->size());
+    result_sets_->emplace_back(result_set);
  found:
     result_set->get_impl()->first_request();
     channel_->send_req(ogawayama::common::CommandMessage::Type::EXECUTE_PREPARED_QUERY,
@@ -116,7 +123,6 @@ ErrorCode Transaction::Impl::execute_query(PreparedStatement* prepared, std::sha
 ErrorCode Transaction::Impl::commit()
 {
     channel_->send_req(ogawayama::common::CommandMessage::Type::COMMIT);
-    clear();
     ErrorCode reply = channel_->recv_ack();
     return reply;
 }
@@ -128,16 +134,8 @@ ErrorCode Transaction::Impl::commit()
 ErrorCode Transaction::Impl::rollback()
 {
     channel_->send_req(ogawayama::common::CommandMessage::Type::ROLLBACK);
-    clear();
     ErrorCode reply = channel_->recv_ack();
     return reply;
-}
-
-void Transaction::Impl::clear()
-{
-    for (auto& rs: *result_sets_) {
-        rs->get_impl()->clear();
-    }
 }
 
 /**

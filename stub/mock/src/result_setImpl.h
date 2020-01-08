@@ -34,10 +34,6 @@ public:
     template<typename T>
         ErrorCode next_column(T &value);
     auto get_id() { return id_; }
-    void clear() {
-        row_queue_->clear();
-        string_buffer_->clear();
-    }
     auto get_row_queue() { return row_queue_.get(); }
     
  private:

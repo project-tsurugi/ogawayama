@@ -24,12 +24,12 @@ ResultSet::Impl::Impl(ResultSet *result_set, std::size_t id) : envelope_(result_
     
     row_queue_ = std::make_unique<ogawayama::common::RowQueue>
         (
-         connection->get_manager()->get_impl()->get_managed_shared_memory()->shm_name(ogawayama::common::param::resultset, connection->get_impl()->get_id(), id_).c_str(),
-         connection->get_manager()->get_impl()->get_managed_shared_memory(),
+         connection->get_impl()->get_shm4_row_queue()->shm_name(ogawayama::common::param::resultset, id_).c_str(),
+         connection->get_impl()->get_shm4_row_queue(),
          true
          );
 }
-    
+
 /**
  * @brief get metadata for the result set.
  * @param metadata returns the metadata class
@@ -153,5 +153,14 @@ template<>
 ErrorCode ResultSet::next_column(double &value) { return impl_->next_column(value); }
 template<>
 ErrorCode ResultSet::next_column(std::string_view &value) { return impl_->next_column(value); }
+template<>
+ErrorCode ResultSet::next_column(std::string &value) {
+    std::string_view sv;
+    ErrorCode err = impl_->next_column(sv);
+    if( err == ErrorCode::OK) {
+        value = sv;
+    }
+    return err;
+}
 
 }  // namespace ogawayama::stub

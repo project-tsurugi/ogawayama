@@ -44,6 +44,12 @@ public:
     
     ogawayama::common::ParameterSet * get_parameters() { return parameters_.get(); }
 
+    auto get_shm4_row_queue() const { return shm4_row_queue_.get(); }
+    void get_result_sets(std::vector<std::shared_ptr<ResultSet>> * & result_sets) const
+    {
+        result_sets = result_sets_.get();
+    }
+
 private:
     Connection *envelope_;
 
@@ -51,6 +57,9 @@ private:
     std::unique_ptr<ogawayama::common::ChannelStream> channel_;
     std::unique_ptr<ogawayama::common::ParameterSet> parameters_;
     std::size_t sid_{};
+
+    std::unique_ptr<ogawayama::common::SharedMemory> shm4_row_queue_;
+    std::unique_ptr<std::vector<std::shared_ptr<ResultSet>>> result_sets_;
 };
 
 }  // namespace ogawayama::stub
