@@ -26,7 +26,9 @@ Connection::Impl::Impl(Connection *connection, std::size_t pgprocno) : envelope_
         (managed_shared_memory->shm_name(ogawayama::common::param::channel, pgprocno_).c_str(), managed_shared_memory, true);
     parameters_ = std::make_unique<ogawayama::common::ParameterSet>
         (managed_shared_memory->shm_name(ogawayama::common::param::prepared, pgprocno_).c_str(), managed_shared_memory, true);
-    shm4_row_queue_ = std::make_unique<ogawayama::common::SharedMemory>(managed_shared_memory->shm4_row_queue_name(pgprocno), true, true);
+    shm4_row_queue_ = std::make_unique<ogawayama::common::SharedMemory>(managed_shared_memory->shm4_row_queue_name(pgprocno), true, true, 16);
+
+    result_sets_ = std::make_unique<std::vector<std::shared_ptr<ResultSet>>>();
 }
 
 Connection::Impl::~Impl()

@@ -65,7 +65,7 @@ int main(int argc, char **argv) {
         ConnectionPtr connection;
         ERROR_CODE err;
 
-        err = stub->get_connection(12, connection);
+        err = stub->get_connection(connection, 12);
         if (err != ERROR_CODE::OK) { prt_err(__LINE__, err); return 1; }
         TransactionPtr transaction;
         err = connection->begin(transaction);
@@ -80,7 +80,7 @@ int main(int argc, char **argv) {
         ConnectionPtr connection;
         ERROR_CODE err;
 
-        err = stub->get_connection(12, connection);
+        err = stub->get_connection(connection, 12);
         if (err != ERROR_CODE::OK) { prt_err(__LINE__, err); return 1; }
         TransactionPtr transaction;
         

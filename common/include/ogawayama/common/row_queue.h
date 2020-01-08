@@ -81,10 +81,9 @@ namespace ogawayama::common {
             }
             
             /**
-             * @brief pop and clear the current row.
+             * @brief pop the current row.
              */
             ogawayama::stub::ErrorCode pop() {
-                get_current_row().clear();
                 if(!is_not_empty()) {
                     boost::interprocess::scoped_lock lock(m_mutex_);
                     while (true) {
@@ -129,6 +128,18 @@ namespace ogawayama::common {
                     lock.unlock();
                 }
                 return m_container_.at(index(pushed_));
+            }
+
+            void resize_writing_row(std::size_t n) {
+                get_writing_row().resize(n);
+            }
+
+            void clear()
+            {
+                m_container_.clear();
+                m_container_.resize(capacity_, ShmRowArgs(allocator_));
+                pushed_ = poped_ = 0;
+                m_types_.clear();
             }
 
             void push_type(ogawayama::stub::Metadata::ColumnType::Type type, std::size_t length) {
@@ -205,9 +216,7 @@ namespace ogawayama::common {
             if (owner_) {
                 shared_memory_->get_managed_shared_memory_ptr()->destroy<SpscQueue>(name_);
             } else {
-                if (shared_memory_->get_managed_shared_memory_ptr()->find<SpscQueue>(name_).first != nullptr) {
-                    queue_->bye();
-                }
+                queue_->bye();
             }
         }
 
@@ -216,9 +225,13 @@ namespace ogawayama::common {
          */
         template<typename T>
         ogawayama::stub::ErrorCode put_next_column(T v) {
-            ShmClmArg column = v;
             try {
-                queue_->get_writing_row().emplace_back(column);
+                auto& row = queue_->get_writing_row();
+                if (row.size() > cindex_) {
+                    row.at(cindex_) = v;
+                } else {
+                    row.emplace_back(v);
+                }
             }
             catch(const SharedMemoryException& ex) {
                 return ogawayama::stub::ErrorCode::TIMEOUT;
@@ -232,15 +245,22 @@ namespace ogawayama::common {
         ogawayama::stub::ErrorCode put_next_column(std::string_view v) {
             ShmString column_string(shared_memory_->get_managed_shared_memory_ptr()->get_segment_manager());
             column_string.assign(v.begin(), v.end());
-            ShmClmArg column = column_string;
             try {
-                queue_->get_writing_row().emplace_back(column);
+                auto& row = queue_->get_writing_row();
+                if (row.size() > cindex_) {
+                    row.at(cindex_) = column_string;
+                } else {
+                    row.emplace_back(column_string);
+                }
             }
             catch(const SharedMemoryException& ex) {
                 return ogawayama::stub::ErrorCode::TIMEOUT;
             }
             cindex_++;
             return ogawayama::stub::ErrorCode::OK;
+        }
+        void resize_writing_row(std::size_t n) {
+            queue_->get_writing_row().resize(n);
         }
         /**
          * @brief push the row into the queue.
@@ -250,6 +270,7 @@ namespace ogawayama::common {
                 auto retv = queue_->push();
                 if (retv != ogawayama::stub::ErrorCode::TIMEOUT) {
                     cindex_ = 0;
+                    queue_->get_writing_row().clear();
                     return retv;
                 }
                 if (!is_alive()) {
@@ -324,6 +345,13 @@ namespace ogawayama::common {
             return true;
         }
         std::size_t get_requested() { return queue_->get_requested(); }
+
+        /**
+         * @brief initialize the SpscQueue, for reuse.
+         */
+        void clear() {
+            queue_->clear();
+        }
 
     private:
         SharedMemory *shared_memory_;

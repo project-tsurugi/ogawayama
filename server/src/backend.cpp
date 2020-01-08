@@ -81,7 +81,6 @@ int backend_main(int argc, char **argv) {
                 }
                 continue;
             }
-            server_ch->notify();
         } catch (std::exception &ex) {
             std::cerr << __func__ << " " << __LINE__ << ": exiting \"" << ex.what() << "\"" << std::endl;
             rv = -1; goto finish;
@@ -125,9 +124,11 @@ int backend_main(int argc, char **argv) {
             std::cerr << "unsurpported message" << std::endl;
             rv = -1; goto finish;
         }
+        server_ch->notify();
     }
 
  finish:
+    server_ch->notify();
     signal_handler.shutdown();
     return rv;
 }

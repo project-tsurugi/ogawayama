@@ -43,8 +43,7 @@ class Worker {
  public:
     Worker(umikongo::Database *, ogawayama::common::SharedMemory *, std::size_t);
     ~Worker() {
-        clear();
-        prepared_statements_.clear();
+        clear_all();
         if(thread_.joinable()) thread_.join();
     }
     void run();
@@ -79,7 +78,15 @@ class Worker {
 
     void send_metadata(std::size_t);
     void set_params(umikongo::PreparedStatement::Parameters *);
-    void clear();
+    void clear_transaction() {
+        cursors_.clear();
+        transaction_ = nullptr;
+    }
+    void clear_all() {
+        clear_transaction();
+        shm4_row_queue_ = nullptr;
+        prepared_statements_.clear();
+    }
 };
 
 }  // ogawayama::server

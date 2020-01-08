@@ -72,7 +72,7 @@ void Worker::run()
             }
             transaction_->commit();
             channel_->send_ack(ERROR_CODE::OK);
-            clear();
+            clear_transaction();
             break;
         case ogawayama::common::CommandMessage::Type::ROLLBACK:
             if (!transaction_) {
@@ -80,7 +80,7 @@ void Worker::run()
             }
             transaction_->abort();
             channel_->send_ack(ERROR_CODE::OK);
-            clear();
+            clear_transaction();
             break;
         case ogawayama::common::CommandMessage::Type::PREPARE:
             prepare(string, ivalue);
@@ -100,7 +100,7 @@ void Worker::run()
             if (transaction_) {
                 transaction_->abort();
             }
-            clear();
+            clear_all();
             channel_->bye_and_notify();
             return;
         default:
@@ -186,6 +186,7 @@ bool Worker::execute_query(std::string_view sql, std::size_t rid)
     try {
         cursor.row_queue_ = std::make_unique<ogawayama::common::RowQueue>
             (shm4_row_queue_->shm_name(ogawayama::common::param::resultset, rid).c_str(), shm4_row_queue_.get());
+        cursor.row_queue_->clear();
     } catch (umikongo::Exception& e) {
         std::cerr << e.what() << std::endl;
         channel_->send_ack(ERROR_CODE::UNKNOWN);
@@ -218,6 +219,7 @@ void Worker::next(std::size_t rid)
         for(std::size_t i = 0; i < limit; i++) {
             auto row = cursor.iterator_->next();
             if (row != nullptr) {
+                rq->resize_writing_row(rq->get_metadata_ptr()->get_types().size());
                 for (auto& t: rq->get_metadata_ptr()->get_types()) {
                     std::size_t cindex = rq->get_cindex();
                     if (row->is_null(cindex)) {
@@ -343,6 +345,7 @@ bool Worker::execute_prepared_query(std::size_t sid, std::size_t rid)
     try {
         cursor.row_queue_ = std::make_unique<ogawayama::common::RowQueue>
             (shm4_row_queue_->shm_name(ogawayama::common::param::resultset, rid).c_str(), shm4_row_queue_.get());
+        cursor.row_queue_->clear();
     } catch (umikongo::Exception& e) {
         std::cerr << e.what() << std::endl;
         channel_->send_ack(ERROR_CODE::UNKNOWN);
@@ -365,12 +368,6 @@ bool Worker::execute_prepared_query(std::size_t sid, std::size_t rid)
         return false;
     }
     return true;
-}
-
-void Worker::clear()
-{
-    cursors_.clear();
-    transaction_ = nullptr;
 }
 
 }  // ogawayama::server
