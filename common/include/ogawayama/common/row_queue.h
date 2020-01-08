@@ -331,7 +331,7 @@ namespace ogawayama::common {
             }
             return false;
         }
-        void first_request(std::size_t numerator = 1, std::size_t denominator = 2) {
+        void set_bulk_transfer_mode(std::size_t numerator = 1, std::size_t denominator = 2) {
             remaining_ = queue_->get_capacity() - 1;
             threshold_ = (remaining_ * numerator) / denominator;
             queue_->set_requested(remaining_);

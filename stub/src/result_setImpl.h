@@ -33,7 +33,7 @@ public:
     template<typename T>
         ErrorCode next_column(T &value);
     auto get_id() const { return id_; }
-    void first_request() { row_queue_->first_request(); }
+    void set_bulk_transfer_mode() { row_queue_->set_bulk_transfer_mode(); }
 
  private:
     ResultSet *envelope_;
