@@ -129,7 +129,7 @@ transaction_stocklevel(ConnectionPtr::element_type *connection, randomGeneratorC
 
         //	SPI_finish();
         transaction->commit();
-	PG_RETURN_INT32(low_stock);
+	PG_RETURN_INT32(0);  // OK
 }
 
 

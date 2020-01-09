@@ -109,9 +109,10 @@ void tpcc_client(tpcc_result *result, int id, tpcc_profiler *profiler)
             if (transaction_type <= kXctNewOrderPercent) {
                 profiler->mark_neworder_begin();
                 int rc = transaction_neworder(connection.get(), randomGenerator.get(), warehouse_low, warehouse_high, profiler);
-                if (rc >= 0) {
+                if (rc == 0) {
                     result->neworderS_++;
-                    result->neworderA_ += rc - 1;
+                } else if (rc > 0) {
+                    result->neworderA_++;
                 } else {
                     result->abort_++;
                 }

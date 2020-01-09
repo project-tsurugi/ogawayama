@@ -229,8 +229,7 @@ transaction_neworder(ConnectionPtr::element_type *connection, randomGeneratorCla
     }
     for (unsigned int ol = 1; ol <= params.ol_cnt; ++ol) {
         params.qty.at(ol - 1) = randomGenerator->uniformWithin(1, 10);
-        params.itemid.at(ol - 1) = randomGenerator->nonUniformWithin(8191, 1,
-            scale::items);
+        params.itemid.at(ol - 1) = randomGenerator->nonUniformWithin(8191, 1, scale::items);
     }
     gettimestamp(static_cast<char *>(params.entry_d));
     params.will_rollback = (randomGenerator->uniformWithin(1, 100) == 1);
@@ -278,13 +277,13 @@ transaction_neworder(ConnectionPtr::element_type *connection, randomGeneratorCla
         }
 
 	/* Loop through the last set of parameters. */
-	for (unsigned int ii = 0; ii < params.ol_cnt; ii++) {
-            ol_i_id[ii] = params.itemid.at(ii);
-            ol_supply_w_id[ii] = params.supply_wid; // differ from Foedus code.
-            ol_quantity[ii] = params.qty.at(ii);
+	for (i = 0; i < o_ol_cnt; i++) {
+            ol_i_id[i] = params.itemid.at(i);
+            ol_supply_w_id[i] = params.supply_wid; // differ from Foedus code.
+            ol_quantity[i] = params.qty.at(i);
         }
         if (params.will_rollback) {
-            ol_i_id[params.ol_cnt++] = 0;
+            ol_i_id[o_ol_cnt++] = 0;
         }
 
 	elog(DEBUG1, "%d w_id = %d", (int) getpid(), w_id);
@@ -326,7 +325,7 @@ transaction_neworder(ConnectionPtr::element_type *connection, randomGeneratorCla
         } else {
             elog(WARNING, "NEW_ORDER_1 failed");
             transaction->rollback();
-            PG_RETURN_INT32(10);
+            PG_RETURN_INT32(-10);
         }
 
         NEW_ORDER_2->set_parameter(w_id);
@@ -353,7 +352,7 @@ transaction_neworder(ConnectionPtr::element_type *connection, randomGeneratorCla
         } else {
                 elog(WARNING, "NEW_ORDER_2 failed: %s", std::string(ogawayama::stub::error_name(err)).c_str());
                 transaction->rollback();
-		PG_RETURN_INT32(11);
+		PG_RETURN_INT32(-11);
         }
 
         NEW_ORDER_3->set_parameter(w_id);
@@ -361,7 +360,7 @@ transaction_neworder(ConnectionPtr::element_type *connection, randomGeneratorCla
         if(transaction->execute_statement(NEW_ORDER_3.get()) != ERROR_CODE::OK) {
             elog(WARNING, "NEW_ORDER_3 failed");
             transaction->rollback();
-            PG_RETURN_INT32(12);
+            PG_RETURN_INT32(-12);
         }
 
         NEW_ORDER_4->set_parameter(w_id);
@@ -392,7 +391,7 @@ transaction_neworder(ConnectionPtr::element_type *connection, randomGeneratorCla
         } else {
             elog(WARNING, "NEW_ORDER_4 failed");
             transaction->rollback();
-            PG_RETURN_INT32(13);
+            PG_RETURN_INT32(-13);
         }
 
         NEW_ORDER_5->set_parameter(d_next_o_id);
@@ -401,7 +400,7 @@ transaction_neworder(ConnectionPtr::element_type *connection, randomGeneratorCla
         if(transaction->execute_statement(NEW_ORDER_5.get()) != ERROR_CODE::OK) {
             elog(WARNING, "NEW_ORDER_5 failed");
             transaction->rollback();
-            PG_RETURN_INT32(14);
+            PG_RETURN_INT32(-14);
         }
 
         NEW_ORDER_6->set_parameter(d_next_o_id);
@@ -414,7 +413,7 @@ transaction_neworder(ConnectionPtr::element_type *connection, randomGeneratorCla
         if(transaction->execute_statement(NEW_ORDER_6.get()) != ERROR_CODE::OK) {
             elog(WARNING, "NEW_ORDER_6 failed");
             transaction->rollback();
-            PG_RETURN_INT32(15);
+            PG_RETURN_INT32(-15);
         }
 
         NEW_ORDER_61->set_parameter(d_id);
@@ -424,7 +423,7 @@ transaction_neworder(ConnectionPtr::element_type *connection, randomGeneratorCla
         if(transaction->execute_statement(NEW_ORDER_61.get()) != ERROR_CODE::OK) {
             elog(WARNING, "NEW_ORDER_61 failed");
             transaction->rollback();
-            PG_RETURN_INT32(155);
+            PG_RETURN_INT32(-155);
         }
 
 	for (i = 0; i < o_ol_cnt; i++) {
@@ -457,11 +456,11 @@ transaction_neworder(ConnectionPtr::element_type *connection, randomGeneratorCla
                          std::string(i_data[i]).c_str());
                 } else if(ol_i_id[i] == 0) {
                     transaction->rollback();
-                    PG_RETURN_INT32(2);
+                    PG_RETURN_INT32(1);  // intentional rollback
                 } else {
                     elog(WARNING, "NEW_ORDER_7 failed");
                     transaction->rollback();
-                    PG_RETURN_INT32(155);
+                    PG_RETURN_INT32(-155);
                 }
 
 		ol_amount[i] = i_price[i] * (float) ol_quantity[i];
@@ -493,7 +492,7 @@ transaction_neworder(ConnectionPtr::element_type *connection, randomGeneratorCla
 
                 } else {
                     transaction->rollback();
-                    PG_RETURN_INT32(16);
+                    PG_RETURN_INT32(-16);
                 }
 		order_amount += ol_amount[i];
 
@@ -508,7 +507,7 @@ transaction_neworder(ConnectionPtr::element_type *connection, randomGeneratorCla
                 if(transaction->execute_statement(NEW_ORDER_9.get()) != ERROR_CODE::OK) {
                     elog(WARNING, "NEW_ORDER_9 failed");
                     transaction->rollback();
-                    PG_RETURN_INT32(17);
+                    PG_RETURN_INT32(-17);
                 }
 
                 NEW_ORDER_10->set_parameter(d_next_o_id);
@@ -523,7 +522,7 @@ transaction_neworder(ConnectionPtr::element_type *connection, randomGeneratorCla
                 if(transaction->execute_statement(NEW_ORDER_10.get()) != ERROR_CODE::OK) {
                     elog(WARNING, "NEW_ORDER_10 failed");
                     transaction->rollback();
-                    PG_RETURN_INT32(18);
+                    PG_RETURN_INT32(-18);
                 }
 	}
 

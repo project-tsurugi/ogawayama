@@ -332,7 +332,7 @@ transaction_payment(ConnectionPtr::element_type *connection, randomGeneratorClas
             
             if(count == 0) {
                 transaction->commit();
-                PG_RETURN_INT32(1);
+                PG_RETURN_INT32(0);  // OK
             }
 
             PAYMENT_52->set_parameter(c_w_id);
@@ -491,7 +491,7 @@ transaction_payment(ConnectionPtr::element_type *connection, randomGeneratorClas
 
         //	SPI_finish();
         transaction->commit();
-	PG_RETURN_INT32(1);
+	PG_RETURN_INT32(0);  // OK
 }
 
 

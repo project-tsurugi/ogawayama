@@ -240,7 +240,7 @@ transaction_delivery(ConnectionPtr::element_type *connection, randomGeneratorCla
 
         //        SPI_finish();
         transaction->commit();
-	PG_RETURN_INT32(1);
+	PG_RETURN_INT32(0);  // OK
 }
     
 } //  namespace tpcc
