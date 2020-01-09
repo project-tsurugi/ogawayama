@@ -30,7 +30,7 @@ class ClientTimeoutTest : public ::testing::Test {
             }
             exit(0);
         } else { // Backend, continue to timeout test.
-            shared_memory_ = std::make_unique<ogawayama::common::SharedMemory>("ogawayama", true);
+            shared_memory_ = std::make_unique<ogawayama::common::SharedMemory>("ogawayama", ogawayama::common::param::SheredMemoryType::SHARED_MEMORY_CONNECTION, true);
             sleep(2);
         }
     }

@@ -54,7 +54,7 @@ int backend_main(int argc, char **argv) {
     std::unique_ptr<ogawayama::common::SharedMemory> shared_memory;
     std::unique_ptr<ogawayama::common::ChannelStream> server_ch;
     try {
-        shared_memory = std::make_unique<ogawayama::common::SharedMemory>(FLAGS_dbname, true, FLAGS_remove_shm);
+        shared_memory = std::make_unique<ogawayama::common::SharedMemory>(FLAGS_dbname, ogawayama::common::param::SheredMemoryType::SHARED_MEMORY_SERVER_CHANNEL, true, FLAGS_remove_shm);
         server_ch = std::make_unique<ogawayama::common::ChannelStream>(ogawayama::common::param::server, shared_memory.get(), true, false);
     } catch (std::exception &ex) {
         std::cerr << ex.what() << std::endl;

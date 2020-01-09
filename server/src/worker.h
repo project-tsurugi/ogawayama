@@ -59,9 +59,9 @@ class Worker {
 
  private:
     umikongo::Database *db_;
-    ogawayama::common::SharedMemory *shared_memory_ptr_;
     std::size_t id_;
 
+    std::unique_ptr<ogawayama::common::SharedMemory> shm4_connection_;
     std::unique_ptr<ogawayama::common::ChannelStream> channel_;
     std::unique_ptr<ogawayama::common::ParameterSet> parameters_;
 

@@ -21,7 +21,7 @@ namespace ogawayama::testing {
 class OwnerTimeoutTest : public ::testing::Test {
     virtual void SetUp() {
         if (fork() == 0) { // Backend, soon exit.
-            auto shared_memory = std::make_unique<ogawayama::common::SharedMemory>("ogawayama", true);
+            auto shared_memory = std::make_unique<ogawayama::common::SharedMemory>("ogawayama", ogawayama::common::param::SheredMemoryType::SHARED_MEMORY_CONNECTION, true);
             sleep(2);
             {
                 auto server_channel = std::make_unique<ogawayama::common::ChannelStream>(ogawayama::common::param::server, shared_memory.get());

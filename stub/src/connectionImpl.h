@@ -54,11 +54,12 @@ private:
     Connection *envelope_;
 
     std::size_t pgprocno_;
-    std::unique_ptr<ogawayama::common::ChannelStream> channel_;
-    std::unique_ptr<ogawayama::common::ParameterSet> parameters_;
     std::size_t sid_{};
 
+    std::unique_ptr<ogawayama::common::SharedMemory> shm4_connection_;
     std::unique_ptr<ogawayama::common::SharedMemory> shm4_row_queue_;
+    std::unique_ptr<ogawayama::common::ChannelStream> channel_;
+    std::unique_ptr<ogawayama::common::ParameterSet> parameters_;
     std::unique_ptr<std::vector<std::shared_ptr<ResultSet>>> result_sets_;
 };
 

@@ -26,12 +26,12 @@
 
 namespace ogawayama::server {
 
-Worker::Worker(umikongo::Database *db, ogawayama::common::SharedMemory *shm, std::size_t id) : db_(db), shared_memory_ptr_(shm), id_(id)
+Worker::Worker(umikongo::Database *db, ogawayama::common::SharedMemory *shm, std::size_t id) : db_(db), id_(id)
 {
-    auto managed_shared_memory_ptr = shared_memory_ptr_->get_managed_shared_memory_ptr();
-    channel_ = std::make_unique<ogawayama::common::ChannelStream>(shared_memory_ptr_->shm_name(ogawayama::common::param::channel, id_).c_str(), shared_memory_ptr_);
-    parameters_ = std::make_unique<ogawayama::common::ParameterSet>(shared_memory_ptr_->shm_name(ogawayama::common::param::prepared, id_).c_str(), shared_memory_ptr_);
-    shm4_row_queue_ = std::make_unique<ogawayama::common::SharedMemory>(shared_memory_ptr_->shm4_row_queue_name(id));
+    shm4_connection_ = std::make_unique<ogawayama::common::SharedMemory>(shm->shm4_connection_name(id_));
+    channel_ = std::make_unique<ogawayama::common::ChannelStream>(shm->shm_name(ogawayama::common::param::channel, id_).c_str(), shm4_connection_.get());
+    parameters_ = std::make_unique<ogawayama::common::ParameterSet>(shm->shm_name(ogawayama::common::param::prepared, id_).c_str(), shm4_connection_.get());
+    shm4_row_queue_ = std::make_unique<ogawayama::common::SharedMemory>(shm->shm4_row_queue_name(id));
     channel_->send_ack(ERROR_CODE::OK);
 }
 
