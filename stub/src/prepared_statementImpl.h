@@ -33,7 +33,9 @@ public:
     ~Impl() = default;
 
     auto get_sid() { return sid_; }
-    void clear() { parameters_->clear(); }
+    void clear() {
+        parameters_->get_params().clear();
+    }
     template<typename T>
     void set_parameter(T param) {
         parameters_->set_parameter(param);

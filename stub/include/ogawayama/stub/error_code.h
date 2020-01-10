@@ -59,6 +59,11 @@ enum class ErrorCode {
     NO_TRANSACTION,
 
     /**
+     * @brief parameter value is invalid.
+     */
+    INVALID_PARAMETER,
+
+    /**
      * @brief unknown error.
      */
     UNKNOWN,

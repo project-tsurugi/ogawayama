@@ -106,13 +106,6 @@ namespace ogawayama::common {
             return params_->get_params();
         }
 
-        /**
-         * @brief clear current parameters.
-         */
-        void clear() {
-            params_->clear();
-        }
-
     private:
         SharedMemory *shared_memory_;
         Parameters *params_;

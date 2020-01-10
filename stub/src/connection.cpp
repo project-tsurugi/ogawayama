@@ -23,8 +23,8 @@ Connection::Impl::Impl(Connection *connection, std::size_t pgprocno) : envelope_
     auto server_shared_memory = envelope_->get_manager()->get_impl()->get_managed_shared_memory();
 
     shm4_connection_ = std::make_unique<ogawayama::common::SharedMemory>(server_shared_memory->shm4_connection_name(pgprocno), ogawayama::common::param::SheredMemoryType::SHARED_MEMORY_CONNECTION, true, true);
-    channel_ = std::make_unique<ogawayama::common::ChannelStream>(shm4_connection_->shm_name(ogawayama::common::param::channel, pgprocno_).c_str(), shm4_connection_.get(), true);
-    parameters_ = std::make_unique<ogawayama::common::ParameterSet>(shm4_connection_->shm_name(ogawayama::common::param::prepared, pgprocno_).c_str(), shm4_connection_.get(), true);
+    channel_ = std::make_unique<ogawayama::common::ChannelStream>(ogawayama::common::param::channel, shm4_connection_.get(), true);
+    parameters_ = std::make_unique<ogawayama::common::ParameterSet>(ogawayama::common::param::prepared, shm4_connection_.get(), true);
     shm4_row_queue_ = std::make_unique<ogawayama::common::SharedMemory>(server_shared_memory->shm4_row_queue_name(pgprocno), ogawayama::common::param::SheredMemoryType::SHARED_MEMORY_ROW_QUEUE, true, true);
     result_sets_ = std::make_unique<std::vector<std::shared_ptr<ResultSet>>>();
 }

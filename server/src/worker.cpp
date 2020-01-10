@@ -29,9 +29,9 @@ namespace ogawayama::server {
 Worker::Worker(umikongo::Database *db, ogawayama::common::SharedMemory *shm, std::size_t id) : db_(db), id_(id)
 {
     shm4_connection_ = std::make_unique<ogawayama::common::SharedMemory>(shm->shm4_connection_name(id_));
-    channel_ = std::make_unique<ogawayama::common::ChannelStream>(shm->shm_name(ogawayama::common::param::channel, id_).c_str(), shm4_connection_.get());
-    parameters_ = std::make_unique<ogawayama::common::ParameterSet>(shm->shm_name(ogawayama::common::param::prepared, id_).c_str(), shm4_connection_.get());
-    shm4_row_queue_ = std::make_unique<ogawayama::common::SharedMemory>(shm->shm4_row_queue_name(id));
+    channel_ = std::make_unique<ogawayama::common::ChannelStream>(ogawayama::common::param::channel, shm4_connection_.get());
+    parameters_ = std::make_unique<ogawayama::common::ParameterSet>(ogawayama::common::param::prepared, shm4_connection_.get());
+    shm4_row_queue_ = std::make_unique<ogawayama::common::SharedMemory>(shm->shm4_row_queue_name(id_));
     channel_->send_ack(ERROR_CODE::OK);
 }
 
@@ -311,6 +311,11 @@ void Worker::set_params(umikongo::PreparedStatement::Parameters *p)
 
 void Worker::execute_prepared_statement(std::size_t sid)
 {
+    if (sid >= prepared_statements_.size()) {
+        channel_->send_ack(ERROR_CODE::UNKNOWN);
+        return;
+    }
+
     if (!transaction_) {
         transaction_ = db_->create_transaction();
         context_ = transaction_->context();
@@ -332,6 +337,11 @@ void Worker::execute_prepared_statement(std::size_t sid)
 
 bool Worker::execute_prepared_query(std::size_t sid, std::size_t rid)
 {
+    if (sid >= prepared_statements_.size()) {
+        channel_->send_ack(ERROR_CODE::UNKNOWN);
+        return false;
+    }
+
     if (!transaction_) {
         transaction_ = db_->create_transaction();
         context_ = transaction_->context();
