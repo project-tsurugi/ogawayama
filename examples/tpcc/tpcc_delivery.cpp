@@ -29,15 +29,15 @@ namespace tpcc {
  * Delivery transaction SQL statements.
  */
 
-#define DELIVERY_1 statements[0].prepared
-#define DELIVERY_2 statements[1].prepared
-#define DELIVERY_3 statements[2].prepared
-#define DELIVERY_4 statements[3].prepared
-#define DELIVERY_5 statements[4].prepared
-#define DELIVERY_6 statements[5].prepared
-#define DELIVERY_7 statements[6].prepared
+#define DELIVERY_1 statements->get_preprad_statement(0)
+#define DELIVERY_2 statements->get_preprad_statement(1)
+#define DELIVERY_3 statements->get_preprad_statement(2)
+#define DELIVERY_4 statements->get_preprad_statement(3)
+#define DELIVERY_5 statements->get_preprad_statement(4)
+#define DELIVERY_6 statements->get_preprad_statement(5)
+#define DELIVERY_7 statements->get_preprad_statement(6)
 
-static cached_statement statements[] =
+cached_statement delivery_statements[] =
 {
 	/* DELIVERY_1 */
 	{
@@ -107,7 +107,7 @@ static cached_statement statements[] =
 
 
 int
-transaction_delivery(ConnectionPtr::element_type *connection, randomGeneratorClass *randomGenerator, std::uint16_t warehouse_low, std::uint16_t warehouse_high, [[maybe_unused]] tpcc_profiler *profiler)
+transaction_delivery(ConnectionPtr::element_type *connection, prepared_statements *statements, randomGeneratorClass *randomGenerator, std::uint16_t warehouse_low, std::uint16_t warehouse_high, [[maybe_unused]] tpcc_profiler *profiler)
 {
     deliveryParams params = {};
     params.w_id = randomGenerator->uniformWithin(warehouse_low, warehouse_high);
@@ -129,8 +129,6 @@ transaction_delivery(ConnectionPtr::element_type *connection, randomGeneratorCla
 	std::int32_t no_o_id;
 	std::int32_t o_c_id;
 
-	plan_queries(statements, connection);
-
         if(connection->begin(transaction) != ERROR_CODE::OK) {
             elog(ERROR, "failed to begin");
         }
@@ -138,7 +136,7 @@ transaction_delivery(ConnectionPtr::element_type *connection, randomGeneratorCla
 	for (d_id = 1; d_id <= 10; d_id++) {
                 DELIVERY_1->set_parameter(w_id);
 		DELIVERY_1->set_parameter(d_id);
-                if(transaction->execute_query(DELIVERY_1.get(), result_set) != ERROR_CODE::OK) {
+                if(transaction->execute_query(DELIVERY_1, result_set) != ERROR_CODE::OK) {
                     elog(ERROR, "execute_query failed");
                 }
                 //                if(result_set->get_metadata(metadata) != ERROR_CODE::OK) {
@@ -161,7 +159,7 @@ transaction_delivery(ConnectionPtr::element_type *connection, randomGeneratorCla
                 DELIVERY_2->set_parameter(no_o_id);
 		DELIVERY_2->set_parameter(w_id);
                 DELIVERY_2->set_parameter(d_id);
-                if(transaction->execute_statement(DELIVERY_2.get()) != ERROR_CODE::OK) {
+                if(transaction->execute_statement(DELIVERY_2) != ERROR_CODE::OK) {
                     transaction->rollback();
                     PG_RETURN_INT32(-1);
 		}
@@ -169,7 +167,7 @@ transaction_delivery(ConnectionPtr::element_type *connection, randomGeneratorCla
                 DELIVERY_3->set_parameter(no_o_id);
 		DELIVERY_3->set_parameter(w_id);
                 DELIVERY_3->set_parameter(d_id);
-                if(transaction->execute_query(DELIVERY_3.get(), result_set) != ERROR_CODE::OK) {
+                if(transaction->execute_query(DELIVERY_3, result_set) != ERROR_CODE::OK) {
                     elog(ERROR, "execute_query failed");
                 }
                 //                if(result_set->get_metadata(metadata) != ERROR_CODE::OK) {
@@ -192,7 +190,7 @@ transaction_delivery(ConnectionPtr::element_type *connection, randomGeneratorCla
 		DELIVERY_4->set_parameter(no_o_id);
                 DELIVERY_4->set_parameter(w_id);
                 DELIVERY_4->set_parameter(d_id);
-                if(transaction->execute_statement(DELIVERY_4.get()) != ERROR_CODE::OK) {
+                if(transaction->execute_statement(DELIVERY_4) != ERROR_CODE::OK) {
                     transaction->rollback();
                     PG_RETURN_INT32(-1);
 		}
@@ -201,7 +199,7 @@ transaction_delivery(ConnectionPtr::element_type *connection, randomGeneratorCla
                 DELIVERY_5->set_parameter(w_id);
                 DELIVERY_5->set_parameter(d_id);
                 DELIVERY_5->set_parameter(get_timestamp());
-                if(transaction->execute_statement(DELIVERY_5.get()) != ERROR_CODE::OK) {
+                if(transaction->execute_statement(DELIVERY_5) != ERROR_CODE::OK) {
                     transaction->rollback();
                     PG_RETURN_INT32(-1);
 		}
@@ -209,7 +207,7 @@ transaction_delivery(ConnectionPtr::element_type *connection, randomGeneratorCla
                 DELIVERY_6->set_parameter(no_o_id);
 		DELIVERY_6->set_parameter(w_id);
                 DELIVERY_6->set_parameter(d_id);
-                if(transaction->execute_query(DELIVERY_6.get(), result_set) != ERROR_CODE::OK) {
+                if(transaction->execute_query(DELIVERY_6, result_set) != ERROR_CODE::OK) {
                     elog(ERROR, "execute_query failed");
                 }
                 //                if(result_set->get_metadata(metadata) != ERROR_CODE::OK) {
@@ -232,7 +230,7 @@ transaction_delivery(ConnectionPtr::element_type *connection, randomGeneratorCla
                 DELIVERY_7->set_parameter(o_c_id);
 		DELIVERY_7->set_parameter(w_id);
                 DELIVERY_7->set_parameter(d_id);
-                if(transaction->execute_statement(DELIVERY_7.get()) != ERROR_CODE::OK) {
+                if(transaction->execute_statement(DELIVERY_7) != ERROR_CODE::OK) {
                     transaction->rollback();
                     PG_RETURN_INT32(-1);
 		}

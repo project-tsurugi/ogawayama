@@ -31,27 +31,26 @@ namespace tpcc {
  * New Order transaction SQL statements.
  */
 
-#define NEW_ORDER_1 statements[0].prepared
-#define NEW_ORDER_2 statements[1].prepared
-#define NEW_ORDER_3 statements[2].prepared
-#define NEW_ORDER_4 statements[3].prepared
-#define NEW_ORDER_5 statements[4].prepared
-#define NEW_ORDER_6 statements[5].prepared
-#define NEW_ORDER_7 statements[6].prepared
-// #define NEW_ORDER_8 statements[7].prepared
-#define NEW_ORDER_8x(index) statements[(7-1)+index].prepared
-#define NEW_ORDER_9 statements[17].prepared
-#define NEW_ORDER_10 statements[18].prepared
-#define NEW_ORDER_61 statements[19].prepared
+#define NEW_ORDER_1 statements->get_preprad_statement(0)
+#define NEW_ORDER_2 statements->get_preprad_statement(1)
+#define NEW_ORDER_3 statements->get_preprad_statement(2)
+#define NEW_ORDER_4 statements->get_preprad_statement(3)
+#define NEW_ORDER_5 statements->get_preprad_statement(4)
+#define NEW_ORDER_6 statements->get_preprad_statement(5)
+#define NEW_ORDER_7 statements->get_preprad_statement(6)
+// #define NEW_ORDER_8 statements->get_preprad_statement(7)
+#define NEW_ORDER_8x(index) statements->get_preprad_statement((7-1)+index)
+#define NEW_ORDER_9 statements->get_preprad_statement(17)
+#define NEW_ORDER_10 statements->get_preprad_statement(18)
+#define NEW_ORDER_61 statements->get_preprad_statement(19)
 
 const char s_dist[10][11] = {
 	"s_dist_01", "s_dist_02", "s_dist_03", "s_dist_04", "s_dist_05",
 	"s_dist_06", "s_dist_07", "s_dist_08", "s_dist_09", "s_dist_10"
 };
 
-static cached_statement statements[] =
+cached_statement new_order_statements[] =
 {
-
 	{ /* NEW_ORDER_1 (0) */
 	"SELECT w_tax\n" \
 	"FROM warehouse\n" \
@@ -197,8 +196,9 @@ static cached_statement statements[] =
 	{ NULL }
 };
 
+
 int
-transaction_neworder(ConnectionPtr::element_type *connection, randomGeneratorClass *randomGenerator, std::uint16_t warehouse_low, std::uint16_t warehouse_high, [[maybe_unused]] tpcc_profiler *profiler)
+transaction_neworder(ConnectionPtr::element_type *connection, prepared_statements *statements, randomGeneratorClass *randomGenerator, std::uint16_t warehouse_low, std::uint16_t warehouse_high, [[maybe_unused]] tpcc_profiler *profiler)
 {
     neworderParams params = {};
     //    std::array<INTEGER, scale::max_ol> stock = {};
@@ -301,14 +301,12 @@ transaction_neworder(ConnectionPtr::element_type *connection, randomGeneratorCla
 				i + 1, ol_i_id[i], ol_supply_w_id[i], ol_quantity[i]);
 	}
 
-        plan_queries(statements, connection);
-
         if(connection->begin(transaction) != ERROR_CODE::OK) {
             elog(ERROR, "failed to begin");
         }
 
         NEW_ORDER_1->set_parameter(w_id);
-        if(transaction->execute_query(NEW_ORDER_1.get(), result_set) != ERROR_CODE::OK) {
+        if(transaction->execute_query(NEW_ORDER_1, result_set) != ERROR_CODE::OK) {
             elog(ERROR, "execute_query failed");
         }
         //        if(result_set->get_metadata(metadata) != ERROR_CODE::OK) {
@@ -330,7 +328,7 @@ transaction_neworder(ConnectionPtr::element_type *connection, randomGeneratorCla
 
         NEW_ORDER_2->set_parameter(w_id);
         NEW_ORDER_2->set_parameter(d_id);
-        if(transaction->execute_query(NEW_ORDER_2.get(), result_set) != ERROR_CODE::OK) {
+        if(transaction->execute_query(NEW_ORDER_2, result_set) != ERROR_CODE::OK) {
             elog(ERROR, "execute_query failed");
         }
         //        if(result_set->get_metadata(metadata) != ERROR_CODE::OK) {
@@ -357,7 +355,7 @@ transaction_neworder(ConnectionPtr::element_type *connection, randomGeneratorCla
 
         NEW_ORDER_3->set_parameter(w_id);
         NEW_ORDER_3->set_parameter(d_id);
-        if(transaction->execute_statement(NEW_ORDER_3.get()) != ERROR_CODE::OK) {
+        if(transaction->execute_statement(NEW_ORDER_3) != ERROR_CODE::OK) {
             elog(WARNING, "NEW_ORDER_3 failed");
             transaction->rollback();
             PG_RETURN_INT32(-12);
@@ -366,7 +364,7 @@ transaction_neworder(ConnectionPtr::element_type *connection, randomGeneratorCla
         NEW_ORDER_4->set_parameter(w_id);
         NEW_ORDER_4->set_parameter(d_id);
         NEW_ORDER_4->set_parameter(c_id);
-        if(transaction->execute_query(NEW_ORDER_4.get(), result_set) != ERROR_CODE::OK) {
+        if(transaction->execute_query(NEW_ORDER_4, result_set) != ERROR_CODE::OK) {
             elog(ERROR, "execute_query failed");
         }
         //        if(result_set->get_metadata(metadata) != ERROR_CODE::OK) {
@@ -397,7 +395,7 @@ transaction_neworder(ConnectionPtr::element_type *connection, randomGeneratorCla
         NEW_ORDER_5->set_parameter(d_next_o_id);
         NEW_ORDER_5->set_parameter(w_id);
         NEW_ORDER_5->set_parameter(d_id);
-        if(transaction->execute_statement(NEW_ORDER_5.get()) != ERROR_CODE::OK) {
+        if(transaction->execute_statement(NEW_ORDER_5) != ERROR_CODE::OK) {
             elog(WARNING, "NEW_ORDER_5 failed");
             transaction->rollback();
             PG_RETURN_INT32(-14);
@@ -410,7 +408,7 @@ transaction_neworder(ConnectionPtr::element_type *connection, randomGeneratorCla
         NEW_ORDER_6->set_parameter(get_timestamp());
         NEW_ORDER_6->set_parameter(o_ol_cnt);
         NEW_ORDER_6->set_parameter(o_all_local);
-        if(transaction->execute_statement(NEW_ORDER_6.get()) != ERROR_CODE::OK) {
+        if(transaction->execute_statement(NEW_ORDER_6) != ERROR_CODE::OK) {
             elog(WARNING, "NEW_ORDER_6 failed");
             transaction->rollback();
             PG_RETURN_INT32(-15);
@@ -420,7 +418,7 @@ transaction_neworder(ConnectionPtr::element_type *connection, randomGeneratorCla
         NEW_ORDER_61->set_parameter(w_id);
         NEW_ORDER_61->set_parameter(c_id);
         NEW_ORDER_61->set_parameter(d_next_o_id);
-        if(transaction->execute_statement(NEW_ORDER_61.get()) != ERROR_CODE::OK) {
+        if(transaction->execute_statement(NEW_ORDER_61) != ERROR_CODE::OK) {
             elog(WARNING, "NEW_ORDER_61 failed");
             transaction->rollback();
             PG_RETURN_INT32(-155);
@@ -430,7 +428,7 @@ transaction_neworder(ConnectionPtr::element_type *connection, randomGeneratorCla
                 std::int32_t decr_quantity;
             
                 NEW_ORDER_7->set_parameter(ol_i_id[i]);
-                if(transaction->execute_query(NEW_ORDER_7.get(), result_set) != ERROR_CODE::OK) {
+                if(transaction->execute_query(NEW_ORDER_7, result_set) != ERROR_CODE::OK) {
                     elog(ERROR, "execute_query failed");
                 }
 		/*
@@ -467,7 +465,7 @@ transaction_neworder(ConnectionPtr::element_type *connection, randomGeneratorCla
 
                 NEW_ORDER_8x(d_id)->set_parameter(ol_i_id[i]);
                 NEW_ORDER_8x(d_id)->set_parameter(w_id);
-                if(transaction->execute_query(NEW_ORDER_8x(d_id).get(), result_set) != ERROR_CODE::OK) {
+                if(transaction->execute_query(NEW_ORDER_8x(d_id), result_set) != ERROR_CODE::OK) {
                     elog(ERROR, "execute_query failed");
                 }
                 err = result_set->next();
@@ -504,7 +502,7 @@ transaction_neworder(ConnectionPtr::element_type *connection, randomGeneratorCla
                 NEW_ORDER_9->set_parameter(decr_quantity);
                 NEW_ORDER_9->set_parameter(ol_i_id[i]);
                 NEW_ORDER_9->set_parameter(w_id);
-                if(transaction->execute_statement(NEW_ORDER_9.get()) != ERROR_CODE::OK) {
+                if(transaction->execute_statement(NEW_ORDER_9) != ERROR_CODE::OK) {
                     elog(WARNING, "NEW_ORDER_9 failed");
                     transaction->rollback();
                     PG_RETURN_INT32(-17);
@@ -519,7 +517,7 @@ transaction_neworder(ConnectionPtr::element_type *connection, randomGeneratorCla
                 NEW_ORDER_10->set_parameter(ol_quantity[i]);
                 NEW_ORDER_10->set_parameter(ol_amount[i]);
                 NEW_ORDER_10->set_parameter(my_s_dist[i]);
-                if(transaction->execute_statement(NEW_ORDER_10.get()) != ERROR_CODE::OK) {
+                if(transaction->execute_statement(NEW_ORDER_10) != ERROR_CODE::OK) {
                     elog(WARNING, "NEW_ORDER_10 failed");
                     transaction->rollback();
                     PG_RETURN_INT32(-18);

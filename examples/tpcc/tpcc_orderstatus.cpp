@@ -25,16 +25,16 @@
 namespace ogawayama {
 namespace tpcc {
 
-#define ORDER_STATUS_1 statements[0].prepared
-#define ORDER_STATUS_2 statements[1].prepared
-#define ORDER_STATUS_3 statements[2].prepared
-#define ORDER_STATUS_4 statements[3].prepared
-#define ORDER_STATUS_11 statements[4].prepared
-#define ORDER_STATUS_12 statements[5].prepared
-#define ORDER_STATUS_31 statements[6].prepared
+#define ORDER_STATUS_1 statements->get_preprad_statement(0)
+#define ORDER_STATUS_2 statements->get_preprad_statement(1)
+#define ORDER_STATUS_3 statements->get_preprad_statement(2)
+#define ORDER_STATUS_4 statements->get_preprad_statement(3)
+#define ORDER_STATUS_11 statements->get_preprad_statement(4)
+#define ORDER_STATUS_12 statements->get_preprad_statement(5)
+#define ORDER_STATUS_31 statements->get_preprad_statement(6)
 
 
-static cached_statement statements[] = {
+cached_statement order_status_statements[] = {
 	{ /* ORDER_STATUS_1 */
 	"SELECT c_id\n" \
 	"FROM customer\n" \
@@ -103,7 +103,7 @@ static cached_statement statements[] = {
 /* Prototypes to prevent potential gcc warnings. */
 
 int
-transaction_orderstatus(ConnectionPtr::element_type *connection, randomGeneratorClass *randomGenerator, std::uint16_t warehouse_low, std::uint16_t warehouse_high, [[maybe_unused]] tpcc_profiler *profiler)
+transaction_orderstatus(ConnectionPtr::element_type *connection, prepared_statements *statements, randomGeneratorClass *randomGenerator, std::uint16_t warehouse_low, std::uint16_t warehouse_high, [[maybe_unused]] tpcc_profiler *profiler)
 {
     orderstatusParams params = {};
     params.w_id = randomGenerator->uniformWithin(warehouse_low, warehouse_high);
@@ -151,8 +151,6 @@ transaction_orderstatus(ConnectionPtr::element_type *connection, randomGenerator
 		/* SRF setup */
                 //		funcctx = SRF_FIRSTCALL_INIT();
 
-		plan_queries(statements, connection);
-
                 if(connection->begin(transaction) != ERROR_CODE::OK) {
                     elog(ERROR, "failed to begin");
                 }
@@ -167,7 +165,7 @@ transaction_orderstatus(ConnectionPtr::element_type *connection, randomGenerator
                     ORDER_STATUS_11->set_parameter(c_w_id);
                     ORDER_STATUS_11->set_parameter(c_d_id);
                     ORDER_STATUS_11->set_parameter(c_last);
-                    if(transaction->execute_query(ORDER_STATUS_11.get(), result_set_tmp) != ERROR_CODE::OK) {
+                    if(transaction->execute_query(ORDER_STATUS_11, result_set_tmp) != ERROR_CODE::OK) {
                         elog(ERROR, "execute_query failed");
                     }
                     //                if(result_set->get_metadata(metadata) != ERROR_CODE::OK) {
@@ -195,7 +193,7 @@ transaction_orderstatus(ConnectionPtr::element_type *connection, randomGenerator
                     ORDER_STATUS_12->set_parameter(c_w_id);
                     ORDER_STATUS_12->set_parameter(c_d_id);
                     ORDER_STATUS_12->set_parameter(c_last);
-                    if(transaction->execute_query(ORDER_STATUS_12.get(), result_set_tmp) != ERROR_CODE::OK) {
+                    if(transaction->execute_query(ORDER_STATUS_12, result_set_tmp) != ERROR_CODE::OK) {
                         elog(ERROR, "execute_query failed");
                     }
                     //                if(result_set->get_metadata(metadata) != ERROR_CODE::OK) {
@@ -222,7 +220,7 @@ transaction_orderstatus(ConnectionPtr::element_type *connection, randomGenerator
                 ORDER_STATUS_2->set_parameter(c_w_id);
                 ORDER_STATUS_2->set_parameter(c_d_id);
                 ORDER_STATUS_2->set_parameter(my_c_id);
-                if(transaction->execute_query(ORDER_STATUS_2.get(), result_set_tmp) != ERROR_CODE::OK) {
+                if(transaction->execute_query(ORDER_STATUS_2, result_set_tmp) != ERROR_CODE::OK) {
                     elog(ERROR, "execute_query failed");
                 }
                 //                if(result_set->get_metadata(metadata) != ERROR_CODE::OK) {
@@ -258,7 +256,7 @@ transaction_orderstatus(ConnectionPtr::element_type *connection, randomGenerator
                 ORDER_STATUS_3->set_parameter(c_w_id);
                 ORDER_STATUS_3->set_parameter(c_d_id);
                 ORDER_STATUS_3->set_parameter(my_c_id);
-                if(transaction->execute_query(ORDER_STATUS_3.get(), result_set_tmp) != ERROR_CODE::OK) {
+                if(transaction->execute_query(ORDER_STATUS_3, result_set_tmp) != ERROR_CODE::OK) {
                     elog(ERROR, "execute_query failed");
                 }
                 //                if(result_set->get_metadata(metadata) != ERROR_CODE::OK) {
@@ -303,7 +301,7 @@ transaction_orderstatus(ConnectionPtr::element_type *connection, randomGenerator
                 ORDER_STATUS_4->set_parameter(c_w_id);
                 ORDER_STATUS_4->set_parameter(c_d_id);
                 ORDER_STATUS_4->set_parameter(o_id);
-                if(transaction->execute_query(ORDER_STATUS_4.get(), result_set) != ERROR_CODE::OK) {
+                if(transaction->execute_query(ORDER_STATUS_4, result_set) != ERROR_CODE::OK) {
                     elog(ERROR, "execute_query failed");
                 }
                 if(result_set->get_metadata(metadata) != ERROR_CODE::OK) {

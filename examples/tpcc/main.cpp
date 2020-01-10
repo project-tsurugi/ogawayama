@@ -100,6 +100,17 @@ void tpcc_client(tpcc_result *result, int id, tpcc_profiler *profiler)
         elog(ERROR, "failed to get_connection");
     }
 
+    auto new_order_prepared_statements = std::make_unique<prepared_statements>();
+    new_order_prepared_statements->prepare(connection.get(), new_order_statements);
+    auto payment_prepared_statements = std::make_unique<prepared_statements>();
+    payment_prepared_statements->prepare(connection.get(), payment_statements);
+    auto order_status_prepared_statements = std::make_unique<prepared_statements>();
+    order_status_prepared_statements->prepare(connection.get(), order_status_statements);
+    auto delivery_prepared_statements = std::make_unique<prepared_statements>();
+    delivery_prepared_statements->prepare(connection.get(), delivery_statements);
+    auto stocklevel_prepared_statements = std::make_unique<prepared_statements>();
+    stocklevel_prepared_statements->prepare(connection.get(), stocklevel_statements);
+
     while(!begin);
     do {
         int transaction_type = randomGenerator->uniformWithin(1, 100);
@@ -108,7 +119,7 @@ void tpcc_client(tpcc_result *result, int id, tpcc_profiler *profiler)
         try {
             if (transaction_type <= kXctNewOrderPercent) {
                 profiler->mark_neworder_begin();
-                int rc = transaction_neworder(connection.get(), randomGenerator.get(), warehouse_low, warehouse_high, profiler);
+                int rc = transaction_neworder(connection.get(), new_order_prepared_statements.get(), randomGenerator.get(), warehouse_low, warehouse_high, profiler);
                 if (rc == 0) {
                     result->neworderS_++;
                 } else if (rc > 0) {
@@ -119,19 +130,19 @@ void tpcc_client(tpcc_result *result, int id, tpcc_profiler *profiler)
                 profiler->mark_neworder_end();
             } else if (transaction_type <= kXctPaymentPercent) {
                 profiler->mark_payment_begin();
-                if (transaction_payment(connection.get(), randomGenerator.get(), warehouse_low, warehouse_high, profiler) == 0) result->payment_++; else result->abort_++;
+                if (transaction_payment(connection.get(), payment_prepared_statements.get(), randomGenerator.get(), warehouse_low, warehouse_high, profiler) == 0) result->payment_++; else result->abort_++;
                 profiler->mark_payment_end();
             } else if (transaction_type <= kXctOrderStatusPercent) {
                 profiler->mark_orderstatus_begin();
-                if (transaction_orderstatus(connection.get(), randomGenerator.get(), warehouse_low, warehouse_high, profiler) == 0) result->orderstatus_++; else result->abort_++;
+                if (transaction_orderstatus(connection.get(), order_status_prepared_statements.get(), randomGenerator.get(), warehouse_low, warehouse_high, profiler) == 0) result->orderstatus_++; else result->abort_++;
                 profiler->mark_orderstatus_end();
             } else if (transaction_type <= kXctDelieveryPercent) {
                 profiler->mark_delivery_begin();
-                if(transaction_delivery(connection.get(), randomGenerator.get(), warehouse_low, warehouse_high, profiler) == 0) result->delivery_++; else result->abort_++;
+                if(transaction_delivery(connection.get(), delivery_prepared_statements.get(), randomGenerator.get(), warehouse_low, warehouse_high, profiler) == 0) result->delivery_++; else result->abort_++;
                 profiler->mark_delivery_end();
             } else {
                 profiler->mark_stocklevel_begin();
-                if (transaction_stocklevel(connection.get(), randomGenerator.get(), warehouse_low, warehouse_high, profiler) == 0) result->stocklevel_++; else result->abort_++;
+                if (transaction_stocklevel(connection.get(), stocklevel_prepared_statements.get(), randomGenerator.get(), warehouse_low, warehouse_high, profiler) == 0) result->stocklevel_++; else result->abort_++;
                 profiler->mark_stocklevel_end();
             }
         } catch (std::exception& e) {
