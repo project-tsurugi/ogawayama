@@ -44,6 +44,10 @@ extern cached_statement stocklevel_statements[];
 class prepared_statements
 {
  public:
+    prepared_statements() {
+        prepareds_ = std::make_unique<std::vector<PreparedStatementPtr>>();
+    }
+    ~prepared_statements() = default;
     void prepare(ConnectionPtr::element_type *connection, cached_statement *statements)
     {
         cached_statement *s;
