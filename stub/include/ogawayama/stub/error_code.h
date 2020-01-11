@@ -89,10 +89,10 @@ constexpr std::string_view error_name(ErrorCode code) {
     case ErrorCode::COLUMN_TYPE_MISMATCH: return "COLUMN_TYPE_MISMATCH";
     case ErrorCode::UNSUPPORTED: return "UNSUPPORTED";
     case ErrorCode::NO_TRANSACTION: return "NO_TRANSACTION";
+    case ErrorCode::INVALID_PARAMETER: return "INVALID_PARAMETER";
     case ErrorCode::UNKNOWN: return "UNKNOWN";
     case ErrorCode::SERVER_FAILURE: return "SERVER_FAILURE";
     case ErrorCode::TIMEOUT: return "TIMEOUT";
-    default: return "UNDEFINED";
     }
 }
 
