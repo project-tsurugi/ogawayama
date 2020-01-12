@@ -333,10 +333,10 @@ public:
     /**
      * @brief Construct a new object.
      */
-    ChannelStream(char const* name, SharedMemory *shared_memory, bool owner, bool always_connected = true) :
+    ChannelStream(std::string_view name, SharedMemory *shared_memory, bool owner, bool always_connected = true) :
     shared_memory_(shared_memory), owner_(owner), always_connected_(always_connected)
     {
-        strncpy(name_, name, param::MAX_NAME_LENGTH);
+        strncpy(name_, name.data(), name.length());
         auto mem = shared_memory_->get_managed_shared_memory_ptr();
         if (owner_) {
             mem->destroy<MsgBuffer>(name_);
@@ -349,7 +349,7 @@ public:
             buffer_->hello();
         }
     }
-    ChannelStream(char const* name, SharedMemory *shared_memory) : ChannelStream(name, shared_memory, false) {}
+    ChannelStream(std::string_view name, SharedMemory *shared_memory) : ChannelStream(name, shared_memory, false) {}
 
     /**
      * @brief Destruct this object.
@@ -465,7 +465,7 @@ private:
     MsgBuffer *buffer_;
     const bool owner_;
     const bool always_connected_;
-    char name_[param::MAX_NAME_LENGTH];
+    char name_[param::MAX_NAME_LENGTH]{};
 };
 
 constexpr std::string_view type_name(CommandMessage::Type type) {

@@ -64,21 +64,21 @@ namespace ogawayama::common {
         /**
          * @brief Construct a new object.
          */
-        ParameterSet(char const* name, SharedMemory *shared_memory, bool owner) : shared_memory_(shared_memory), owner_(owner)
+        ParameterSet(std::string_view name, SharedMemory *shared_memory, bool owner) : shared_memory_(shared_memory), owner_(owner)
         {
-            strncpy(name_, name, param::MAX_NAME_LENGTH);
+            strncpy(name_, name.data(), name.length());
             auto mem = shared_memory_->get_managed_shared_memory_ptr();
             if (owner_) {
-                mem->destroy<Parameters>(name);
-                params_ = mem->construct<Parameters>(name)(mem->get_segment_manager());
+                mem->destroy<Parameters>(name_);
+                params_ = mem->construct<Parameters>(name_)(mem->get_segment_manager());
             } else {
-                params_ = mem->find<Parameters>(name).first;
+                params_ = mem->find<Parameters>(name_).first;
                 if (params_ == nullptr) {
                     throw SharedMemoryException("can't find shared memory for ParameterSet");
                 }
             }
         }
-        ParameterSet(char const* name, SharedMemory *shared_memory) : ParameterSet(name, shared_memory, false) {}
+        ParameterSet(std::string_view name, SharedMemory *shared_memory) : ParameterSet(name, shared_memory, false) {}
 
         /**
          * @brief Destruct this object.
@@ -110,7 +110,7 @@ namespace ogawayama::common {
         SharedMemory *shared_memory_;
         Parameters *params_;
         const bool owner_;
-        char name_[param::MAX_NAME_LENGTH];
+        char name_[param::MAX_NAME_LENGTH]{};
     };
     
 };  // namespace ogawayama::common

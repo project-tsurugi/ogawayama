@@ -16,6 +16,7 @@
 
 #include <iostream>
 
+#include "gflags/gflags.h"
 #include "glog/logging.h"
 
 #include "shakujo/common/core/type/Int.h"
@@ -26,12 +27,15 @@
 
 namespace ogawayama::server {
 
+DECLARE_string(dbname);
+
 Worker::Worker(umikongo::Database *db, ogawayama::common::SharedMemory *shm, std::size_t id) : db_(db), id_(id)
 {
-    shm4_connection_ = std::make_unique<ogawayama::common::SharedMemory>(shm->shm4_connection_name(id_));
+    std::string name = FLAGS_dbname + std::to_string(id);
+    shm4_connection_ = std::make_unique<ogawayama::common::SharedMemory>(name, ogawayama::common::param::SheredMemoryType::SHARED_MEMORY_CONNECTION);
     channel_ = std::make_unique<ogawayama::common::ChannelStream>(ogawayama::common::param::channel, shm4_connection_.get());
     parameters_ = std::make_unique<ogawayama::common::ParameterSet>(ogawayama::common::param::prepared, shm4_connection_.get());
-    shm4_row_queue_ = std::make_unique<ogawayama::common::SharedMemory>(shm->shm4_row_queue_name(id_));
+    shm4_row_queue_ = std::make_unique<ogawayama::common::SharedMemory>(name, ogawayama::common::param::SheredMemoryType::SHARED_MEMORY_ROW_QUEUE);
     channel_->send_ack(ERROR_CODE::OK);
 }
 
@@ -185,7 +189,7 @@ bool Worker::execute_query(std::string_view sql, std::size_t rid)
     
     try {
         cursor.row_queue_ = std::make_unique<ogawayama::common::RowQueue>
-            (shm4_row_queue_->shm_name(ogawayama::common::param::resultset, rid).c_str(), shm4_row_queue_.get());
+            (shm4_row_queue_->shm_name(ogawayama::common::param::resultset, rid), shm4_row_queue_.get());
         cursor.row_queue_->clear();
     } catch (umikongo::Exception& e) {
         std::cerr << e.what() << std::endl;
@@ -354,7 +358,7 @@ bool Worker::execute_prepared_query(std::size_t sid, std::size_t rid)
 
     try {
         cursor.row_queue_ = std::make_unique<ogawayama::common::RowQueue>
-            (shm4_row_queue_->shm_name(ogawayama::common::param::resultset, rid).c_str(), shm4_row_queue_.get());
+            (shm4_row_queue_->shm_name(ogawayama::common::param::resultset, rid), shm4_row_queue_.get());
         cursor.row_queue_->clear();
     } catch (umikongo::Exception& e) {
         std::cerr << e.what() << std::endl;

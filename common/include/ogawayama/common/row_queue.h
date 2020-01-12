@@ -191,22 +191,22 @@ namespace ogawayama::common {
         /**
          * @brief Construct a new object.
          */
-        RowQueue(char const* name, SharedMemory *shared_memory, bool owner) : shared_memory_(shared_memory), owner_(owner), cindex_(0)
+        RowQueue(std::string_view name, SharedMemory *shared_memory, bool owner) : shared_memory_(shared_memory), owner_(owner), cindex_(0)
         {
-            strncpy(name_, name, param::MAX_NAME_LENGTH);
+            strncpy(name_, name.data(), name.length());
             auto mem = shared_memory_->get_managed_shared_memory_ptr();
             if (owner_) {
-                mem->destroy<SpscQueue>(name);
-                queue_ = mem->construct<SpscQueue>(name)(mem->get_segment_manager());
+                mem->destroy<SpscQueue>(name_);
+                queue_ = mem->construct<SpscQueue>(name_)(mem->get_segment_manager());
             } else {
-                queue_ = mem->find<SpscQueue>(name).first;
+                queue_ = mem->find<SpscQueue>(name_).first;
                 if (queue_ == nullptr) {
                     throw SharedMemoryException("can't find shared memory for RowQueue");
                 }
                 queue_->hello();
             }
         }
-        RowQueue(char const* name, SharedMemory *shared_memory) : RowQueue(name, shared_memory, false) {}
+        RowQueue(std::string_view name, SharedMemory *shared_memory) : RowQueue(name, shared_memory, false) {}
 
         /**
          * @brief Destruct this object.
@@ -357,7 +357,7 @@ namespace ogawayama::common {
         SharedMemory *shared_memory_;
         SpscQueue *queue_;
         const bool owner_;
-        char name_[param::MAX_NAME_LENGTH];
+        char name_[param::MAX_NAME_LENGTH]{};
         std::size_t cindex_{};
         std::size_t remaining_{0};
         std::size_t threshold_{0};
