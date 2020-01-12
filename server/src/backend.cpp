@@ -93,7 +93,7 @@ int backend_main(int argc, char **argv) {
             }
             try {
                 std::unique_ptr<Worker> &worker = workers.at(index);
-                worker = std::make_unique<Worker>(db.get(), shared_memory.get(), index);
+                worker = std::make_unique<Worker>(db.get(), index);
                 worker->task_ = std::packaged_task<void()>([&]{worker->run();});
                 worker->future_ = worker->task_.get_future();
                 worker->thread_ = std::thread(std::move(worker->task_));

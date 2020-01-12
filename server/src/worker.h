@@ -41,7 +41,7 @@ class Worker {
     };
 
  public:
-    Worker(umikongo::Database *, ogawayama::common::SharedMemory *, std::size_t);
+    Worker(umikongo::Database *, std::size_t);
     ~Worker() {
         clear_all();
         if(thread_.joinable()) thread_.join();

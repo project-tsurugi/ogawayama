@@ -29,7 +29,7 @@ namespace ogawayama::server {
 
 DECLARE_string(dbname);
 
-Worker::Worker(umikongo::Database *db, ogawayama::common::SharedMemory *shm, std::size_t id) : db_(db), id_(id)
+Worker::Worker(umikongo::Database *db, std::size_t id) : db_(db), id_(id)
 {
     std::string name = FLAGS_dbname + std::to_string(id);
     shm4_connection_ = std::make_unique<ogawayama::common::SharedMemory>(name, ogawayama::common::param::SheredMemoryType::SHARED_MEMORY_CONNECTION);
