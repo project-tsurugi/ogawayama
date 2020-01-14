@@ -181,7 +181,7 @@ bool Worker::execute_query(std::string_view sql, std::size_t rid)
         transaction_ = db_->create_transaction();
         context_ = transaction_->context();
     }
-    if (cursors_.size() < (rid + 1)) {
+    if (cursors_.capacity() < (rid + 1)) {
         cursors_.resize(rid + 1);
     }
 
@@ -262,7 +262,7 @@ void Worker::next(std::size_t rid)
 
 void Worker::prepare(std::string_view sql, std::size_t sid)
 {
-    if (prepared_statements_.size() < (sid + 1)) {
+    if (prepared_statements_.capacity() < (sid + 1)) {
         prepared_statements_.resize(sid + 1);
     }
     try {
@@ -350,7 +350,7 @@ bool Worker::execute_prepared_query(std::size_t sid, std::size_t rid)
         transaction_ = db_->create_transaction();
         context_ = transaction_->context();
     }
-    if (cursors_.size() < (rid + 1)) {
+    if (cursors_.capacity() < (rid + 1)) {
         cursors_.resize(rid + 1);
     }
 
