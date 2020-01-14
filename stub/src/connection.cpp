@@ -20,14 +20,14 @@ namespace ogawayama::stub {
 
 Connection::Impl::Impl(Connection *connection, std::size_t pgprocno) : envelope_(connection), pgprocno_(pgprocno)
 {
-    boost::interprocess::managed_shared_memory *managed_shared_memory_ptr = envelope_->get_manager()->get_impl()->get_managed_shared_memory_ptr();
-    auto managed_shared_memory = envelope_->get_manager()->get_impl()->get_managed_shared_memory();
-    channel_ = std::make_unique<ogawayama::common::ChannelStream>
-        (managed_shared_memory->shm_name(ogawayama::common::param::channel, pgprocno_).c_str(), managed_shared_memory, true);
-    parameters_ = std::make_unique<ogawayama::common::ParameterSet>
-        (managed_shared_memory->shm_name(ogawayama::common::param::prepared, pgprocno_).c_str(), managed_shared_memory, true);
-    shm4_row_queue_ = std::make_unique<ogawayama::common::SharedMemory>(managed_shared_memory->shm4_row_queue_name(pgprocno), true, true, 16);
+    std::string name = envelope_->get_manager()->get_impl()->get_name();
+    name += std::to_string(pgprocno);
 
+    shm4_connection_ = std::make_unique<ogawayama::common::SharedMemory>(name, ogawayama::common::param::SheredMemoryType::SHARED_MEMORY_CONNECTION, true, true);
+    channel_ = std::make_unique<ogawayama::common::ChannelStream>(ogawayama::common::param::channel, shm4_connection_.get(), true);
+    parameters_ = std::make_unique<ogawayama::common::ParameterSet>(ogawayama::common::param::prepared, shm4_connection_.get(), true);
+
+    shm4_row_queue_ = std::make_unique<ogawayama::common::SharedMemory>(name, ogawayama::common::param::SheredMemoryType::SHARED_MEMORY_ROW_QUEUE, true, true);
     result_sets_ = std::make_unique<std::vector<std::shared_ptr<ResultSet>>>();
 }
 

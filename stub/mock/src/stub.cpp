@@ -22,7 +22,7 @@ namespace ogawayama::stub {
 
 Stub::Impl::Impl(Stub *stub, std::string_view database_name) : envelope_(stub)
 {
-    shared_memory_ = std::make_unique<ogawayama::common::SharedMemory>(database_name, true);
+    shared_memory_ = std::make_unique<ogawayama::common::SharedMemory>(database_name, ogawayama::common::param::SheredMemoryType::SHARED_MEMORY_CONNECTION, true);
 }
 
 /**

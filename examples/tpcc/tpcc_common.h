@@ -29,28 +29,46 @@ namespace ogawayama {
 namespace tpcc {
 
 using Database = std::remove_pointer<ConnectionPtr::element_type>::type;
+
 struct cached_statement
 {
-    const char *sql;		/* statement text */
-    PreparedStatementPtr prepared{};
+    const char *sql;           /* statement text */
 };
 
-[[maybe_unused]] 
-static void plan_queries(cached_statement *statements, ConnectionPtr::element_type *connection)
-{
-    cached_statement *s;
+extern cached_statement new_order_statements[];
+extern cached_statement payment_statements[];
+extern cached_statement delivery_statements[];
+extern cached_statement order_status_statements[];
+extern cached_statement stocklevel_statements[];
 
-    if(!statements->prepared) {
-	/* On first invocation, plan all the queries */
-	for (s = statements; s->sql != NULL; s++)
-	{
-            
-            if (connection->prepare( s->sql, s->prepared) != ERROR_CODE::OK) {
-                LOG(WARNING) << "failed to prepare statement: " << s->sql;
-            }
-	}
+class prepared_statements
+{
+ public:
+    prepared_statements() {
+        prepareds_ = std::make_unique<std::vector<PreparedStatementPtr>>();
     }
-}
+    ~prepared_statements() = default;
+    void prepare(ConnectionPtr::element_type *connection, cached_statement *statements)
+    {
+        cached_statement *s;
+
+        if(prepareds_->size() == 0) {
+            /* On first invocation, plan all the queries */
+            for (s = statements; s->sql != NULL; s++)
+                {
+                    PreparedStatementPtr prepared;
+
+                    if (connection->prepare(s->sql, prepared) != ERROR_CODE::OK) {
+                        LOG(WARNING) << "failed to prepare statement: " << s->sql;
+                    }
+                    prepareds_->emplace_back(std::move(prepared));
+                }
+        }
+    }
+    auto get_preprad_statement(std::size_t index) { return prepareds_->at(index).get(); }
+ private:
+    std::unique_ptr<std::vector<PreparedStatementPtr>> prepareds_{};
+};
 
 #define elog(...)
 #define PG_RETURN_INT32(v) return v

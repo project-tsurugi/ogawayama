@@ -67,11 +67,11 @@ namespace tpcc {
     INTEGER threshold;
   };
 
-  int transaction_neworder(Database *, randomGeneratorClass *, std::uint16_t, std::uint16_t, tpcc_profiler *);
-  int transaction_payment(Database *, randomGeneratorClass *, std::uint16_t, std::uint16_t, tpcc_profiler *);
-  int transaction_orderstatus(Database *, randomGeneratorClass *, std::uint16_t, std::uint16_t, tpcc_profiler *);
-  int transaction_delivery(Database *, randomGeneratorClass *, std::uint16_t, std::uint16_t, tpcc_profiler *);
-  int transaction_stocklevel(Database *, randomGeneratorClass *, std::uint16_t, std::uint16_t, tpcc_profiler *);
+  int transaction_neworder(Database *, prepared_statements *, randomGeneratorClass *, std::uint16_t, std::uint16_t, tpcc_profiler *);
+  int transaction_payment(Database *, prepared_statements *, randomGeneratorClass *, std::uint16_t, std::uint16_t, tpcc_profiler *);
+  int transaction_orderstatus(Database *, prepared_statements *, randomGeneratorClass *, std::uint16_t, std::uint16_t, tpcc_profiler *);
+  int transaction_delivery(Database *, prepared_statements *, randomGeneratorClass *, std::uint16_t, std::uint16_t, tpcc_profiler *);
+  int transaction_stocklevel(Database *, prepared_statements *, randomGeneratorClass *, std::uint16_t, std::uint16_t, tpcc_profiler *);
 
 }  // namespace tpcc
 }  // namespace ogawayama
