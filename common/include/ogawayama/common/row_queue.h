@@ -338,7 +338,7 @@ namespace ogawayama::common {
         }
         bool is_need_next() {
             if (threshold_ == 0) { remaining_++; return true; } // multiple rows transfer is not used
-            if (remaining_ >= threshold_) { return false; }
+            if (remaining_ > threshold_) { return false; }
             std::size_t requested = queue_->get_capacity() - threshold_ - 1;
             remaining_ += requested;
             queue_->set_requested(requested);
