@@ -88,7 +88,7 @@ int backend_main(int argc, char **argv) {
 
         switch (type) {
         case ogawayama::common::CommandMessage::Type::CONNECT:
-            if (workers.capacity() < (index + 1)) {
+            if (workers.size() < (index + 1)) {
                 workers.resize(index + 1);
             }
             try {
