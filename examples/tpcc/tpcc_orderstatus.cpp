@@ -53,12 +53,11 @@ cached_statement order_status_statements[] = {
 	},
 
 	{ /* ORDER_STATUS_3 */
-	"SELECT o_id, o_carrier_id, o_entry_d, o_ol_cnt\n" \
+	"SELECT o_carrier_id, o_entry_d, o_ol_cnt\n" \
 	"FROM orders\n" \
 	"WHERE o_w_id = :p1\n" \
 	"  AND o_d_id = :p2\n" \
-	"  AND o_c_id = :p3\n" \
-	"ORDER BY o_id DESC",
+	"  AND o_id = :p3\n",
 	},
 
 	{ /* ORDER_STATUS_4 */
@@ -90,8 +89,8 @@ cached_statement order_status_statements[] = {
 	{ /* ORDER_STATUS_31 */
             "SELECT o_id FROM orders_secondary "
             "WHERE "
-            "o_d_id = :p1 AND "
             "o_w_id = :p2 AND "
+            "o_d_id = :p1 AND "
             "o_c_id = :p3"
             " ORDER by o_id DESC",
         },
@@ -252,11 +251,11 @@ transaction_orderstatus(ConnectionPtr::element_type *connection, prepared_statem
                 }
                 result_set_tmp = nullptr;
 
-		/* Maybe this should be a join with the previous query. */
-                ORDER_STATUS_3->set_parameter(c_w_id);
-                ORDER_STATUS_3->set_parameter(c_d_id);
-                ORDER_STATUS_3->set_parameter(my_c_id);
-                if(transaction->execute_query(ORDER_STATUS_3, result_set_tmp) != ERROR_CODE::OK) {
+
+                ORDER_STATUS_31->set_parameter(c_w_id);
+                ORDER_STATUS_31->set_parameter(c_d_id);
+                ORDER_STATUS_31->set_parameter(my_c_id);
+                if(transaction->execute_query(ORDER_STATUS_31, result_set_tmp) != ERROR_CODE::OK) {
                     elog(ERROR, "execute_query failed");
                 }
                 //                if(result_set->get_metadata(metadata) != ERROR_CODE::OK) {
@@ -269,6 +268,26 @@ transaction_orderstatus(ConnectionPtr::element_type *connection, prepared_statem
                     if(result_set_tmp->next_column(o_id) != ERROR_CODE::OK) {
                         elog(ERROR, "next_column failed (o_id)");
                     }
+                    elog(DEBUG1, "o_id = %d", o_id);
+                } else {
+                    //                    SRF_RETURN_DONE(funcctx);
+                    return -1;  // Error
+                }
+                result_set_tmp = nullptr;
+
+                ORDER_STATUS_3->set_parameter(c_w_id);
+                ORDER_STATUS_3->set_parameter(c_d_id);
+                ORDER_STATUS_3->set_parameter(o_id);
+                if(transaction->execute_query(ORDER_STATUS_3, result_set_tmp) != ERROR_CODE::OK) {
+                    elog(ERROR, "execute_query failed");
+                }
+                //                if(result_set->get_metadata(metadata) != ERROR_CODE::OK) {
+                //                    elog(ERROR, "get_metadata failed");
+                //                }
+                //                auto& md = metadata->get_types();
+
+                err = result_set_tmp->next();
+                if(err == ERROR_CODE::OK) {
                     err = result_set_tmp->next_column(o_carrier_id);
                     if(err != ERROR_CODE::OK) {
                         if(err == ERROR_CODE::COLUMN_WAS_NULL) {
@@ -288,7 +307,6 @@ transaction_orderstatus(ConnectionPtr::element_type *connection, prepared_statem
                     if(result_set_tmp->next_column(o_ol_cnt) != ERROR_CODE::OK) {
                         elog(ERROR, "next_column failed (o_ol_cnt)");
                     }
-                    elog(DEBUG1, "o_id = %d", o_id);
                     elog(DEBUG1, "o_carrier_id = %d", o_carrier_id);
                     elog(DEBUG1, "o_entry_d = %s", std::string(o_entry_d).c_str());
                     elog(DEBUG1, "o_ol_cnt = %d", o_ol_cnt);
