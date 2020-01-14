@@ -166,8 +166,8 @@ namespace ogawayama::common {
         private:
             bool is_not_empty() const { return (pushed_ - poped_) > 0; }
             bool was_empty() const { return (pushed_ - poped_) == 1; }
-            bool is_not_full() const { return (pushed_ - poped_) < (capacity_ - 1); }
-            bool was_full() const { return (pushed_ - poped_) == (capacity_ - 1); }
+            bool is_not_full() const { return (pushed_ - poped_) < capacity_; }
+            bool was_full() const { return (pushed_ - poped_) == capacity_; }
             std::size_t index(std::size_t n) const { return n %  capacity_; }
             
             ShmQueue m_container_;
