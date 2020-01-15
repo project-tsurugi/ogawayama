@@ -48,12 +48,12 @@ pipeline {
                     make install
 
                     # install kvs_charkey
-                    cd ${WORKSPACE}/third_party/umikongo/third_party/kvs_charkey
+                    cd ${WORKSPACE}/third_party/umikongo/third_party/sharksfin/third_party/kvs_charkey
                     git log -n 1 --format=%H
                     ./bootstrap.sh
                     mkdir -p build
                     cd build
-                    cmake -DCMAKE_BUILD_TYPE=Debug -DENABLE_COVERAGE=ON -DENABLE_SANITIZER=ON -DCMAKE_INSTALL_PREFIX=${WORKSPACE}/.local ..
+                    cmake -DCMAKE_BUILD_TYPE=${BUILD_TYPE} -DCMAKE_INSTALL_PREFIX=${WORKSPACE}/.local ..
                     make clean
                     make all install -j${BUILD_PARALLEL_NUM}
 
