@@ -32,6 +32,20 @@ pipeline {
                 '''
             }
         }
+        stage ('Install kvs_charkey') {
+            steps {
+                sh '''
+                    cd third_party/kvs_charkey
+                    git log -n 1 --format=%H
+                    ./bootstrap.sh
+                    mkdir -p build
+                    cd build
+                    cmake -DCMAKE_BUILD_TYPE=Debug -DENABLE_COVERAGE=ON -DENABLE_SANITIZER=ON -DCMAKE_INSTALL_PREFIX=${WORKSPACE}/.local ..
+                    make clean
+                    make all install -j${BUILD_PARALLEL_NUM}
+                '''
+            }
+        }
         stage ('Install umikongo') {
             steps {
                 sh '''
