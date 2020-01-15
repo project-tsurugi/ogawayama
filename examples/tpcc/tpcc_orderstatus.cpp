@@ -180,11 +180,13 @@ transaction_orderstatus(ConnectionPtr::element_type *connection, prepared_statem
                         elog(DEBUG1, "%d total", count);
                     } else {
                         //                        SRF_RETURN_DONE(funcctx);
+                        transaction->rollback();
                         return -1;  // Error
                     }
 
                     if(count == 0) {
                         //                        SRF_RETURN_DONE(funcctx);
+                        transaction->rollback();
                         return 0;  // OK
                     }
                     result_set_tmp = nullptr;
@@ -204,6 +206,7 @@ transaction_orderstatus(ConnectionPtr::element_type *connection, prepared_statem
                         if(result_set_tmp->next() != ERROR_CODE::OK) {
                             elog(ERROR, "next failed");
                             //                            SRF_RETURN_DONE(funcctx);
+                            transaction->rollback();
                             return -1;  // Error
                         }
                     }
@@ -247,6 +250,7 @@ transaction_orderstatus(ConnectionPtr::element_type *connection, prepared_statem
                     elog(DEBUG1, "c_balance = %f", c_balance);
                 } else {
                     //                    SRF_RETURN_DONE(funcctx);
+                    transaction->rollback();
                     return -1;  // Error
                 }
                 result_set_tmp = nullptr;
@@ -271,6 +275,7 @@ transaction_orderstatus(ConnectionPtr::element_type *connection, prepared_statem
                     elog(DEBUG1, "o_id = %d", o_id);
                 } else {
                     //                    SRF_RETURN_DONE(funcctx);
+                    transaction->rollback();
                     return -1;  // Error
                 }
                 result_set_tmp = nullptr;
@@ -312,6 +317,7 @@ transaction_orderstatus(ConnectionPtr::element_type *connection, prepared_statem
                     elog(DEBUG1, "o_ol_cnt = %d", o_ol_cnt);
                 } else {
                     //                    SRF_RETURN_DONE(funcctx);
+                    transaction->rollback();
                     return -1;  // Error
                 }
                 result_set_tmp = nullptr;
