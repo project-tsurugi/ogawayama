@@ -93,6 +93,7 @@ constexpr std::string_view error_name(ErrorCode code) {
     case ErrorCode::UNKNOWN: return "UNKNOWN";
     case ErrorCode::SERVER_FAILURE: return "SERVER_FAILURE";
     case ErrorCode::TIMEOUT: return "TIMEOUT";
+    default: return "This ERROR_CODE is illegal";
     }
 }
 
