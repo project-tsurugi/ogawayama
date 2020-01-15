@@ -57,7 +57,7 @@ cached_statement order_status_statements[] = {
 	"FROM orders\n" \
 	"WHERE o_w_id = :p1\n" \
 	"  AND o_d_id = :p2\n" \
-	"  AND o_id = :p3\n",
+	"  AND o_id = :p3",
 	},
 
 	{ /* ORDER_STATUS_4 */
@@ -89,8 +89,8 @@ cached_statement order_status_statements[] = {
 	{ /* ORDER_STATUS_31 */
             "SELECT o_id FROM orders_secondary "
             "WHERE "
-            "o_w_id = :p2 AND "
-            "o_d_id = :p1 AND "
+            "o_w_id = :p1 AND "
+            "o_d_id = :p2 AND "
             "o_c_id = :p3"
             " ORDER by o_id DESC",
         },
@@ -127,10 +127,10 @@ transaction_orderstatus(ConnectionPtr::element_type *connection, prepared_statem
         //	if (SRF_IS_FIRSTCALL()) {
 
 		/* Input variables. */
-                int32 c_id = params.byname ? 0: params.c_id;
+		int32 c_id = params.byname ? 0: params.c_id;
 		int32 c_w_id = params.w_id;
 		int32 c_d_id = params.d_id;
-                std::string c_last(params.c_last);
+		std::string c_last(params.c_last);
 
 		/* temp variables */
 		std::int32_t count;
