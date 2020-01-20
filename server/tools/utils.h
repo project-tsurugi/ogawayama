@@ -14,16 +14,11 @@
  * limitations under the License.
  */
 
-#ifndef UTILS_H_
-#define UTILS_H_
+#pragma once
 
-#include "umikongo/api.h"
+#include "ogawayama/common/channel_stream.h"
+#include "ogawayama/stub/api.h"
+#include "stubImpl.h"
 
-namespace ogawayama::server {
-
-    void dump(umikongo::Database *, std::string &, std::string &);
-    void load(umikongo::Database *, std::string &, std::string &);
-
-}  // ogawayama::server
-    
-#endif  // UTILS_H_
+void send_dump_requests(ogawayama::common::ChannelStream *);
+void send_load_requests(ogawayama::common::ChannelStream *);

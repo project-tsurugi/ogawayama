@@ -17,9 +17,7 @@
 
 #include "gflags/gflags.h"
 
-#include "ogawayama/common/channel_stream.h"
-#include "ogawayama/stub/api.h"
-#include "stubImpl.h"
+#include "utils.h"
 
 DEFINE_string(dbname, ogawayama::common::param::SHARED_MEMORY_NAME, "database name");  // NOLINT
 DEFINE_bool(terminate, false, "terminate commnand");  // NOLINT
@@ -54,11 +52,11 @@ int main(int argc, char **argv) {
     }
 
     if (FLAGS_dump) {
-        stub->get_impl()->get_channel()->send_req(ogawayama::common::CommandMessage::Type::DUMP_DATABASE);
+        send_dump_requests(stub->get_impl()->get_channel());
     }
 
     if (FLAGS_load) {
-        stub->get_impl()->get_channel()->send_req(ogawayama::common::CommandMessage::Type::LOAD_DATABASE);
+        send_load_requests(stub->get_impl()->get_channel());
     }
 
     if (FLAGS_statement != "") {

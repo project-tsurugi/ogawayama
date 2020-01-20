@@ -73,8 +73,9 @@ int backend_main(int argc, char **argv) {
     while(true) {
         ogawayama::common::CommandMessage::Type type;
         std::size_t index;
+        std::string_view string;
         try {
-            auto rv = server_ch->recv_req(type, index);
+            auto rv = server_ch->recv_req(type, index, string);
             if (rv != ERROR_CODE::OK) {
                 if (rv != ERROR_CODE::TIMEOUT) {
                     std::cerr << __func__ << " " << __LINE__ <<  " " << ogawayama::stub::error_name(rv) << std::endl;
@@ -104,14 +105,16 @@ int backend_main(int argc, char **argv) {
             break;
         case ogawayama::common::CommandMessage::Type::DUMP_DATABASE:
             try {
-                dump(db.get(), FLAGS_location);
+                std::string name(string);
+                dump(db.get(), FLAGS_location, name);
             } catch (std::exception& e) {
                 std::cerr << e.what() << std::endl;
             }
             break;
         case ogawayama::common::CommandMessage::Type::LOAD_DATABASE:
             try {
-                load(db.get(), FLAGS_location);
+                std::string name(string);
+                load(db.get(), FLAGS_location, name);
             } catch (std::exception& e) {
                 std::cerr << e.what() << std::endl;
             }
