@@ -84,7 +84,8 @@ int backend_main(int argc, char **argv) {
             }
         } catch (std::exception &ex) {
             std::cerr << __func__ << " " << __LINE__ << ": exiting \"" << ex.what() << "\"" << std::endl;
-            rv = -1; goto finish;
+            rv = -1;
+            goto finish;
         }
 
         switch (type) {
@@ -120,18 +121,20 @@ int backend_main(int argc, char **argv) {
             }
             break;
         case ogawayama::common::CommandMessage::Type::TERMINATE:
+            server_ch->notify();
             server_ch->lock();
             server_ch->unlock();
             goto finish;
         default:
             std::cerr << "unsurpported message" << std::endl;
-            rv = -1; goto finish;
+            rv = -1;
+            server_ch->notify();
+            goto finish;
         }
         server_ch->notify();
     }
 
  finish:
-    server_ch->notify();
     signal_handler.shutdown();
     return rv;
 }
