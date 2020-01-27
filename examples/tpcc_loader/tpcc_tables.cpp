@@ -29,8 +29,8 @@ std::vector<std::string_view> sql_create_table = {  // NOLINT
     "w_city VARCHAR(20) NOT NULL, "
     "w_state CHAR(2) NOT NULL, "
     "w_zip CHAR(9) NOT NULL, "
-    "w_tax DOUBLE NOT NULL, "
-    "w_ytd DOUBLE NOT NULL, "
+    "w_tax DOUBLE PRECISION NOT NULL, "
+    "w_ytd DOUBLE PRECISION NOT NULL, "
     "PRIMARY KEY(w_id))",
 
     "CREATE TABLE district ("
@@ -42,8 +42,8 @@ std::vector<std::string_view> sql_create_table = {  // NOLINT
     "d_city VARCHAR(20) NOT NULL, "
     "d_state CHAR(2) NOT NULL, "
     "d_zip  CHAR(9) NOT NULL, "
-    "d_tax DOUBLE NOT NULL, "
-    "d_ytd DOUBLE NOT NULL, "
+    "d_tax DOUBLE PRECISION NOT NULL, "
+    "d_ytd DOUBLE PRECISION NOT NULL, "
     "d_next_o_id INT NOT NULL, "
     "PRIMARY KEY(d_w_id, d_id))",
 
@@ -62,10 +62,10 @@ std::vector<std::string_view> sql_create_table = {  // NOLINT
     "c_phone CHAR(16) NOT NULL, "
     "c_since CHAR(24) NOT NULL, " // date
     "c_credit CHAR(2) NOT NULL, "
-    "c_credit_lim DOUBLE NOT NULL, "
-    "c_discount DOUBLE NOT NULL, "
-    "c_balance DOUBLE NOT NULL, "
-    "c_ytd_payment DOUBLE NOT NULL, "
+    "c_credit_lim DOUBLE PRECISION NOT NULL, "
+    "c_discount DOUBLE PRECISION NOT NULL, "
+    "c_balance DOUBLE PRECISION NOT NULL, "
+    "c_ytd_payment DOUBLE PRECISION NOT NULL, "
     "c_payment_cnt INT NOT NULL, "
     "c_delivery_cnt INT NOT NULL, "
     "c_data VARCHAR(500) NOT NULL, "
@@ -112,7 +112,7 @@ std::vector<std::string_view> sql_create_table = {  // NOLINT
     "ol_supply_w_id INT NOT NULL, "
     "ol_delivery_d CHAR(24), " // date, nullable
     "ol_quantity INT NOT NULL, "
-    "ol_amount DOUBLE NOT NULL, "
+    "ol_amount DOUBLE PRECISION NOT NULL, "
     "ol_dist_info CHAR(24) NOT NULL, "
     "PRIMARY KEY(ol_w_id, ol_d_id, ol_o_id, ol_number))",
     
@@ -120,7 +120,7 @@ std::vector<std::string_view> sql_create_table = {  // NOLINT
     "i_id INT NOT NULL, "
     "i_im_id INT, " // not used
     "i_name VARCHAR(24) NOT NULL, "
-    "i_price DOUBLE NOT NULL, "
+    "i_price DOUBLE PRECISION NOT NULL, "
     "i_data VARCHAR(50) NOT NULL, "
     "PRIMARY KEY(i_id))",
     
