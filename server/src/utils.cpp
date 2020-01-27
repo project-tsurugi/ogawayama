@@ -24,19 +24,6 @@
 
 namespace ogawayama::server {
 
-    std::vector<std::string> tables = {  // NOLINT
-        "warehouse",
-        "district",
-        "customer",
-        "customer_secondary",
-        "new_order",
-        "orders",
-        "orders_secondary",
-        "order_line",
-        "item",
-        "stock"
-    };
-
     boost::filesystem::path prepare(std::string location) {
         boost::filesystem::path dir(location);
         dir = dir / "dump";
@@ -49,29 +36,25 @@ namespace ogawayama::server {
     }
 
     void
-    dump(umikongo::Database *db, std::string &location)
+    dump(umikongo::Database *db, std::string &location, std::string &table)
     {
         boost::filesystem::path dir = prepare(location);
-        for (auto& table : tables) {
-            std::ofstream ofs((dir / (table+".tbldmp")).c_str());
-            if (ofs.fail()) {
-                throw std::ios_base::failure("Failed to open file.");
-            }
-            db->dump(ofs, table, 0);
+        std::ofstream ofs((dir / (table+".tbldmp")).c_str());
+        if (ofs.fail()) {
+            throw std::ios_base::failure("Failed to open file.");
         }
+        db->dump(ofs, table, 0);
     }
 
     void
-    load(umikongo::Database *db, std::string &location)
+    load(umikongo::Database *db, std::string &location, std::string &table)
     {
         boost::filesystem::path dir = prepare(location);
-        for (auto& table : tables) {
-            std::ifstream ifs((dir / (table+".tbldmp")).c_str());
-            if (ifs.fail()) {
-                throw std::ios_base::failure("Failed to open file.");
-            }
-            db->load(ifs, table, 0);
+        std::ifstream ifs((dir / (table+".tbldmp")).c_str());
+        if (ifs.fail()) {
+            throw std::ios_base::failure("Failed to open file.");
         }
+        db->load(ifs, table, 0);
     }
 
 }  // ogawayama::server

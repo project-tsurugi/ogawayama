@@ -398,6 +398,9 @@ public:
     void send_req(ogawayama::common::CommandMessage::Type type, std::size_t ivalue = 0, std::string_view string = "") {
         buffer_->send_req(type, ivalue, string);
     }
+    void send_req(ogawayama::common::CommandMessage::Type type, std::string_view string) {
+        buffer_->send_req(type, 0, string);
+    }
     ogawayama::stub::ErrorCode recv_req(ogawayama::common::CommandMessage::Type &type, std::size_t &ivalue) {
         while (true) {
             auto retv = buffer_->recv_req(type, ivalue);
