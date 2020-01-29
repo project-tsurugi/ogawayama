@@ -49,6 +49,7 @@ int backend_main(int argc, char **argv) {
     std::map<std::string, std::string> options;
     options.insert_or_assign(std::string(KEY_LOCATION), FLAGS_location);
     db->open(options);
+    DBCloser dbcloser{db};
 
     // communication channel
     std::unique_ptr<ogawayama::common::SharedMemory> shared_memory;
@@ -56,7 +57,7 @@ int backend_main(int argc, char **argv) {
     try {
         shared_memory = std::make_unique<ogawayama::common::SharedMemory>(FLAGS_dbname, ogawayama::common::param::SheredMemoryType::SHARED_MEMORY_SERVER_CHANNEL, true, FLAGS_remove_shm);
         server_ch = std::make_unique<ogawayama::common::ChannelStream>(ogawayama::common::param::server, shared_memory.get(), true, false);
-    } catch (std::exception &ex) {
+    } catch (const std::exception& ex) {
         std::cerr << ex.what() << std::endl;
         return -1;
     }

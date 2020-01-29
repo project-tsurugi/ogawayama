@@ -25,6 +25,22 @@ namespace ogawayama::server {
 int backend_main(int, char **);
 void worker_main(umikongo::Database *, ogawayama::common::SharedMemory *, int);
 
+template <class T>
+class DBCloser final { //NOLINT
+public:
+    DBCloser() = delete; //NOLINT
+    DBCloser(const DBCloser& other) = delete; //NOLINT
+    DBCloser(DBCloser&& other) = delete; //NOLINT
+    DBCloser& operator=(const DBCloser& other) = delete; //NOLINT
+    DBCloser& operator=(DBCloser&& other) = delete;
+    ~DBCloser() {
+        t_->close();
+    }
+    explicit DBCloser(T& t) : t_(t) {} //NOLINT
+private:
+    T& t_;
+};
+
 }  // ogawayama::server
     
 #endif  // SERVER_H_
