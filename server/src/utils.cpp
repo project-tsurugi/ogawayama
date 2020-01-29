@@ -19,10 +19,15 @@
 #include <fstream>
 #include <string>
 
+#include "gflags/gflags.h"
+
 #include "boost/filesystem/path.hpp"
 #include "boost/filesystem/operations.hpp"
 
 namespace ogawayama::server {
+
+    DECLARE_int32(read_batch_size);   //NOLINT
+    DECLARE_int32(write_batch_size);  //NOLINT
 
     boost::filesystem::path prepare(std::string location) {
         boost::filesystem::path dir(location);
@@ -43,7 +48,7 @@ namespace ogawayama::server {
         if (ofs.fail()) {
             throw std::ios_base::failure("Failed to open file.");
         }
-        db->dump(ofs, table, 0);
+        db->dump(ofs, table, FLAGS_read_batch_size);
     }
 
     void
@@ -54,7 +59,7 @@ namespace ogawayama::server {
         if (ifs.fail()) {
             throw std::ios_base::failure("Failed to open file.");
         }
-        db->load(ifs, table, 0);
+        db->load(ifs, table, FLAGS_write_batch_size);
     }
 
 }  // ogawayama::server

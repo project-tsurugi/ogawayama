@@ -32,6 +32,8 @@ namespace ogawayama::server {
 DEFINE_string(dbname, ogawayama::common::param::SHARED_MEMORY_NAME, "database name");  // NOLINT
 DEFINE_string(location, "./db", "database location on file system");  // NOLINT
 DEFINE_bool(remove_shm, false, "remove the shared memory prior to the execution");  // NOLINT
+DEFINE_int32(read_batch_size,  256, "Batch size for dump");  //NOLINT
+DEFINE_int32(write_batch_size, 256, "Batch size for load");  //NOLINT
 
 static constexpr std::string_view KEY_LOCATION { "location" };  //NOLINT
 
