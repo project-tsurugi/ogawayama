@@ -49,6 +49,7 @@ class Worker {
     void run();
     void execute_statement(std::string_view);
     bool execute_query(std::string_view, std::size_t);
+    void execute_create_table(std::string_view);
     void next(std::size_t);
 
     void prepare(std::string_view, std::size_t);

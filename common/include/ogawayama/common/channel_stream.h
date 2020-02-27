@@ -89,6 +89,11 @@ public:
         /**
          * @brief
          */
+        EXECUTE_CREATE_TABLE,
+
+        /**
+         * @brief
+         */
         NEXT,
 
         /**

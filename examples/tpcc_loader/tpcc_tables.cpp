@@ -152,7 +152,7 @@ std::vector<std::string_view> sql_create_table = {  // NOLINT
         connection->begin(transaction);
 
         for (auto& sql : sql_create_table) {
-            transaction->execute_statement(sql);
+            transaction->execute_create_table(sql);
         }
 
         transaction->commit();

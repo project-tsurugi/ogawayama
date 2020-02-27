@@ -100,6 +100,9 @@ void Worker::run()
                 }
             }
             break;
+        case ogawayama::common::CommandMessage::Type::EXECUTE_CREATE_TABLE:
+            execute_create_table(string);
+            break;
         case ogawayama::common::CommandMessage::Type::DISCONNECT:
             if (transaction_) {
                 transaction_->abort();
@@ -131,6 +134,13 @@ void Worker::execute_statement(std::string_view sql)
         std::cerr << e.what() << std::endl;
         channel_->send_ack(ERROR_CODE::UNKNOWN);
     }
+}
+
+void Worker::execute_create_table(std::string_view sql)
+{
+    execute_statement(sql);
+
+    // add table schema for metadata manager here
 }
 
 void Worker::send_metadata(std::size_t rid)
