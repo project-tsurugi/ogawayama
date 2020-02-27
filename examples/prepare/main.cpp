@@ -36,7 +36,7 @@ int main() {
 
     if (connection->begin(transaction) != ERROR_CODE::OK) { err_exit(__LINE__); }
 
-    if (transaction->execute_statement("CREATE TABLE T2 ("
+    if (transaction->execute_create_table("CREATE TABLE T2 ("
                                        "C1 INT NOT NULL PRIMARY KEY, "
                                        "C2 DOUBLE NOT NULL, "
                                        "C3 CHAR(5) NOT NULL,"

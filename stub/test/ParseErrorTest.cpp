@@ -48,7 +48,7 @@ TEST_F(ParseErrorTest, execute_statement) {
 
     EXPECT_EQ(ERROR_CODE::OK, connection->begin(transaction));
 
-    EXPECT_EQ(ERROR_CODE::OK, transaction->execute_statement(
+    EXPECT_EQ(ERROR_CODE::OK, transaction->execute_create_table(
                                                              "CREATE TABLE T1 ("
                                                              "C1 INT NOT NULL PRIMARY KEY, "
                                                              "C2 DOUBLE NOT NULL, "
@@ -74,7 +74,7 @@ TEST_F(ParseErrorTest, execute_query) {
 
     EXPECT_EQ(ERROR_CODE::OK, connection->begin(transaction));
 
-    EXPECT_EQ(ERROR_CODE::OK, transaction->execute_statement(
+    EXPECT_EQ(ERROR_CODE::OK, transaction->execute_create_table(
                                                              "CREATE TABLE T1 ("
                                                              "C1 INT NOT NULL PRIMARY KEY, "
                                                              "C2 DOUBLE NOT NULL, "
