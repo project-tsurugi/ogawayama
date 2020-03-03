@@ -174,17 +174,17 @@ void Worker::execute_create_table(std::string_view sql)
             auto primary_index = t->primary_index();
             for (auto &cp : primary_index.columns()) {
                 boost::property_tree::ptree primary_key;
-                uint64_t n = 0, i = 1;
+                uint64_t ordinal_position = 0, i = 1;
                 for (auto &cn : t->columns()) {
-                    if (cn.name() == cp.name()) { n = i; break; }
+                    if (cn.name() == cp.name()) { ordinal_position = i; break; }
                     i++;
                 }
-                if (n == 0) {
+                if (ordinal_position == 0) {
                     std::abort();
                 }
-                primary_key.put<uint64_t>("", n);
+                primary_key.put<uint64_t>("", ordinal_position);
                 primary_keys.push_back(std::make_pair("", primary_key));
-                directions[i] = cp.direction();
+                directions[ordinal_position] = cp.direction();
             }
             new_table.add_child(TableMetadata::PRIMARY_KEY_NODE, primary_keys);
         }
