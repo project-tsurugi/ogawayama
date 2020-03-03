@@ -150,6 +150,7 @@ void Worker::execute_create_table(std::string_view sql)
 
     execute_statement(sql);
 
+    // get table schema from umikongo
     std::vector<shakujo::common::schema::TableInfo const*> vec{};
     db_->each_table([&](auto& info){
         vec.emplace_back(&info);
@@ -159,7 +160,7 @@ void Worker::execute_create_table(std::string_view sql)
     boost::property_tree::ptree root;
     
     for (auto &t : vec) {
-        // tables
+        // table
         boost::property_tree::ptree new_table;
 
         // name
@@ -263,6 +264,8 @@ void Worker::execute_create_table(std::string_view sql)
             i++;
         }
         new_table.add_child(TableMetadata::COLUMNS_NODE, columns);
+
+        root.add_child(TableMetadata::TABLES_NODE, new_table);    
     }
 
     if (TableMetadata::save(FLAGS_dbname, root) != ErrorCode::OK) {
