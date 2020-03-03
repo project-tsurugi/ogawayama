@@ -4,7 +4,7 @@
 
 * CMake `>= 3.10`
 * C++ Compiler `>= C++17`
-* access to umikongo
+* access to umikongo and manager/metadata-manager by NEC
 * and see *Dockerfile* sectioni
 
 ```sh
