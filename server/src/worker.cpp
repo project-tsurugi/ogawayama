@@ -15,6 +15,7 @@
  */
 
 #include <iostream>
+#include <vector>
 
 #include "gflags/gflags.h"
 #include "glog/logging.h"
@@ -22,6 +23,7 @@
 #include "shakujo/common/core/type/Int.h"
 #include "shakujo/common/core/type/Float.h"
 #include "shakujo/common/core/type/Char.h"
+#include "manager/metadata/table_metadata.h"
 
 #include "worker.h"
 
@@ -140,7 +142,14 @@ void Worker::execute_create_table(std::string_view sql)
 {
     execute_statement(sql);
 
-    // add table schema for metadata manager here
+    std::vector<shakujo::common::schema::TableInfo const*> vec{};
+    db_->each_table([&](auto& info){
+        vec.emplace_back(&info);
+    });
+
+    for (auto &e : vec) {
+        std::cout << e->name() << std::endl;
+    }
 }
 
 void Worker::send_metadata(std::size_t rid)

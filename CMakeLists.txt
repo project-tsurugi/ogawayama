@@ -80,6 +80,14 @@ install(
         ${CMAKE_INSTALL_LIBDIR}/cmake/${package_name}
 )
 
+install(
+    EXPORT ${package_name}
+    NAMESPACE ${package_name}-
+    FILE ${package_name}-targets.cmake
+    DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/${package_name}
+    EXPORT_LINK_INTERFACE_LIBRARIES
+)
+
 add_subdirectory(stub)
 if(NOT BUILD_STUB_ONLY)
     add_subdirectory(server)
