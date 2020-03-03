@@ -25,6 +25,10 @@
 #include "ogawayama/common/channel_stream.h"
 #include "ogawayama/common/row_queue.h"
 #include "ogawayama/common/parameter_set.h"
+#include "manager/metadata/metadata.h"
+#include "manager/metadata/table_metadata.h"
+#include "manager/metadata/datatype_metadata.h"
+#include "manager/metadata/error_code.h"
 
 namespace ogawayama::server {
 
@@ -76,6 +80,7 @@ class Worker {
     std::thread thread_{};
 
     std::unique_ptr<ogawayama::common::SharedMemory> shm4_row_queue_;
+    std::unique_ptr<manager::metadata_manager::Metadata> datatypes_;
 
     void send_metadata(std::size_t);
     void set_params(umikongo::PreparedStatement::Parameters *);
