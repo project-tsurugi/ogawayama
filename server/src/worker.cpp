@@ -188,18 +188,17 @@ void Worker::execute_create_table(std::string_view sql)
             }
             new_table.add_child(TableMetadata::PRIMARY_KEY_NODE, primary_keys);
         }
-        root.add_child(TableMetadata::TABLES_NODE, new_table);
 
         // columns
         boost::property_tree::ptree columns;
-        uint64_t i = 1;
+        uint64_t ordinal_position = 1;
         for (auto &c : t->columns()) {
             boost::property_tree::ptree column;
             // name
             column.put(TableMetadata::Column::NAME, c.name().c_str());
 
             // ordinalPosition
-            column.put<uint64_t>(TableMetadata::Column::ORDINAL_POSITION, i);
+            column.put<uint64_t>(TableMetadata::Column::ORDINAL_POSITION, ordinal_position);
 
             // get dataTypeId
             ErrorCode err;
@@ -252,7 +251,7 @@ void Worker::execute_create_table(std::string_view sql)
             column.put<bool>(TableMetadata::Column::NULLABLE, t->nullable());
             
             // direction
-            auto it = directions.find(i);
+            auto it = directions.find(ordinal_position);
             if (it != directions.end()) {
                 column.put<uint64_t>(TableMetadata::Column::DIRECTION,
                                      it->second == shakujo::common::core::Direction::ASCENDANT ? 1 : 2);
@@ -261,11 +260,11 @@ void Worker::execute_create_table(std::string_view sql)
             }
 
             columns.push_back(std::make_pair("", column));
-            i++;
+            ordinal_position++;
         }
         new_table.add_child(TableMetadata::COLUMNS_NODE, columns);
 
-        root.add_child(TableMetadata::TABLES_NODE, new_table);    
+        root.add_child(TableMetadata::TABLES_NODE, new_table);
     }
 
     if (TableMetadata::save(FLAGS_dbname, root) != ErrorCode::OK) {
