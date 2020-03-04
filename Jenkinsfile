@@ -32,7 +32,7 @@ pipeline {
                 '''
             }
         }
-        stage ('Install umikongo') {
+        stage ('Install submodules') {
             steps {
                 sh '''
                     rm -fr ${INSTALL_PREFIX}
@@ -72,6 +72,15 @@ pipeline {
                     cd build
                     rm -f CMakeCache.txt
                     cmake -DCMAKE_BUILD_TYPE=${BUILD_TYPE} -DFORCE_INSTALL_RPATH=ON -DFIXED_PAYLOAD_SIZE=ON -DSHARKSFIN_IMPLEMENTATION=memory -DCMAKE_INSTALL_PREFIX=${INSTALL_PREFIX} ..
+                    make -j${BUILD_PARALLEL_NUM}
+                    make install
+
+                    # install metadata-manager
+                    cd ${WORKSPACE}/third_party/manager/metadata-manager
+                    mkdir -p build
+                    cd build
+                    rm -f CMakeCache.txt
+                    cmake -DCMAKE_BUILD_TYPE=${BUILD_TYPE} -DFORCE_INSTALL_RPATH=ON -DCMAKE_INSTALL_PREFIX=${INSTALL_PREFIX} ..
                     make -j${BUILD_PARALLEL_NUM}
                     make install
                 '''
