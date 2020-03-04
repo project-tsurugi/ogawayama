@@ -258,6 +258,9 @@ void Worker::execute_create_table(std::string_view sql)
                 column.put<uint64_t>(TableMetadata::Column::DIRECTION, 0);
             }
 
+            // default
+            column.put(TableMetadata::Column::DEFAULT, to_string(c.default_value()).c_str());
+                
             columns.push_back(std::make_pair("", column));
             ordinal_position++;
         }
