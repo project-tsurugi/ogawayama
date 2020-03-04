@@ -226,12 +226,11 @@ void Worker::execute_create_table(std::string_view sql)
             case shakujo::common::core::Type::Kind::CHAR:
                 {
                     err = datatypes_->get("TEXT", datatype);
+                    auto ct = static_cast<shakujo::common::core::type::Char const *>(t);
                     // dataLength
-                    boost::property_tree::ptree dataLength;
-                    boost::property_tree::ptree length;
-                    length.put<uint64_t>("", (static_cast<shakujo::common::core::type::Char const *>(t))->size());
-                    dataLength.push_back(std::make_pair("", length));
-                    column.add_child(TableMetadata::Column::DATA_LENGTH, dataLength);
+                    column.put<uint64_t>(TableMetadata::Column::DATA_LENGTH, ct->size());
+                    // varying
+                    column.put<bool>(TableMetadata::Column::VARYING, ct->varying());
                 }
                 break;
             default:
