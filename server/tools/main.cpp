@@ -23,6 +23,7 @@ DEFINE_string(dbname, ogawayama::common::param::SHARED_MEMORY_NAME, "database na
 DEFINE_bool(terminate, false, "terminate commnand");  // NOLINT
 DEFINE_bool(dump, false, "Database contents are dumpd to the location just before shutdown");  //NOLINT
 DEFINE_bool(load, false, "Database contents are loaded from the location just after boot");  //NOLINT
+DEFINE_string(create_table, "", "CREATE TABLE statement");  // NOLINT
 DEFINE_string(statement, "", "SQL statement");  // NOLINT
 DEFINE_string(query, "", "SQL query");  // NOLINT
 DEFINE_bool(remove_shm, false, "remove the shared memory prior to the execution");  // NOLINT
@@ -46,7 +47,7 @@ int main(int argc, char **argv) {
     }
 
     StubPtr stub;
-    if (FLAGS_dump || FLAGS_load || FLAGS_statement != "" || FLAGS_query != "" || FLAGS_terminate) {
+    if (FLAGS_dump || FLAGS_load || FLAGS_create_table != "" || FLAGS_statement != "" || FLAGS_query != "" || FLAGS_terminate) {
         ERROR_CODE err = make_stub(stub, FLAGS_dbname.c_str());
         if (err != ERROR_CODE::OK) { prt_err(__LINE__, err); return 1; }
     }
@@ -57,6 +58,21 @@ int main(int argc, char **argv) {
 
     if (FLAGS_load) {
         send_load_requests(stub->get_impl()->get_channel());
+    }
+
+    if (FLAGS_create_table != "") {
+        ConnectionPtr connection;
+        ERROR_CODE err;
+
+        err = stub->get_connection(connection, 12);
+        if (err != ERROR_CODE::OK) { prt_err(__LINE__, err); return 1; }
+        TransactionPtr transaction;
+        err = connection->begin(transaction);
+        if (err != ERROR_CODE::OK) { prt_err(__LINE__, err); return 1; }
+        std::cerr << "execute_create_table \"" << FLAGS_create_table << "\"" << std::endl;
+        err = transaction->execute_create_table(FLAGS_create_table);
+        if (err != ERROR_CODE::OK) { prt_err(__LINE__, err); return 1; }
+        transaction->commit();
     }
 
     if (FLAGS_statement != "") {
