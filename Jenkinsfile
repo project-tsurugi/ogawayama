@@ -47,8 +47,8 @@ pipeline {
                     make -j${BUILD_PARALLEL_NUM}
                     make install
 
-                    # install kvs_charkey
-                    cd ${WORKSPACE}/third_party/umikongo/third_party/sharksfin/third_party/kvs_charkey
+                    # install shirakami
+                    cd ${WORKSPACE}/third_party/umikongo/third_party/sharksfin/third_party/shirakami
                     git log -n 1 --format=%H
                     ./bootstrap.sh
                     mkdir -p build
