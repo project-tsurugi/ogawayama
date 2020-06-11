@@ -23,6 +23,7 @@
 #include "shakujo/common/core/type/Int.h"
 #include "shakujo/common/core/type/Float.h"
 #include "shakujo/common/core/type/Char.h"
+#include "shakujo/common/core/type/String.h"
 
 #include "worker.h"
 
@@ -534,9 +535,27 @@ using namespace shakujo::common::core;
 
 void Worker::provide_table_schema([[maybe_unused]]std::string_view sql)
 {
+    TableInfo::Column columnCI16 {"CI16", std::make_unique<type::Int>(16U, Type::Nullity::NEVER_NULL)};
+    TableInfo::Column columnCI32 {"CI32", std::make_unique<type::Int>(32U, Type::Nullity::NEVER_NULL)};
+    TableInfo::Column columnCI64 {"CI64", std::make_unique<type::Int>(64U, Type::Nullity::NEVER_NULL)};
+
+    TableInfo::Column columnCF32 {"CF32", std::make_unique<type::Float>(32U, Type::Nullity::NEVER_NULL)};
+    TableInfo::Column columnCF64 {"CF64", std::make_unique<type::Float>(64U, Type::Nullity::NEVER_NULL)};
+
+    TableInfo::Column columnCS {"CS", std::make_unique<type::String>(Type::Nullity::NEVER_NULL)};
+    TableInfo::Column columnCC {"CC", std::make_unique<type::Char>(false, 24, Type::Nullity::NEVER_NULL)};
+    TableInfo::Column columnCV {"CV", std::make_unique<type::Char>(true, 40, Type::Nullity::NEVER_NULL)};
+
     std::vector<TableInfo::Column> columns;
-    TableInfo::Column column {"C1", std::make_unique<type::Int>(32U, Type::Nullity::NEVER_NULL)};
-    columns.emplace_back(column);
+    columns.emplace_back(columnCI16);
+    columns.emplace_back(columnCI32);
+    columns.emplace_back(columnCI64);
+    columns.emplace_back(columnCF32);
+    columns.emplace_back(columnCF64);
+    columns.emplace_back(columnCS);
+    columns.emplace_back(columnCC);
+    columns.emplace_back(columnCV);
+
     TableInfo table { "T5", columns };
 
     auto provider = db_->provider();
