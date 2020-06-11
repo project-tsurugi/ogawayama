@@ -59,6 +59,7 @@ class Worker {
     void prepare(std::string_view, std::size_t);
     void execute_prepared_statement(std::size_t);
     bool execute_prepared_query(std::size_t, std::size_t);
+    void provide_table_schema(std::string_view);
 
     friend int backend_main(int, char **);
 

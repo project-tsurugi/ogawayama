@@ -526,4 +526,19 @@ bool Worker::execute_prepared_query(std::size_t sid, std::size_t rid)
     return true;
 }
 
+using namespace shakujo::common::schema;
+using namespace shakujo::common::core;
+
+void Worker::provide_table_schema([[maybe_unused]]std::string_view sql)
+{
+    std::vector<TableInfo::Column> columns;
+    TableInfo::Column column {"C1", std::make_unique<type::Int>(32U, Type::Nullity::NEVER_NULL)};
+    columns.emplace_back(column);
+    TableInfo table { "T5", columns };
+
+    auto provider = db_->provider();
+    provider->add(table);
+    provider->remove(Name("T5"));
+}
+
 }  // ogawayama::server
