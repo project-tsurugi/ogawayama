@@ -18,15 +18,15 @@
 
 #include <atomic>
 
-#include "boost/bind.hpp"
-#include "boost/interprocess/managed_shared_memory.hpp"
-#include "boost/interprocess/allocators/allocator.hpp"
-#include "boost/interprocess/containers/string.hpp"
-#include "boost/interprocess/sync/interprocess_condition.hpp"
-#include "boost/interprocess/sync/interprocess_mutex.hpp"
+#include <boost/bind.hpp>
+#include <boost/interprocess/managed_shared_memory.hpp>
+#include <boost/interprocess/allocators/allocator.hpp>
+#include <boost/interprocess/containers/string.hpp>
+#include <boost/interprocess/sync/interprocess_condition.hpp>
+#include <boost/interprocess/sync/interprocess_mutex.hpp>
 
-#include "ogawayama/stub/error_code.h"
-#include "ogawayama/common/shared_memory.h"
+#include <ogawayama/stub/error_code.h>
+#include <ogawayama/common/shared_memory.h>
 
 namespace ogawayama::common {
 
@@ -47,79 +47,84 @@ public:
     enum class Type {
 
         /**
-         * @brief
+         * @brief reply of OK (may be not used currently)
          */
         OK,
 
         /**
-         * @brief
+         * @brief connect request
          */
         CONNECT,
 
         /**
-         * @brief
+         * @brief disconnect request
          */
         DISCONNECT,
 
         /**
-         * @brief
+         * @brief execute SQL other than query request
          */
         EXECUTE_STATEMENT,
 
         /**
-         * @brief
+         * @brief execute SQL query request
          */
         EXECUTE_QUERY,
 
         /**
-         * @brief
+         * @brief prepare SQL request
          */
         PREPARE,
 
         /**
-         * @brief
+         * @brief execute prepared SQL other than query request
          */
         EXECUTE_PREPARED_STATEMENT,
 
         /**
-         * @brief
+         * @brief execute prepared SQL query request
          */
         EXECUTE_PREPARED_QUERY,
 
         /**
-         * @brief
+         * @brief execute create table request (obsolete)
          */
         EXECUTE_CREATE_TABLE,
 
         /**
-         * @brief
+         * @brief next request to be executed after the query
          */
         NEXT,
 
         /**
-         * @brief
+         * @brief commit request
          */
         COMMIT,
 
         /**
-         * @brief
+         * @brief rollback request
          */
         ROLLBACK,
 
         /**
-         * @brief
+         * @brief server shutdown request
          */
         TERMINATE,
 
         /**
-         * @brief
+         * @brief table dump request
          */
         DUMP_DATABASE,
 
         /**
-         * @brief
+         * @brief table load request
          */
         LOAD_DATABASE,
+
+        /**
+         * @brief request to retrieve and set the table schema
+         */
+        PROVIDE_TABLE_SCHEMA,
     };
 
     CommandMessage() = delete;

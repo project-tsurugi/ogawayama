@@ -110,6 +110,9 @@ void Worker::run()
         case ogawayama::common::CommandMessage::Type::EXECUTE_CREATE_TABLE:
             execute_create_table(string);
             break;
+        case ogawayama::common::CommandMessage::Type::PROVIDE_TABLE_SCHEMA:
+            provide_table_schema(string);
+            break;
         case ogawayama::common::CommandMessage::Type::DISCONNECT:
             if (transaction_) {
                 transaction_->abort();
