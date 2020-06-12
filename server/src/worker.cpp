@@ -561,6 +561,29 @@ void Worker::provide_table_schema([[maybe_unused]]std::string_view sql)
     auto provider = db_->provider();
     provider->add(table);
     provider->remove(Name("T5"));
+
+
+    // TPC-C WAREHOUSE table
+    provider->add(TableInfo {
+            "WAREHOUSE", std::vector<TableInfo::Column> {
+                TableInfo::Column{"w_id", std::make_unique<type::Int>(32U, Type::Nullity::NEVER_NULL)},
+                TableInfo::Column{"w_name", std::make_unique<type::Char>(false, 10U, Type::Nullity::NEVER_NULL)},
+                TableInfo::Column{"w_street_1", std::make_unique<type::String>(Type::Nullity::NEVER_NULL)},
+                TableInfo::Column{"w_street_2", std::make_unique<type::String>(Type::Nullity::NEVER_NULL)},
+                TableInfo::Column{"w_city", std::make_unique<type::Char>(true, 20U, Type::Nullity::NEVER_NULL)},
+                TableInfo::Column{"w_state", std::make_unique<type::Char>(false, 2U, Type::Nullity::NEVER_NULL)},
+                TableInfo::Column{"w_zip", std::make_unique<type::Char>(false, 9U, Type::Nullity::NEVER_NULL)},
+                TableInfo::Column{"w_tax", std::make_unique<type::Float>(64U, Type::Nullity::NEVER_NULL)},
+                TableInfo::Column{"w_ytd", std::make_unique<type::Float>(64U)}
+            },
+                { //primary key
+                    {
+                        {"w_id"}
+                    }
+                }
+        });
+
+    channel_->send_ack(ERROR_CODE::OK);
 }
 
 }  // ogawayama::server

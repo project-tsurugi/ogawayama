@@ -34,6 +34,7 @@ target_include_directories(cli
 target_link_libraries(cli
     PRIVATE stub
     PRIVATE gflags::gflags
+    PRIVATE pthread
     PRIVATE rt
 )
 

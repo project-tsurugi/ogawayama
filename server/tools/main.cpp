@@ -26,6 +26,7 @@ DEFINE_bool(load, false, "Database contents are loaded from the location just af
 DEFINE_string(create_table, "", "CREATE TABLE statement");  // NOLINT
 DEFINE_string(statement, "", "SQL statement");  // NOLINT
 DEFINE_string(query, "", "SQL query");  // NOLINT
+DEFINE_bool(schema, false, "Invoke provide_table_schema() for test");  // NOLINT
 DEFINE_bool(remove_shm, false, "remove the shared memory prior to the execution");  // NOLINT
 
 void prt_err(int line)
@@ -47,7 +48,7 @@ int main(int argc, char **argv) {
     }
 
     StubPtr stub;
-    if (FLAGS_dump || FLAGS_load || FLAGS_create_table != "" || FLAGS_statement != "" || FLAGS_query != "" || FLAGS_terminate) {
+    if (FLAGS_dump || FLAGS_load || FLAGS_create_table != "" || FLAGS_statement != "" || FLAGS_query != "" || FLAGS_schema || FLAGS_terminate) {
         ERROR_CODE err = make_stub(stub, FLAGS_dbname.c_str());
         if (err != ERROR_CODE::OK) { prt_err(__LINE__, err); return 1; }
     }
@@ -195,6 +196,20 @@ int main(int argc, char **argv) {
             }
         }
     }
+
+    if (FLAGS_schema) {
+        ConnectionPtr connection;
+        ERROR_CODE err;
+
+        err = stub->get_connection(connection, 12);
+        if (err != ERROR_CODE::OK) { prt_err(__LINE__, err); return 1; }
+        
+        ogawayama::common::ChannelStream* channel;
+        connection->get_impl()->get_channel_stream(channel);
+        channel->send_req(ogawayama::common::CommandMessage::Type::PROVIDE_TABLE_SCHEMA);
+        ogawayama::stub::ErrorCode reply = channel->recv_ack();
+    }
+
  finish:
 
     if (FLAGS_terminate) {

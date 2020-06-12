@@ -19,6 +19,7 @@
 #include "ogawayama/common/channel_stream.h"
 #include "ogawayama/stub/api.h"
 #include "stubImpl.h"
+#include "connectionImpl.h"
 
 void send_dump_requests(ogawayama::common::ChannelStream *);
 void send_load_requests(ogawayama::common::ChannelStream *);
