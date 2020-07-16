@@ -13,8 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#ifndef STUB_METADATA_H_
-#define STUB_METADATA_H_
+#pragma once
 
 #include <cstddef>
 #include <vector>
@@ -166,5 +165,3 @@ private:
 };
 
 }  // namespace ogawayama::stub
-
-#endif  // STUB_METADATA_H_

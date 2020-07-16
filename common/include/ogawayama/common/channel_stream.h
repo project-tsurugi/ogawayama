@@ -13,8 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#ifndef CHANNEL_STREAM_H_
-#define CHANNEL_STREAM_H_
+#pragma once
 
 #include <atomic>
 
@@ -502,5 +501,3 @@ constexpr std::string_view type_name(CommandMessage::Type type) {
 }
 
 };  // namespace ogawayama::common
-
-#endif //  CHANNEL_STREAM_H_

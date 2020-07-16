@@ -13,9 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-
-#ifndef WORKER_H_
-#define WORKER_H_
+#pragma once
 
 #include <future>
 #include <thread>
@@ -96,5 +94,3 @@ class Worker {
 };
 
 }  // ogawayama::server
-    
-#endif  // WORKER_H_

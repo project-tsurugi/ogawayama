@@ -16,9 +16,7 @@
  *	@file	CreateTableCommand.h
  *	@brief  the create-table command class dipatched to ogawayama
  */
-
-#ifndef CREATETABLECOMMAND_
-#define CREATETABLECOMMAND_
+#pragma once
 
 #include <string>
 
@@ -32,5 +30,3 @@ class CreateTableCommand : public Command{
         CreateTableCommand(uint64_t object_id)
             : Command(COMMAND_TYPE_NANE_CREATE_TABLE, object_id) {}
 };
-
-#endif // CREATETABLECOMMAND_

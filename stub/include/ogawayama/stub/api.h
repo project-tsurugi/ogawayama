@@ -13,8 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#ifndef STUB_API_H_
-#define STUB_API_H_
+#pragma once
 
 #include <iostream>
 #include <memory>
@@ -356,5 +355,3 @@ namespace ogawayama::common::param {
 using StubPtr = std::unique_ptr<ogawayama::stub::Stub>;
 ERROR_CODE make_stub(StubPtr &, std::string_view name = ogawayama::common::param::SHARED_MEMORY_NAME);
 inline static StubPtr make_stub(std::string_view name = ogawayama::common::param::SHARED_MEMORY_NAME) { return std::make_unique<ogawayama::stub::Stub>(name); }  // only for backwark compatibility
-
-#endif  // STUB_API_H_

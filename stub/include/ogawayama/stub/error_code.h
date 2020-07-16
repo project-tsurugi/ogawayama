@@ -13,8 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#ifndef STUB_ERROR_CODE_H_
-#define STUB_ERROR_CODE_H_
+#pragma once
 
 namespace ogawayama::stub {
 
@@ -98,5 +97,3 @@ constexpr std::string_view error_name(ErrorCode code) {
 }
 
 }  // namespace ogawayama::stub
-
-#endif  // STUB_ERROR_CODE_H_

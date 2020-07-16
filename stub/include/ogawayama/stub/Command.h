@@ -16,9 +16,7 @@
  *	@file	Command.h
  *	@brief  the command class dipatched to ogawayama
  */
-
-#ifndef COMMAND_
-#define COMMAND_
+#pragma once
 
 class Command {
     public:
@@ -32,5 +30,3 @@ class Command {
         std::string command_type_name; //command type name ex)"CREATE TABLE"
         uint64_t object_id;             // id of table meta data object
 };
-
-#endif // COMMAND_
