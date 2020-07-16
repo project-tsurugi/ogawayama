@@ -16,6 +16,7 @@
 
 #include "prepared_statementImpl.h"
 #include "transactionImpl.h"
+#include "ogawayama/stub/CreateTableCommand.h"
 
 namespace ogawayama::stub {
 
@@ -150,6 +151,19 @@ ErrorCode Transaction::Impl::rollback()
 }
 
 /**
+ * @brief recieve a command issued by the frontend, and then process it
+ * @return error code defined in error_code.h
+ */
+ErrorCode Transaction::Impl::message(Command& com)
+{
+    if (com.get_command_type_name() == COMMAND_TYPE_NANE_CREATE_TABLE) {
+        channel_->send_req(ogawayama::common::CommandMessage::Type::CREATE_TABLE, com.get_object_id());
+        return channel_->recv_ack();
+    }
+    return ErrorCode::INVALID_PARAMETER;
+}
+
+/**
  * @brief constructor of Transaction class
  */
 Transaction::Transaction(Connection *connection) : manager_(connection)
@@ -195,6 +209,11 @@ ErrorCode Transaction::commit()
 ErrorCode Transaction::rollback()
 {
     return impl_->rollback();
+}
+
+ErrorCode Transaction::message(Command& com)
+{
+    return impl_->message(com);
 }
 
 }  // namespace ogawayama::stub

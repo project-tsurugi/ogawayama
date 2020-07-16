@@ -23,6 +23,7 @@
 
 #include "ogawayama/stub/metadata.h"
 #include "ogawayama/stub/error_code.h"
+#include "ogawayama/stub/Command.h"
 
 using MetadataPtr = ogawayama::stub::Metadata const *;
 using TYPE = ogawayama::stub::Metadata::ColumnType::Type;
@@ -227,6 +228,12 @@ public:
      * @return error code defined in error_code.h
      */
     ErrorCode rollback();
+
+    /**
+     * @brief recieve a command issued by the frontend, and then process it
+     * @return error code defined in error_code.h
+     */
+    ErrorCode message(Command&);
 
 private:
     class Impl;

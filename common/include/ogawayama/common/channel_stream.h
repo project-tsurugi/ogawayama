@@ -109,6 +109,11 @@ public:
         /**
          * @brief
          */
+        CREATE_TABLE,
+
+        /**
+         * @brief
+         */
         TERMINATE,
 
         /**

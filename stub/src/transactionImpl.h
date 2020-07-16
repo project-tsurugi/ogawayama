@@ -81,6 +81,12 @@ public:
      */
     ErrorCode rollback();
 
+    /**
+     * @brief recieve a command issued by the frontend, and then process it
+     * @return error code defined in error_code.h
+     */
+    ErrorCode message(Command&);
+
     auto get_channel() const { return channel_; }
 
 private:
