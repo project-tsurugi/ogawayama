@@ -129,4 +129,9 @@ ErrorCode Transaction::rollback()
     return impl_->rollback();
 }
 
+manager::message::Status Transaction::receive_message(manager::message::Message *msg)
+{
+    return manager::message::Status(manager::message::ErrorCode::SUCCESS, 0);
+}
+
 }  // namespace ogawayama::stub

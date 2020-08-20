@@ -30,6 +30,10 @@ set_target_properties(stub-mock
         LIBRARY_OUTPUT_NAME "ogawayama-stub-mock"
 )
 
+target_link_libraries(stub-mock
+    PRIVATE manager-message-interface
+)
+
 #for tests
 add_library(stub-mock-impl INTERFACE)
 

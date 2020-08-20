@@ -33,6 +33,7 @@ target_include_directories(query
 
 target_link_libraries(query
     PRIVATE stub
+    PRIVATE manager-message-interface
     PRIVATE pthread
     PRIVATE rt
 )

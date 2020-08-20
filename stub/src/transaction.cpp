@@ -211,9 +211,9 @@ ErrorCode Transaction::rollback()
     return impl_->rollback();
 }
 
-ErrorCode Transaction::message(Command& com)
+manager::message::Status Transaction::receive_message(manager::message::Message *msg)
 {
-    return impl_->message(com);
+    return manager::message::Status(manager::message::ErrorCode::SUCCESS, 0);
 }
 
 }  // namespace ogawayama::stub

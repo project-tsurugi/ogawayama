@@ -16,6 +16,7 @@
 
 #include <iostream>
 #include <vector>
+#include <boost/foreach.hpp>
 
 #include "gflags/gflags.h"
 #include "glog/logging.h"
@@ -37,12 +38,6 @@ Worker::Worker(umikongo::Database *db, std::size_t id) : db_(db), id_(id)
     channel_ = std::make_unique<ogawayama::common::ChannelStream>(ogawayama::common::param::channel, shm4_connection_.get());
     parameters_ = std::make_unique<ogawayama::common::ParameterSet>(ogawayama::common::param::prepared, shm4_connection_.get());
     shm4_row_queue_ = std::make_unique<ogawayama::common::SharedMemory>(name, ogawayama::common::param::SheredMemoryType::SHARED_MEMORY_ROW_QUEUE);
-
-    datatypes_ = std::make_unique<manager::metadata_manager::DataTypeMetadata>(FLAGS_dbname);
-    if (datatypes_->load() != manager::metadata_manager::ErrorCode::OK) {
-        channel_->send_ack(ERROR_CODE::SERVER_FAILURE);
-        return;
-    }
     channel_->send_ack(ERROR_CODE::OK);
 }
 
@@ -107,8 +102,8 @@ void Worker::run()
                 }
             }
             break;
-        case ogawayama::common::CommandMessage::Type::EXECUTE_CREATE_TABLE:
-            execute_create_table(string);
+        case ogawayama::common::CommandMessage::Type::CREATE_TABLE:
+            deploy_metadata(ivalue);
             break;
         case ogawayama::common::CommandMessage::Type::DISCONNECT:
             if (transaction_) {
@@ -140,137 +135,6 @@ void Worker::execute_statement(std::string_view sql)
         }
         std::cerr << e.what() << std::endl;
         channel_->send_ack(ERROR_CODE::UNKNOWN);
-    }
-}
-
-
-void Worker::execute_create_table(std::string_view sql)
-{
-    using namespace manager::metadata_manager;
-
-    execute_statement(sql);
-
-    // get table schema from umikongo
-    std::vector<shakujo::common::schema::TableInfo const*> vec{};
-    db_->each_table([&](auto& info){
-        vec.emplace_back(&info);
-    });
-
-    // root
-    boost::property_tree::ptree root;
-    
-    for (auto &t : vec) {
-        // table
-        boost::property_tree::ptree new_table;
-
-        // name
-        auto name = t->name().segments();
-        new_table.put(TableMetadata::NAME, name.front().c_str());
-        
-        std::map<uint64_t, shakujo::common::core::Direction> directions;
-        // primaryKey
-        boost::property_tree::ptree primary_keys;
-        {
-            auto primary_index = t->primary_index();
-            for (auto &cp : primary_index.columns()) {
-                boost::property_tree::ptree primary_key;
-                uint64_t ordinal_position = 0, i = 1;
-                for (auto &cn : t->columns()) {
-                    if (cn.name() == cp.name()) { ordinal_position = i; break; }
-                    i++;
-                }
-                if (ordinal_position == 0) {
-                    std::abort();
-                }
-                primary_key.put<uint64_t>("", ordinal_position);
-                primary_keys.push_back(std::make_pair("", primary_key));
-                directions[ordinal_position] = cp.direction();
-            }
-            new_table.add_child(TableMetadata::PRIMARY_KEY_NODE, primary_keys);
-        }
-
-        // columns
-        boost::property_tree::ptree columns;
-        uint64_t ordinal_position = 1;
-        for (auto &c : t->columns()) {
-            boost::property_tree::ptree column;
-            // name
-            column.put(TableMetadata::Column::NAME, c.name().c_str());
-
-            // ordinalPosition
-            column.put<uint64_t>(TableMetadata::Column::ORDINAL_POSITION, ordinal_position);
-
-            // get dataTypeId
-            ErrorCode err;
-            boost::property_tree::ptree datatype;
-            auto t = c.type();
-            switch(t->kind()) {
-            case shakujo::common::core::Type::Kind::INT:
-                switch((static_cast<shakujo::common::core::type::Numeric const *>(t))->size()) {
-                case 16:
-                    err = datatypes_->get("INT16", datatype); break;
-                case 32:
-                    err = datatypes_->get("INT32", datatype); break;
-                case 64:
-                    err = datatypes_->get("INT64", datatype); break;
-                }
-                break;
-            case shakujo::common::core::Type::Kind::FLOAT:
-                switch((static_cast<shakujo::common::core::type::Float const *>(t))->size()) {
-                case 32:
-                    err = datatypes_->get("FLOAT32", datatype); break;
-                case 64:
-                    err = datatypes_->get("FLOAT64", datatype); break;
-                }
-                break;
-            case shakujo::common::core::Type::Kind::CHAR:
-                {
-                    err = datatypes_->get("TEXT", datatype);
-                    auto ct = static_cast<shakujo::common::core::type::Char const *>(t);
-                    // dataLength
-                    column.put<uint64_t>(TableMetadata::Column::DATA_LENGTH, ct->size());
-                    // varying
-                    column.put<bool>(TableMetadata::Column::VARYING, ct->varying());
-                }
-                break;
-            default:
-                std::abort();
-            }
-            if (err != ErrorCode::OK) {
-                std::abort();
-            }
-            ObjectIdType data_type_id = datatype.get<ObjectIdType>(DataTypeMetadata::ID);
-            if (!data_type_id) {
-                std::abort();
-            }
-            // put dataTypeId
-            column.put<ObjectIdType>(TableMetadata::Column::DATA_TYPE_ID, data_type_id);
-
-            // nullable
-            column.put<bool>(TableMetadata::Column::NULLABLE, t->nullable());
-            
-            // direction
-            auto it = directions.find(ordinal_position);
-            if (it != directions.end()) {
-                column.put<uint64_t>(TableMetadata::Column::DIRECTION,
-                                     it->second == shakujo::common::core::Direction::ASCENDANT ? 1 : 2);
-            } else {
-                column.put<uint64_t>(TableMetadata::Column::DIRECTION, 0);
-            }
-
-            // default
-            column.put(TableMetadata::Column::DEFAULT, to_string(c.default_value()).c_str());
-                
-            columns.push_back(std::make_pair("", column));
-            ordinal_position++;
-        }
-        new_table.add_child(TableMetadata::COLUMNS_NODE, columns);
-
-        root.add_child(TableMetadata::TABLES_NODE, new_table);
-    }
-
-    if (TableMetadata::save(FLAGS_dbname, root) != ErrorCode::OK) {
-        std::abort();
     }
 }
 
@@ -524,6 +388,176 @@ bool Worker::execute_prepared_query(std::size_t sid, std::size_t rid)
         return false;
     }
     return true;
+}
+
+
+void Worker::deploy_metadata(std::size_t id)
+{
+    using namespace manager;
+
+    boost::property_tree::ptree root;
+    metadata::ErrorCode error = metadata::Tables::load(FLAGS_dbname.c_str() ,root);
+    if (error != metadata::ErrorCode::OK) {
+        channel_->send_ack(ERROR_CODE::UNKNOWN);
+        return;
+    }
+
+    boost::property_tree::ptree tables = root.get_child(metadata::Tables::TABLES_NODE);
+    BOOST_FOREACH (const boost::property_tree::ptree::value_type& node, tables) {
+        const boost::property_tree::ptree& table = node.second;
+
+        boost::optional<std::string> name =
+        table.get_optional<std::string>(metadata::Tables::NAME);
+        if (!name) {
+            channel_->send_ack(ERROR_CODE::UNKNOWN);
+            return;
+        }
+
+        boost::property_tree::ptree primary_keys = table.get_child(metadata::Tables::PRIMARY_KEY_NODE);
+        BOOST_FOREACH (const boost::property_tree::ptree::value_type& node, primary_keys) {
+            const boost::property_tree::ptree& value = node.second;
+            boost::optional<uint64_t> primary_key = value.get_value_optional<uint64_t>();
+        }
+
+        boost::property_tree::ptree columns = table.get_child(metadata::Tables::COLUMNS_NODE);
+        BOOST_FOREACH (const boost::property_tree::ptree::value_type& node, columns) {
+            const boost::property_tree::ptree& column = node.second;
+
+            boost::optional<std::string> name =
+                column.get_optional<std::string>(metadata::Tables::Column::NAME);
+            if (!name) {
+                channel_->send_ack(ERROR_CODE::UNKNOWN);
+                return;
+            }
+        }
+    }
+
+#if 0
+    execute_statement(sql);
+
+    // get table schema from umikongo
+    std::vector<shakujo::common::schema::TableInfo const*> vec{};
+    db_->each_table([&](auto& info){
+        vec.emplace_back(&info);
+    });
+
+    // root
+    boost::property_tree::ptree root;
+
+    for (auto &t : vec) {
+        // table
+        boost::property_tree::ptree new_table;
+
+        // name
+        auto name = t->name().segments();
+        new_table.put(TableMetadata::NAME, name.front().c_str());
+
+        std::map<uint64_t, shakujo::common::core::Direction> directions;
+        // primaryKey
+        boost::property_tree::ptree primary_keys;
+        {
+            auto primary_index = t->primary_index();
+            for (auto &cp : primary_index.columns()) {
+                boost::property_tree::ptree primary_key;
+                uint64_t ordinal_position = 0, i = 1;
+                for (auto &cn : t->columns()) {
+                    if (cn.name() == cp.name()) { ordinal_position = i; break; }
+                    i++;
+                }
+                if (ordinal_position == 0) {
+                    std::abort();
+                }
+                primary_key.put<uint64_t>("", ordinal_position);
+                primary_keys.push_back(std::make_pair("", primary_key));
+                directions[ordinal_position] = cp.direction();
+            }
+            new_table.add_child(TableMetadata::PRIMARY_KEY_NODE, primary_keys);
+        }
+
+        // columns
+        boost::property_tree::ptree columns;
+        uint64_t ordinal_position = 1;
+        for (auto &c : t->columns()) {
+            boost::property_tree::ptree column;
+            // name
+            column.put(TableMetadata::Column::NAME, c.name().c_str());
+
+            // ordinalPosition
+            column.put<uint64_t>(TableMetadata::Column::ORDINAL_POSITION, ordinal_position);
+
+            // get dataTypeId
+            ErrorCode err;
+            boost::property_tree::ptree datatype;
+            auto t = c.type();
+            switch(t->kind()) {
+            case shakujo::common::core::Type::Kind::INT:
+                switch((static_cast<shakujo::common::core::type::Numeric const *>(t))->size()) {
+                case 16:
+                    err = datatypes_->get("INT16", datatype); break;
+                case 32:
+                    err = datatypes_->get("INT32", datatype); break;
+                case 64:
+                    err = datatypes_->get("INT64", datatype); break;
+                }
+                break;
+            case shakujo::common::core::Type::Kind::FLOAT:
+                switch((static_cast<shakujo::common::core::type::Float const *>(t))->size()) {
+                case 32:
+                    err = datatypes_->get("FLOAT32", datatype); break;
+                case 64:
+                    err = datatypes_->get("FLOAT64", datatype); break;
+                }
+                break;
+            case shakujo::common::core::Type::Kind::CHAR:
+                {
+                    err = datatypes_->get("TEXT", datatype);
+                    auto ct = static_cast<shakujo::common::core::type::Char const *>(t);
+                    // dataLength
+                    column.put<uint64_t>(TableMetadata::Column::DATA_LENGTH, ct->size());
+                    // varying
+                    column.put<bool>(TableMetadata::Column::VARYING, ct->varying());
+                }
+                break;
+            default:
+                std::abort();
+            }
+            if (err != ErrorCode::OK) {
+                std::abort();
+            }
+            ObjectIdType data_type_id = datatype.get<ObjectIdType>(DataTypeMetadata::ID);
+            if (!data_type_id) {
+                std::abort();
+            }
+            // put dataTypeId
+            column.put<ObjectIdType>(TableMetadata::Column::DATA_TYPE_ID, data_type_id);
+
+            // nullable
+            column.put<bool>(TableMetadata::Column::NULLABLE, t->nullable());
+
+            // direction
+            auto it = directions.find(ordinal_position);
+            if (it != directions.end()) {
+                column.put<uint64_t>(TableMetadata::Column::DIRECTION,
+                                     it->second == shakujo::common::core::Direction::ASCENDANT ? 1 : 2);
+            } else {
+                column.put<uint64_t>(TableMetadata::Column::DIRECTION, 0);
+            }
+
+            // default
+            column.put(TableMetadata::Column::DEFAULT, to_string(c.default_value()).c_str());
+
+            columns.push_back(std::make_pair("", column));
+            ordinal_position++;
+        }
+        new_table.add_child(TableMetadata::COLUMNS_NODE, columns);
+
+        root.add_child(TableMetadata::TABLES_NODE, new_table);
+    }
+
+    if (TableMetadata::save(FLAGS_dbname, root) != ErrorCode::OK) {
+        std::abort();
+    }
+#endif
 }
 
 }  // ogawayama::server

@@ -24,6 +24,10 @@
 #include "ogawayama/stub/error_code.h"
 #include "ogawayama/stub/Command.h"
 
+#include "manager/message/receiver.h"
+#include "manager/message/message.h"
+#include "manager/message/status.h"
+
 using MetadataPtr = ogawayama::stub::Metadata const *;
 using TYPE = ogawayama::stub::Metadata::ColumnType::Type;
 using ERROR_CODE = ogawayama::stub::ErrorCode;
@@ -155,7 +159,7 @@ namespace ogawayama::stub {
 /**
  * @brief Information about a transaction.
  */
-class Transaction {
+class Transaction : public manager::message::Receiver {
 public:
     /**
      * @brief Construct a new object.
@@ -232,7 +236,7 @@ public:
      * @brief recieve a command issued by the frontend, and then process it
      * @return error code defined in error_code.h
      */
-    ErrorCode message(Command&);
+    manager::message::Status receive_message(manager::message::Message *);
 
 private:
     class Impl;
