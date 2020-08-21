@@ -50,7 +50,7 @@ TEST_F(PrepareTest, use_executable_statement) {
 
     EXPECT_EQ(ERROR_CODE::OK, connection->begin(transaction));
 
-    EXPECT_EQ(ERROR_CODE::OK, transaction->execute_create_table(
+    EXPECT_EQ(ERROR_CODE::OK, transaction->execute_statement(
                                                              "CREATE TABLE T2 ("
                                                              "C1 INT NOT NULL PRIMARY KEY, "
                                                              "C2 DOUBLE NOT NULL, "
@@ -145,7 +145,7 @@ TEST_F(PrepareTest, mixing_executable_statement) {
 
     EXPECT_EQ(ERROR_CODE::OK, connection->begin(transaction));
 
-    EXPECT_EQ(ERROR_CODE::OK, transaction->execute_create_table(
+    EXPECT_EQ(ERROR_CODE::OK, transaction->execute_statement(
                                                              "CREATE TABLE T3 ("
                                                              "C1 INT NOT NULL PRIMARY KEY, "
                                                              "C2 DOUBLE NOT NULL, "
@@ -248,7 +248,7 @@ TEST_F(PrepareTest, fetch_metadata) {
 
     EXPECT_EQ(ERROR_CODE::OK, connection->begin(transaction));
 
-    EXPECT_EQ(ERROR_CODE::OK, transaction->execute_create_table(
+    EXPECT_EQ(ERROR_CODE::OK, transaction->execute_statement(
                                                              "CREATE TABLE T5 ("
                                                              "C1 INT NOT NULL PRIMARY KEY, "
                                                              "C2 DOUBLE NOT NULL, "
@@ -359,7 +359,7 @@ TEST_F(PrepareTest, passing_multiple_row) {
 
     EXPECT_EQ(ERROR_CODE::OK, connection->begin(transaction));
 
-    EXPECT_EQ(ERROR_CODE::OK, transaction->execute_create_table(
+    EXPECT_EQ(ERROR_CODE::OK, transaction->execute_statement(
                                                              "CREATE TABLE T5 ("
                                                              "C1 INT NOT NULL PRIMARY KEY, "
                                                              "C2 DOUBLE NOT NULL"

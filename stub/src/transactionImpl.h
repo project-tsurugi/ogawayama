@@ -82,10 +82,11 @@ public:
     ErrorCode rollback();
 
     /**
-     * @brief recieve a command issued by the frontend, and then process it
+     * @brief relay a create tabe message from the frontend to the server
+     * @param table id given by the frontend
      * @return error code defined in error_code.h
      */
-    ErrorCode message(Command&);
+    ErrorCode create_table(std::size_t);
 
     auto get_channel() const { return channel_; }
 

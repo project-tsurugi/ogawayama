@@ -490,9 +490,11 @@ constexpr std::string_view type_name(CommandMessage::Type type) {
     case CommandMessage::Type::NEXT: return "NEXT";
     case CommandMessage::Type::COMMIT: return "COMMIT";
     case CommandMessage::Type::ROLLBACK: return "ROLLBACK";
+    case CommandMessage::Type::CREATE_TABLE: return "CREATE_TABLE";
     case CommandMessage::Type::PREPARE: return "PREPARE";
     case CommandMessage::Type::EXECUTE_PREPARED_STATEMENT: return "EXECUTE_PREPARED_STATEMENT";
     case CommandMessage::Type::EXECUTE_PREPARED_QUERY: return "EXECUTE_PREPARED_QUERY";
+    case CommandMessage::Type::EXECUTE_CREATE_TABLE: return "EXECUTE_CREATE_TABLE(v1 only)";
     case CommandMessage::Type::TERMINATE: return "TERMINATE";
     case CommandMessage::Type::DUMP_DATABASE: return "DUMP_DATABASE";
     case CommandMessage::Type::LOAD_DATABASE: return "LOAD_DATABASE";

@@ -151,16 +151,14 @@ ErrorCode Transaction::Impl::rollback()
 }
 
 /**
- * @brief recieve a command issued by the frontend, and then process it
+ * @brief relay a create tabe message from the frontend to the server
+ * @param table id given by the frontend
  * @return error code defined in error_code.h
  */
-ErrorCode Transaction::Impl::message(Command& com)
+ErrorCode Transaction::Impl::create_table(std::size_t id)
 {
-    if (com.get_command_type_name() == COMMAND_TYPE_NANE_CREATE_TABLE) {
-        channel_->send_req(ogawayama::common::CommandMessage::Type::CREATE_TABLE, com.get_object_id());
-        return channel_->recv_ack();
-    }
-    return ErrorCode::INVALID_PARAMETER;
+    channel_->send_req(ogawayama::common::CommandMessage::Type::CREATE_TABLE, id);
+    return channel_->recv_ack();
 }
 
 /**
@@ -213,7 +211,15 @@ ErrorCode Transaction::rollback()
 
 manager::message::Status Transaction::receive_message(manager::message::Message *msg)
 {
-    return manager::message::Status(manager::message::ErrorCode::SUCCESS, 0);
+    switch(msg->get_id()){
+    case manager::message::MessageId::CREATE_TABLE:
+        {
+            if(impl_->create_table(static_cast<std::size_t>(msg->get_object_id())) == ErrorCode::OK) {
+                return manager::message::Status(manager::message::ErrorCode::SUCCESS, static_cast<int>(manager::message::ErrorCode::SUCCESS));
+            }
+        }
+    }
+    return manager::message::Status(manager::message::ErrorCode::FAILURE, static_cast<int>(manager::message::ErrorCode::FAILURE));
 }
 
 }  // namespace ogawayama::stub
