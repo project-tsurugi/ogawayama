@@ -26,6 +26,7 @@
 #include "manager/metadata/tables.h"
 #include "manager/metadata/metadata.h"
 #include "manager/metadata/error_code.h"
+#include "manager/metadata/datatypes.h"
 
 namespace ogawayama::server {
 
