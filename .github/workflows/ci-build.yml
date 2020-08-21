@@ -62,10 +62,10 @@ jobs:
           cmake -DCMAKE_BUILD_TYPE=${BUILD_TYPE} -DSHARKSFIN_IMPLEMENTATION=memory -DFORCE_INSTALL_RPATH=ON -DFIXED_PAYLOAD_SIZE=ON -DBUILD_TESTS=OFF -DBUILD_DOCUMENTS=OFF -DBUILD_EXAMPLES=OFF -DCMAKE_INSTALL_PREFIX=${GITHUB_WORKSPACE}/.local -DCMAKE_EXPORT_COMPILE_COMMANDS=ON ..
           cmake --build . --target install --clean-first -- -j8
 
-      - id: Install_metadata_manager
-        name: Install_metadata_manager
+      - id: Install_manager
+        name: Install_manager
         run: |
-          cd third_party/manager/metadata-manager
+          cd third_party/manager
           mkdir -p build
           cd build
           rm -f CMakeCache.txt
