@@ -390,184 +390,118 @@ bool Worker::execute_prepared_query(std::size_t sid, std::size_t rid)
     return true;
 }
 
-
-manager::metadata::ErrorCode display_table_metadata_object(const boost::property_tree::ptree& table)
+void Worker::deploy_metadata(std::size_t table_id)
 {
-    using namespace manager::metadata;
-    using namespace boost::property_tree;
+    using namespace shakujo::common::schema;
+    using namespace shakujo::common::core;
 
-    ErrorCode error = ErrorCode::OK;
-
-    auto datatypes = std::make_unique<DataTypes>(FLAGS_dbname);
-    error = datatypes->Metadata::load();
-    if (error != ErrorCode::OK) {
-        std::cerr << "error at " << __LINE__ << std::endl;
-        return error;
-    }
-
-    ptree datatype;
-
-    // table metadata
-    std::cout << "--- table ---" << std::endl;
-    boost::optional<ObjectIdType> id =
-        table.get_optional<ObjectIdType>(Tables::ID);
-    if (id) {
-        std::cout << "id : " << id.get() << std::endl;
-    }
-
-    boost::optional<std::string> name =
-        table.get_optional<std::string>(Tables::NAME);
-    if (name) {
-        std::cout << "name : " << name << std::endl;
-    }
-
-    ptree primary_keys = table.get_child(Tables::PRIMARY_KEY_NODE);
-    BOOST_FOREACH (const ptree::value_type& node, primary_keys) {
-        std::cout << "primary_key : " << node.second.data() << std::endl;
-    }
-
-    // column metadata
-    std::cout << "--- columns ---" << std::endl;
-    BOOST_FOREACH (const ptree::value_type& node, table.get_child(Tables::COLUMNS_NODE)) {
-        const ptree& column = node.second;
-
-        boost::optional<ObjectIdType> id =
-            column.get_optional<ObjectIdType>(Tables::Column::ID);
-        if (id) {
-            std::cout << "id : " << id << std::endl;
-        }
-
-        boost::optional<ObjectIdType> table_id =
-            column.get_optional<ObjectIdType>(Tables::Column::TABLE_ID);
-        if (table_id) {
-            std::cout << "table id : " << table_id << std::endl;
-        }
-
-        boost::optional<std::string> name =
-            column.get_optional<std::string>(Tables::Column::NAME);
-        if (name) {
-            std::cout << "name : " << name << std::endl;
-        }
-
-        boost::optional<uint64_t> ordinal_position =
-            column.get_optional<uint64_t>(Tables::Column::ORDINAL_POSITION);
-        if (ordinal_position) {
-            std::cout << "ordinal position : " << ordinal_position << std::endl;
-        }
-
-        boost::optional<ObjectIdType> data_type_id =
-            column.get_optional<ObjectIdType>(Tables::Column::DATA_TYPE_ID);
-        if (data_type_id) {
-            std::cout << "datatype id : " << data_type_id << std::endl;
-            datatypes->get(data_type_id.get(), datatype);
-            std::cout << "datatype name : "
-            << datatype.get<std::string>(DataTypes::NAME) << std::endl;
-        }
-
-        boost::optional<uint64_t> data_length =
-            column.get_optional<uint64_t>(Tables::Column::DATA_LENGTH);
-        if (data_length) {
-            std::cout << "data length : " << data_length << std::endl;
-        }
-
-        boost::optional<bool> varying =
-            column.get_optional<bool>(Tables::Column::VARYING);
-        if (varying) {
-            std::cout << "varying : " << varying << std::endl;
-        }
-
-        boost::optional<bool> nullable =
-            column.get_optional<bool>(Tables::Column::NULLABLE);
-        if (nullable) {
-            std::cout << "nullable : " << nullable << std::endl;
-        }
-
-        boost::optional<std::string> default_expr =
-            column.get_optional<std::string>(Tables::Column::DEFAULT);
-        if (default_expr) {
-            std::cout << "default : " << default_expr << std::endl;
-        }
-
-        boost::optional<uint64_t> direction =
-            column.get_optional<uint64_t>(Tables::Column::DIRECTION);
-        if (direction) {
-            std::cout << "direction : " << direction << std::endl;
-        }
-
-        std::cout << "---------------" << std::endl;
-    }
-
-    return ErrorCode::OK;;
-}
-
-void Worker::deploy_metadata(std::size_t id)
-{
     manager::metadata::ErrorCode error = manager::metadata::ErrorCode::UNKNOWN;
 
-    auto tables = std::make_unique<manager::metadata::Tables>(FLAGS_dbname);   // use Template-Method.
-    error = tables->Metadata::load();
+    auto datatypes = std::make_unique<manager::metadata::DataTypes>(FLAGS_dbname);
+    error = datatypes->Metadata::load();
     if (error != manager::metadata::ErrorCode::OK) {
+        channel_->send_ack(ERROR_CODE::UNKNOWN);
         return;
     }
-
-    std::cout << "--- table-metadata to read. ---" << std::endl;
-
-    boost::property_tree::ptree table;
-    if ((error = tables->get(id, table)) == manager::metadata::ErrorCode::OK) {
-        display_table_metadata_object(table);
-        std::cout << std::endl;
-    }
-
-#if 0
-    boost::property_tree::ptree root;
-    manager::metadata::ErrorCode error = manager::metadata::Tables::load(FLAGS_dbname.c_str() ,root);
+    auto tables = std::make_unique<manager::metadata::Tables>(FLAGS_dbname);
+    error = tables->Metadata::load();
     if (error != manager::metadata::ErrorCode::OK) {
         channel_->send_ack(ERROR_CODE::UNKNOWN);
         return;
     }
 
-    boost::property_tree::ptree tables = root.get_child(manager::metadata::Tables::TABLES_NODE);
-    BOOST_FOREACH (const boost::property_tree::ptree::value_type& node, tables) {
-        const boost::property_tree::ptree& table = node.second;
+    boost::property_tree::ptree table;
+    if ((error = tables->get(table_id, table)) == manager::metadata::ErrorCode::OK) {
 
-        boost::optional<std::string> name =
-        table.get_optional<std::string>(manager::metadata::Tables::NAME);
-        if (!name) {
+        // table metadata
+        auto id = table.get_optional<manager::metadata::ObjectIdType>(manager::metadata::Tables::ID);
+        auto table_name = table.get_optional<std::string>(manager::metadata::Tables::NAME);
+        if (!id || !table_name || (id.value() != table_id)) {
             channel_->send_ack(ERROR_CODE::UNKNOWN);
             return;
         }
-
+        
         boost::property_tree::ptree primary_keys = table.get_child(manager::metadata::Tables::PRIMARY_KEY_NODE);
+        std::map<std::size_t, std::unique_ptr<IndexInfo::Column>> pk_columns;
         BOOST_FOREACH (const boost::property_tree::ptree::value_type& node, primary_keys) {
             const boost::property_tree::ptree& value = node.second;
             boost::optional<uint64_t> primary_key = value.get_value_optional<uint64_t>();
+            pk_columns.at(primary_key.value()) = nullptr;
         }
 
-        boost::property_tree::ptree columns = table.get_child(manager::metadata::Tables::COLUMNS_NODE);
-        BOOST_FOREACH (const boost::property_tree::ptree::value_type& node, columns) {
+        // column metadata
+        std::map<std::size_t, TableInfo::Column> columns_map;
+        BOOST_FOREACH (const boost::property_tree::ptree::value_type& node, table.get_child(manager::metadata::Tables::COLUMNS_NODE)) {
             const boost::property_tree::ptree& column = node.second;
-
-            boost::optional<std::string> name =
-                column.get_optional<std::string>(manager::metadata::Tables::Column::NAME);
-            if (!name) {
+            
+            auto data_length = column.get_optional<uint64_t>(manager::metadata::Tables::Column::DATA_LENGTH);
+            auto nullable = column.get_optional<bool>(manager::metadata::Tables::Column::NULLABLE);
+            auto data_type_id = column.get_optional<manager::metadata::ObjectIdType>(manager::metadata::Tables::Column::DATA_TYPE_ID);
+            auto name = column.get_optional<std::string>(manager::metadata::Tables::Column::NAME);
+            auto ordinal_position = column.get_optional<uint64_t>(manager::metadata::Tables::Column::ORDINAL_POSITION);
+            if (!data_length || !nullable || !data_type_id || !name || !ordinal_position) {
                 channel_->send_ack(ERROR_CODE::UNKNOWN);
                 return;
             }
+
+            auto itr = pk_columns.find(ordinal_position.value());
+            if (itr != pk_columns.end()) {
+                auto direction = column.get_optional<uint64_t>(manager::metadata::Tables::Column::DIRECTION);
+                Direction shakujo_direction;
+                if (direction) {
+                    shakujo_direction = direction.value() ? Direction::ASCENDANT : Direction::DESCENDANT;
+                } else {
+                    shakujo_direction = Direction::ASCENDANT;
+                }
+                itr->second = std::make_unique<IndexInfo::Column>(name.value(), shakujo_direction);
+            }
+
+            auto shakujo_nullable = nullable.value() ? Type::Nullity::NULLABLE : Type::Nullity::NEVER_NULL;
+            switch(data_type_id.value()) {  // See manager/metadata-manager/src/datatypes.cpp for specific values of data_type_id
+            case 4:  // INT32
+            case 6:  // INT64
+                {
+                    auto shakujo_type = std::make_unique<type::Int>(data_length.value(), shakujo_nullable);
+                    columns_map.at(ordinal_position.value()) = TableInfo::Column(name.value(), std::move(shakujo_type));
+                }
+            case 8:  // FLOAT32
+            case 9:  // FLOAT64
+                {
+                    auto shakujo_type = std::make_unique<type::Float>(data_length.value(), shakujo_nullable);
+                    columns_map.at(ordinal_position.value()) = TableInfo::Column(name.value(), std::move(shakujo_type));
+                }
+            case 13:  // CHAR
+            case 14:  // VARCHAR
+                {
+                    auto varying = column.get_optional<bool>(manager::metadata::Tables::Column::VARYING);
+                    if (!varying) {
+                        channel_->send_ack(ERROR_CODE::UNKNOWN);
+                        return;
+                    }
+                    auto shakujo_type = std::make_unique<type::Char>(varying.value(), data_length.value(), shakujo_nullable);
+                    columns_map.at(ordinal_position.value()) = TableInfo::Column(name.value(), std::move(shakujo_type));
+                }
+            }
         }
+
+        std::vector<TableInfo::Column> shakujo_columns;
+        for (const auto& [key, value] : columns_map) {
+            shakujo_columns.emplace_back(value);
+        }
+        std::vector<IndexInfo::Column> shakujo_pk_columns;
+        for (const auto& [key, value] : pk_columns) {
+            shakujo_pk_columns.emplace_back(*value);
+        }
+
+        TableInfo table { table_name.value(), shakujo_columns, shakujo_pk_columns };
+        
+        auto provider = db_->provider();
+        provider->add(table);
+
+        channel_->send_ack(ERROR_CODE::OK);
+    } else {
+        channel_->send_ack(ERROR_CODE::UNKNOWN);
     }
-
-    using namespace shakujo::common::schema;
-    using namespace shakujo::common::core;
-
-    TableInfo::Column columnCI16 {"CI16", std::make_unique<type::Int>(16U, Type::Nullity::NEVER_NULL)};
-    std::vector<TableInfo::Column> columns;
-    columns.emplace_back(columnCI16);
-
-    TableInfo table { "T5", columns };
-    auto provider = db_->provider();
-    
-    provider->add(table);
-#endif
 }
 
 }  // ogawayama::server
