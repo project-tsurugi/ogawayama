@@ -395,7 +395,7 @@ void Worker::deploy_metadata(std::size_t table_id)
     using namespace shakujo::common::schema;
     using namespace shakujo::common::core;
 
-    manager::metadata::ErrorCode error = manager::metadata::ErrorCode::UNKNOWN;
+    manager::metadata::ErrorCode error;
 
     auto datatypes = std::make_unique<manager::metadata::DataTypes>(FLAGS_dbname);
     error = datatypes->Metadata::load();
@@ -420,26 +420,25 @@ void Worker::deploy_metadata(std::size_t table_id)
             channel_->send_ack(ERROR_CODE::UNKNOWN);
             return;
         }
-        
+
         boost::property_tree::ptree primary_keys = table.get_child(manager::metadata::Tables::PRIMARY_KEY_NODE);
         std::map<std::size_t, std::unique_ptr<IndexInfo::Column>> pk_columns;
         BOOST_FOREACH (const boost::property_tree::ptree::value_type& node, primary_keys) {
             const boost::property_tree::ptree& value = node.second;
             boost::optional<uint64_t> primary_key = value.get_value_optional<uint64_t>();
-            pk_columns.at(primary_key.value()) = nullptr;
+            pk_columns[primary_key.value()] = nullptr;
         }
 
         // column metadata
-        std::map<std::size_t, TableInfo::Column> columns_map;
+        std::map<std::size_t, std::unique_ptr<TableInfo::Column>> columns_map;
         BOOST_FOREACH (const boost::property_tree::ptree::value_type& node, table.get_child(manager::metadata::Tables::COLUMNS_NODE)) {
             const boost::property_tree::ptree& column = node.second;
             
-            auto data_length = column.get_optional<uint64_t>(manager::metadata::Tables::Column::DATA_LENGTH);
             auto nullable = column.get_optional<bool>(manager::metadata::Tables::Column::NULLABLE);
             auto data_type_id = column.get_optional<manager::metadata::ObjectIdType>(manager::metadata::Tables::Column::DATA_TYPE_ID);
             auto name = column.get_optional<std::string>(manager::metadata::Tables::Column::NAME);
             auto ordinal_position = column.get_optional<uint64_t>(manager::metadata::Tables::Column::ORDINAL_POSITION);
-            if (!data_length || !nullable || !data_type_id || !name || !ordinal_position) {
+            if (!nullable || !data_type_id || !name || !ordinal_position) {
                 channel_->send_ack(ERROR_CODE::UNKNOWN);
                 return;
             }
@@ -455,38 +454,57 @@ void Worker::deploy_metadata(std::size_t table_id)
                 }
                 itr->second = std::make_unique<IndexInfo::Column>(name.value(), shakujo_direction);
             }
-
             auto shakujo_nullable = nullable.value() ? Type::Nullity::NULLABLE : Type::Nullity::NEVER_NULL;
+
+            std::size_t data_length_value{};
             switch(data_type_id.value()) {  // See manager/metadata-manager/src/datatypes.cpp for specific values of data_type_id
+            case 4:  // INT32
+            case 8:  // FLOAT32
+                data_length_value = 32; break;
+            case 6:  // INT64
+            case 9:  // FLOAT64
+                data_length_value = 64; break;
+            }
+
+            switch(data_type_id.value()) {
             case 4:  // INT32
             case 6:  // INT64
                 {
-                    auto shakujo_type = std::make_unique<type::Int>(data_length.value(), shakujo_nullable);
-                    columns_map.at(ordinal_position.value()) = TableInfo::Column(name.value(), std::move(shakujo_type));
+                    auto shakujo_type = std::make_unique<type::Int>(data_length_value, shakujo_nullable);
+                    columns_map[ordinal_position.value()] = std::make_unique<TableInfo::Column>(name.value(), std::move(shakujo_type));
                 }
+                break;
             case 8:  // FLOAT32
             case 9:  // FLOAT64
                 {
-                    auto shakujo_type = std::make_unique<type::Float>(data_length.value(), shakujo_nullable);
-                    columns_map.at(ordinal_position.value()) = TableInfo::Column(name.value(), std::move(shakujo_type));
+                    auto shakujo_type = std::make_unique<type::Float>(data_length_value, shakujo_nullable);
+                    columns_map[ordinal_position.value()] = std::make_unique<TableInfo::Column>(name.value(), std::move(shakujo_type));
                 }
+                break;
             case 13:  // CHAR
             case 14:  // VARCHAR
                 {
+                    auto data_length = column.get_optional<uint64_t>(manager::metadata::Tables::Column::DATA_LENGTH);
                     auto varying = column.get_optional<bool>(manager::metadata::Tables::Column::VARYING);
-                    if (!varying) {
+                    if (!data_length || !varying) {
                         channel_->send_ack(ERROR_CODE::UNKNOWN);
                         return;
                     }
                     auto shakujo_type = std::make_unique<type::Char>(varying.value(), data_length.value(), shakujo_nullable);
-                    columns_map.at(ordinal_position.value()) = TableInfo::Column(name.value(), std::move(shakujo_type));
+                    columns_map[ordinal_position.value()] = std::make_unique<TableInfo::Column>(name.value(), std::move(shakujo_type));
+                }
+                break;
+            default:
+                {
+                    channel_->send_ack(ERROR_CODE::UNKNOWN);
+                    return;
                 }
             }
         }
 
         std::vector<TableInfo::Column> shakujo_columns;
         for (const auto& [key, value] : columns_map) {
-            shakujo_columns.emplace_back(value);
+            shakujo_columns.emplace_back(*value);
         }
         std::vector<IndexInfo::Column> shakujo_pk_columns;
         for (const auto& [key, value] : pk_columns) {
