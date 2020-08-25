@@ -1,0 +1,51 @@
+{
+    "formatVersion": "1",
+    "generation": "1",
+    "tables": [
+        {
+            "name": "table_1",
+            "namespace": "public",
+            "primaryKey": [
+                "1",
+                "2"
+            ],
+            "columns": [
+                {
+                    "name": "column_1",
+                    "ordinalPosition": "1",
+                    "dataTypeId": "8",
+                    "dataLength": "1",
+                    "varying": "false",
+                    "nullable": "false",
+                    "default": "default_expr1",
+                    "direction": "1",
+                    "id": "1",
+                    "tableId": "1"
+                },
+                {
+                    "name": "column_2",
+                    "ordinalPosition": "2",
+                    "dataTypeId": "14",
+                    "dataLength": "8",
+                    "varying": "true",
+                    "nullable": "true",
+                    "direction": "2",
+                    "id": "2",
+                    "tableId": "1"
+                },
+                {
+                    "name": "column_3",
+                    "ordinalPosition": "3",
+                    "dataTypeId": "6",
+                    "dataLength": "1",
+                    "varying": "false",
+                    "nullable": "true",
+                    "default": "default_expr2",
+                    "id": "3",
+                    "tableId": "1"
+                }
+            ],
+            "id": "1"
+        }
+    ]
+}
