@@ -447,15 +447,15 @@ void Worker::deploy_metadata(std::size_t table_id)
             if (itr != pk_columns.end()) {
                 auto direction = column.get_optional<uint64_t>(manager::metadata::Tables::Column::DIRECTION);
                 Direction shakujo_direction;
-                if (direction) {
-                    shakujo_direction = direction.value() ? Direction::ASCENDANT : Direction::DESCENDANT;
+                if (direction) {  // 0: DEFAULT, 1: ASCENDANT, 2: DESCENDANT (see manager/metadata-manager/docs/table_metadata.md)
+                    shakujo_direction = (direction.value() == 2) ? Direction::DESCENDANT : Direction::ASCENDANT;
                 } else {
                     shakujo_direction = Direction::ASCENDANT;
                 }
                 itr->second = std::make_unique<IndexInfo::Column>(name.value(), shakujo_direction);
             }
-            auto shakujo_nullable = nullable.value() ? Type::Nullity::NULLABLE : Type::Nullity::NEVER_NULL;
 
+            auto shakujo_nullable = nullable.value() ? Type::Nullity::NULLABLE : Type::Nullity::NEVER_NULL;
             std::size_t data_length_value{};
             switch(data_type_id.value()) {  // See manager/metadata-manager/src/datatypes.cpp for specific values of data_type_id
             case 4:  // INT32
