@@ -214,12 +214,12 @@ manager::message::Status Transaction::receive_message(manager::message::Message 
     switch(msg->get_id()){
     case manager::message::MessageId::CREATE_TABLE:
         {
-            if(impl_->create_table(static_cast<std::size_t>(msg->get_object_id())) == ErrorCode::OK) {
-                return manager::message::Status(manager::message::ErrorCode::SUCCESS, static_cast<int>(manager::message::ErrorCode::SUCCESS));
-            }
+            ErrorCode reply = impl_->create_table(static_cast<std::size_t>(msg->get_object_id()));
+            return manager::message::Status(reply == ErrorCode::OK ? manager::message::ErrorCode::SUCCESS : manager::message::ErrorCode::FAILURE,
+                                            static_cast<int>(reply));
         }
     }
-    return manager::message::Status(manager::message::ErrorCode::FAILURE, static_cast<int>(manager::message::ErrorCode::FAILURE));
+    return manager::message::Status(manager::message::ErrorCode::FAILURE, static_cast<int>(ErrorCode::UNSUPPORTED));
 }
 
 }  // namespace ogawayama::stub
