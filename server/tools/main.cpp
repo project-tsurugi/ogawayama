@@ -72,7 +72,8 @@ int main(int argc, char **argv) {
         std::cerr << "set schema \"" << FLAGS_schema << "\"" << std::endl;
         err = transaction->get_impl()->create_table(static_cast<std::size_t>(FLAGS_schema));
         if (err != ERROR_CODE::OK) { prt_err(__LINE__, err); return 1; }
-        transaction->commit();
+        err = transaction->commit();
+        if (err != ERROR_CODE::OK) { prt_err(__LINE__, err); return 1; }
     }
 
     if (FLAGS_statement != "") {
@@ -87,7 +88,8 @@ int main(int argc, char **argv) {
         std::cerr << "execute_statement \"" << FLAGS_statement << "\"" << std::endl;
         err = transaction->execute_statement(FLAGS_statement);
         if (err != ERROR_CODE::OK) { prt_err(__LINE__, err); return 1; }
-        transaction->commit();
+        err = transaction->commit();
+        if (err != ERROR_CODE::OK) { prt_err(__LINE__, err); return 1; }
     }
 
     if (FLAGS_query != "") {
@@ -186,7 +188,8 @@ int main(int argc, char **argv) {
             }
             case ERROR_CODE::END_OF_ROW: {
                 std::cout << "=== end of row ===" << std::endl;
-                transaction->commit();
+                err = transaction->commit();
+                if (err != ERROR_CODE::OK) { prt_err(__LINE__, err); return 1; }
                 goto finish;
             }
             default: {
