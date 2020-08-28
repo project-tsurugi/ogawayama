@@ -397,10 +397,15 @@ void Worker::deploy_metadata(std::size_t table_id)
 
     manager::metadata::ErrorCode error;
 
+    if (!transaction_) {
+        transaction_ = db_->create_transaction();
+        context_ = transaction_->context();
+    }
+
     auto datatypes = std::make_unique<manager::metadata::DataTypes>(FLAGS_dbname);
     error = datatypes->Metadata::load();
     if (error != manager::metadata::ErrorCode::OK) {
-        channel_->send_ack(ERROR_CODE::UNKNOWN);
+        channel_->send_ack(ERROR_CODE::FILE_IO_ERROR);
         return;
     }
     auto tables = std::make_unique<manager::metadata::Tables>(FLAGS_dbname);
@@ -417,7 +422,7 @@ void Worker::deploy_metadata(std::size_t table_id)
         auto id = table.get_optional<manager::metadata::ObjectIdType>(manager::metadata::Tables::ID);
         auto table_name = table.get_optional<std::string>(manager::metadata::Tables::NAME);
         if (!id || !table_name || (id.value() != table_id)) {
-            channel_->send_ack(ERROR_CODE::UNKNOWN);
+            channel_->send_ack(ERROR_CODE::INVALID_PARAMETER);
             return;
         }
 
@@ -439,7 +444,7 @@ void Worker::deploy_metadata(std::size_t table_id)
             auto name = column.get_optional<std::string>(manager::metadata::Tables::Column::NAME);
             auto ordinal_position = column.get_optional<uint64_t>(manager::metadata::Tables::Column::ORDINAL_POSITION);
             if (!nullable || !data_type_id || !name || !ordinal_position) {
-                channel_->send_ack(ERROR_CODE::UNKNOWN);
+                channel_->send_ack(ERROR_CODE::INVALID_PARAMETER);
                 return;
             }
 
@@ -457,7 +462,8 @@ void Worker::deploy_metadata(std::size_t table_id)
 
             auto shakujo_nullable = nullable.value() ? Type::Nullity::NULLABLE : Type::Nullity::NEVER_NULL;
             std::size_t data_length_value{};
-            switch(data_type_id.value()) {  // See manager/metadata-manager/src/datatypes.cpp for specific values of data_type_id
+            auto data_type_id_value = data_type_id.value();
+            switch(data_type_id_value) {  // See manager/metadata-manager/src/datatypes.cpp for specific values of data_type_id
             case 4:  // INT32
             case 8:  // FLOAT32
                 data_length_value = 32; break;
@@ -466,7 +472,7 @@ void Worker::deploy_metadata(std::size_t table_id)
                 data_length_value = 64; break;
             }
 
-            switch(data_type_id.value()) {
+            switch(data_type_id_value) {
             case 4:  // INT32
             case 6:  // INT64
                 {
@@ -484,13 +490,29 @@ void Worker::deploy_metadata(std::size_t table_id)
             case 13:  // CHAR
             case 14:  // VARCHAR
                 {
-                    auto data_length = column.get_optional<uint64_t>(manager::metadata::Tables::Column::DATA_LENGTH);
                     auto varying = column.get_optional<bool>(manager::metadata::Tables::Column::VARYING);
-                    if (!data_length || !varying) {
-                        channel_->send_ack(ERROR_CODE::UNKNOWN);
+                    if(!varying) {
+                        channel_->send_ack(ERROR_CODE::INVALID_PARAMETER);
                         return;
                     }
-                    auto shakujo_type = std::make_unique<type::Char>(varying.value(), data_length.value(), shakujo_nullable);
+                    if((!varying.value() && (data_type_id_value != 13)) ||
+                       (varying.value() && (data_type_id_value != 14))) {
+                        channel_->send_ack(ERROR_CODE::INVALID_PARAMETER);
+                        return;
+                    }
+
+                    auto data_length = column.get_optional<uint64_t>(manager::metadata::Tables::Column::DATA_LENGTH);
+                    if (!data_length) {
+                        if(varying.value()) {
+                            channel_->send_ack(ERROR_CODE::UNSUPPORTED);
+                            return;
+                        }
+                        data_length_value = 1;  // CHAR
+                    } else {
+                        data_length_value = data_length.value();
+                    }
+                    
+                    auto shakujo_type = std::make_unique<type::Char>(varying.value(), data_length_value, shakujo_nullable);
                     columns_map[ordinal_position.value()] = std::make_unique<TableInfo::Column>(name.value(), std::move(shakujo_type));
                 }
                 break;

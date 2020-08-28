@@ -63,6 +63,11 @@ enum class ErrorCode {
     INVALID_PARAMETER,
 
     /**
+     * @brief file io error.
+     */
+    FILE_IO_ERROR,
+
+    /**
      * @brief unknown error.
      */
     UNKNOWN,
