@@ -462,33 +462,33 @@ void Worker::deploy_metadata(std::size_t table_id)
 
             auto shakujo_nullable = nullable.value() ? Type::Nullity::NULLABLE : Type::Nullity::NEVER_NULL;
             std::size_t data_length_value{};
-            auto data_type_id_value = data_type_id.value();
+            auto data_type_id_value = static_cast<manager::metadata::DataTypes::DataTypesId>(data_type_id.value());
             switch(data_type_id_value) {  // See manager/metadata-manager/src/datatypes.cpp for specific values of data_type_id
-            case 4:  // INT32
-            case 8:  // FLOAT32
+            case manager::metadata::DataTypes::DataTypesId::INT32:
+            case manager::metadata::DataTypes::DataTypesId::FLOAT32:
                 data_length_value = 32; break;
-            case 6:  // INT64
-            case 9:  // FLOAT64
+            case manager::metadata::DataTypes::DataTypesId::INT64:
+            case manager::metadata::DataTypes::DataTypesId::FLOAT64:
                 data_length_value = 64; break;
             }
 
             switch(data_type_id_value) {
-            case 4:  // INT32
-            case 6:  // INT64
+            case manager::metadata::DataTypes::DataTypesId::INT32:
+            case manager::metadata::DataTypes::DataTypesId::INT64:
                 {
                     auto shakujo_type = std::make_unique<type::Int>(data_length_value, shakujo_nullable);
                     columns_map[ordinal_position.value()] = std::make_unique<TableInfo::Column>(name.value(), std::move(shakujo_type));
                 }
                 break;
-            case 8:  // FLOAT32
-            case 9:  // FLOAT64
+            case manager::metadata::DataTypes::DataTypesId::FLOAT32:
+            case manager::metadata::DataTypes::DataTypesId::FLOAT64:
                 {
                     auto shakujo_type = std::make_unique<type::Float>(data_length_value, shakujo_nullable);
                     columns_map[ordinal_position.value()] = std::make_unique<TableInfo::Column>(name.value(), std::move(shakujo_type));
                 }
                 break;
-            case 13:  // CHAR
-            case 14:  // VARCHAR
+            case manager::metadata::DataTypes::DataTypesId::CHAR:
+            case manager::metadata::DataTypes::DataTypesId::VARCHAR:
                 {
                     auto varying = column.get_optional<bool>(manager::metadata::Tables::Column::VARYING);
                     if(!varying) {
@@ -496,8 +496,8 @@ void Worker::deploy_metadata(std::size_t table_id)
                         return;
                     }
                     auto varying_value = varying.value();
-                    if((!varying_value && (data_type_id_value != 13)) ||
-                       (varying_value && (data_type_id_value != 14))) {
+                    if((!varying_value && (data_type_id_value != manager::metadata::DataTypes::DataTypesId::CHAR)) ||
+                       (varying_value && (data_type_id_value != manager::metadata::DataTypes::DataTypesId::VARCHAR))) {
                         channel_->send_ack(ERROR_CODE::INVALID_PARAMETER);
                         return;
                     }
