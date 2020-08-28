@@ -463,7 +463,7 @@ void Worker::deploy_metadata(std::size_t table_id)
             auto shakujo_nullable = nullable.value() ? Type::Nullity::NULLABLE : Type::Nullity::NEVER_NULL;
             std::size_t data_length_value{};
             auto data_type_id_value = static_cast<manager::metadata::DataTypes::DataTypesId>(data_type_id.value());
-            switch(data_type_id_value) {  // See manager/metadata-manager/src/datatypes.cpp for specific values of data_type_id
+            switch(data_type_id_value) {
             case manager::metadata::DataTypes::DataTypesId::INT32:
             case manager::metadata::DataTypes::DataTypesId::FLOAT32:
                 data_length_value = 32; break;
