@@ -495,15 +495,16 @@ void Worker::deploy_metadata(std::size_t table_id)
                         channel_->send_ack(ERROR_CODE::INVALID_PARAMETER);
                         return;
                     }
-                    if((!varying.value() && (data_type_id_value != 13)) ||
-                       (varying.value() && (data_type_id_value != 14))) {
+                    auto varying_value = varying.value();
+                    if((!varying_value && (data_type_id_value != 13)) ||
+                       (varying_value && (data_type_id_value != 14))) {
                         channel_->send_ack(ERROR_CODE::INVALID_PARAMETER);
                         return;
                     }
 
                     auto data_length = column.get_optional<uint64_t>(manager::metadata::Tables::Column::DATA_LENGTH);
                     if (!data_length) {
-                        if(varying.value()) {
+                        if(varying_value) {
                             channel_->send_ack(ERROR_CODE::UNSUPPORTED);
                             return;
                         }
@@ -512,7 +513,7 @@ void Worker::deploy_metadata(std::size_t table_id)
                         data_length_value = data_length.value();
                     }
                     
-                    auto shakujo_type = std::make_unique<type::Char>(varying.value(), data_length_value, shakujo_nullable);
+                    auto shakujo_type = std::make_unique<type::Char>(varying_value, data_length_value, shakujo_nullable);
                     columns_map[ordinal_position.value()] = std::make_unique<TableInfo::Column>(name.value(), std::move(shakujo_type));
                 }
                 break;
