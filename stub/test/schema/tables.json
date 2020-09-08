@@ -28,7 +28,7 @@
                     "dataTypeId": "14",
                     "dataLength": "8",
                     "varying": "true",
-                    "nullable": "true",
+                    "nullable": "false",
                     "direction": "2",
                     "id": "2",
                     "tableId": "1"

@@ -433,6 +433,10 @@ void Worker::deploy_metadata(std::size_t table_id)
             boost::optional<uint64_t> primary_key = value.get_value_optional<uint64_t>();
             pk_columns[primary_key.value()] = nullptr;
         }
+        if(pk_columns.empty()) {
+            channel_->send_ack(ERROR_CODE::INVALID_PARAMETER);
+            return;
+        }
 
         // column metadata
         std::map<std::size_t, std::unique_ptr<TableInfo::Column>> columns_map;
@@ -450,6 +454,10 @@ void Worker::deploy_metadata(std::size_t table_id)
 
             auto itr = pk_columns.find(ordinal_position.value());
             if (itr != pk_columns.end()) {
+                if(nullable.value()) {
+                    channel_->send_ack(ERROR_CODE::INVALID_PARAMETER);
+                    return;
+                }
                 auto direction = column.get_optional<uint64_t>(manager::metadata::Tables::Column::DIRECTION);
                 Direction shakujo_direction;
                 if (direction) {  // 0: DEFAULT, 1: ASCENDANT, 2: DESCENDANT (see manager/metadata-manager/docs/table_metadata.md)
