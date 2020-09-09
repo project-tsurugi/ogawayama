@@ -98,4 +98,20 @@ TEST_F(ApiTest, basic_flow) {
     EXPECT_EQ(ERROR_CODE::OK, transaction->commit());
 }
 
+TEST_F(ApiTest, register_twice) {
+    StubPtr stub;
+    ConnectionPtr connection;
+    TransactionPtr transaction;
+
+    EXPECT_EQ(ERROR_CODE::OK, make_stub(stub));
+
+    EXPECT_EQ(ERROR_CODE::OK, stub->get_connection(connection, 12));
+
+    EXPECT_EQ(ERROR_CODE::OK, connection->begin(transaction));
+
+    EXPECT_EQ(ERROR_CODE::OK, transaction->get_impl()->create_table(1));
+
+    EXPECT_EQ(ERROR_CODE::INVALID_PARAMETER, transaction->get_impl()->create_table(1));
+}
+
 }  // namespace ogawayama::testing

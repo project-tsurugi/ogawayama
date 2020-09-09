@@ -548,8 +548,12 @@ void Worker::deploy_metadata(std::size_t table_id)
         TableInfo table { table_name.value(), shakujo_columns, shakujo_pk_columns };
         
         auto provider = db_->provider();
-        provider->add(table);
-
+        try {
+            provider->add(table, false);
+        } catch (std::exception &ex) {
+            channel_->send_ack(ERROR_CODE::INVALID_PARAMETER);
+            return;
+        }
         channel_->send_ack(ERROR_CODE::OK);
     } else {
         channel_->send_ack(ERROR_CODE::UNKNOWN);
