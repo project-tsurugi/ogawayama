@@ -460,8 +460,11 @@ void Worker::deploy_metadata(std::size_t table_id)
                 }
                 auto direction = column.get_optional<uint64_t>(manager::metadata::Tables::Column::DIRECTION);
                 Direction shakujo_direction;
-                if (direction) {  // 0: DEFAULT, 1: ASCENDANT, 2: DESCENDANT (see manager/metadata-manager/docs/table_metadata.md)
-                    shakujo_direction = (direction.value() == 2) ? Direction::DESCENDANT : Direction::ASCENDANT;
+
+                if (direction) {
+                    auto direction_value = static_cast<manager::metadata::Tables::Column::Direction>(direction.value());
+                    shakujo_direction = (direction_value == manager::metadata::Tables::Column::Direction::DESCENDANT) ?
+                                            Direction::DESCENDANT : Direction::ASCENDANT;
                 } else {
                     shakujo_direction = Direction::ASCENDANT;
                 }
