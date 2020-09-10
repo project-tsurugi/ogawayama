@@ -411,7 +411,7 @@ void Worker::deploy_metadata(std::size_t table_id)
     auto tables = std::make_unique<manager::metadata::Tables>(FLAGS_dbname);
     error = tables->Metadata::load();
     if (error != manager::metadata::ErrorCode::OK) {
-        channel_->send_ack(ERROR_CODE::UNKNOWN);
+        channel_->send_ack(ERROR_CODE::FILE_IO_ERROR);
         return;
     }
 

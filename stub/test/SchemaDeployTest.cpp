@@ -114,4 +114,18 @@ TEST_F(ApiTest, register_twice) {
     EXPECT_EQ(ERROR_CODE::INVALID_PARAMETER, transaction->get_impl()->create_table(1));
 }
 
+TEST_F(ApiTest, nullable_pkey) {
+    StubPtr stub;
+    ConnectionPtr connection;
+    TransactionPtr transaction;
+
+    EXPECT_EQ(ERROR_CODE::OK, make_stub(stub));
+
+    EXPECT_EQ(ERROR_CODE::OK, stub->get_connection(connection, 12));
+
+    EXPECT_EQ(ERROR_CODE::OK, connection->begin(transaction));
+
+    EXPECT_EQ(ERROR_CODE::INVALID_PARAMETER, transaction->get_impl()->create_table(2));
+}
+
 }  // namespace ogawayama::testing
