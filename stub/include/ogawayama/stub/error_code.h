@@ -94,6 +94,7 @@ constexpr std::string_view error_name(ErrorCode code) {
     case ErrorCode::UNSUPPORTED: return "UNSUPPORTED";
     case ErrorCode::NO_TRANSACTION: return "NO_TRANSACTION";
     case ErrorCode::INVALID_PARAMETER: return "INVALID_PARAMETER";
+    case ErrorCode::FILE_IO_ERROR: return "FILE_IO_ERROR";
     case ErrorCode::UNKNOWN: return "UNKNOWN";
     case ErrorCode::SERVER_FAILURE: return "SERVER_FAILURE";
     case ErrorCode::TIMEOUT: return "TIMEOUT";
