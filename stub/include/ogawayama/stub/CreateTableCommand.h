@@ -1,5 +1,5 @@
 /*
- * Copyright 2019-2019 tsurugi project.
+ * Copyright 2019-2020 tsurugi project.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -12,13 +12,21 @@
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  * See the License for the specific language governing permissions and
  * limitations under the License.
+ *
+ *	@file	CreateTableCommand.h
+ *	@brief  the create-table command class dipatched to ogawayama
  */
 #pragma once
 
-#include "ogawayama/common/channel_stream.h"
-#include "ogawayama/stub/api.h"
-#include "stubImpl.h"
-#include "transactionImpl.h"
+#include <string>
 
-void send_dump_requests(ogawayama::common::ChannelStream *);
-void send_load_requests(ogawayama::common::ChannelStream *);
+#include "Command.h"
+
+const std::string COMMAND_TYPE_NANE_CREATE_TABLE = "CREATE TABLE";
+
+class CreateTableCommand : public Command{
+    public:
+        // C'tors
+        CreateTableCommand(uint64_t object_id)
+            : Command(COMMAND_TYPE_NANE_CREATE_TABLE, object_id) {}
+};

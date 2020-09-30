@@ -13,9 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-
-#ifndef SERVER_H_
-#define SERVER_H_
+#pragma once
 
 #include "umikongo/api.h"
 #include "ogawayama/common/channel_stream.h"
@@ -42,5 +40,3 @@ private:
 };
 
 }  // ogawayama::server
-    
-#endif  // SERVER_H_

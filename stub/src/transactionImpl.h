@@ -81,6 +81,13 @@ public:
      */
     ErrorCode rollback();
 
+    /**
+     * @brief relay a create tabe message from the frontend to the server
+     * @param table id given by the frontend
+     * @return error code defined in error_code.h
+     */
+    ErrorCode create_table(std::size_t);
+
     auto get_channel() const { return channel_; }
 
 private:

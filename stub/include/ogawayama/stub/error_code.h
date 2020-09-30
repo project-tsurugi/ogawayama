@@ -13,8 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#ifndef STUB_ERROR_CODE_H_
-#define STUB_ERROR_CODE_H_
+#pragma once
 
 namespace ogawayama::stub {
 
@@ -64,6 +63,11 @@ enum class ErrorCode {
     INVALID_PARAMETER,
 
     /**
+     * @brief file io error.
+     */
+    FILE_IO_ERROR,
+
+    /**
      * @brief unknown error.
      */
     UNKNOWN,
@@ -90,6 +94,7 @@ constexpr std::string_view error_name(ErrorCode code) {
     case ErrorCode::UNSUPPORTED: return "UNSUPPORTED";
     case ErrorCode::NO_TRANSACTION: return "NO_TRANSACTION";
     case ErrorCode::INVALID_PARAMETER: return "INVALID_PARAMETER";
+    case ErrorCode::FILE_IO_ERROR: return "FILE_IO_ERROR";
     case ErrorCode::UNKNOWN: return "UNKNOWN";
     case ErrorCode::SERVER_FAILURE: return "SERVER_FAILURE";
     case ErrorCode::TIMEOUT: return "TIMEOUT";
@@ -98,5 +103,3 @@ constexpr std::string_view error_name(ErrorCode code) {
 }
 
 }  // namespace ogawayama::stub
-
-#endif  // STUB_ERROR_CODE_H_

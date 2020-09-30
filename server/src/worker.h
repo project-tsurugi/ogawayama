@@ -13,9 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-
-#ifndef WORKER_H_
-#define WORKER_H_
+#pragma once
 
 #include <future>
 #include <thread>
@@ -25,10 +23,10 @@
 #include "ogawayama/common/channel_stream.h"
 #include "ogawayama/common/row_queue.h"
 #include "ogawayama/common/parameter_set.h"
+#include "manager/metadata/tables.h"
 #include "manager/metadata/metadata.h"
-#include "manager/metadata/table_metadata.h"
-#include "manager/metadata/datatype_metadata.h"
 #include "manager/metadata/error_code.h"
+#include "manager/metadata/datatypes.h"
 
 namespace ogawayama::server {
 
@@ -51,18 +49,17 @@ class Worker {
         if(thread_.joinable()) thread_.join();
     }
     void run();
-    void execute_statement(std::string_view);
-    bool execute_query(std::string_view, std::size_t);
-    void execute_create_table(std::string_view);
-    void next(std::size_t);
-
-    void prepare(std::string_view, std::size_t);
-    void execute_prepared_statement(std::size_t);
-    bool execute_prepared_query(std::size_t, std::size_t);
-
     friend int backend_main(int, char **);
 
  private:
+    void execute_statement(std::string_view);
+    bool execute_query(std::string_view, std::size_t);
+    void next(std::size_t);
+    void prepare(std::string_view, std::size_t);
+    void execute_prepared_statement(std::size_t);
+    bool execute_prepared_query(std::size_t, std::size_t);
+    void deploy_metadata(std::size_t);
+
     umikongo::Database *db_;
     std::size_t id_;
 
@@ -80,7 +77,6 @@ class Worker {
     std::thread thread_{};
 
     std::unique_ptr<ogawayama::common::SharedMemory> shm4_row_queue_;
-    std::unique_ptr<manager::metadata_manager::Metadata> datatypes_;
 
     void send_metadata(std::size_t);
     void set_params(umikongo::PreparedStatement::Parameters *);
@@ -96,5 +92,3 @@ class Worker {
 };
 
 }  // ogawayama::server
-    
-#endif  // WORKER_H_

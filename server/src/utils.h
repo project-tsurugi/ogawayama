@@ -13,9 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-
-#ifndef UTILS_H_
-#define UTILS_H_
+#pragma once
 
 #include "umikongo/api.h"
 
@@ -25,5 +23,3 @@ namespace ogawayama::server {
     void load(umikongo::Database *, std::string &, std::string &);
 
 }  // ogawayama::server
-    
-#endif  // UTILS_H_

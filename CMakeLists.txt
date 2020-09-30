@@ -38,6 +38,8 @@ find_package(Boost
 find_package(glog REQUIRED)
 find_package(gflags REQUIRED)
 
+find_package(manager REQUIRED)
+
 include(GNUInstallDirs)
 include(CMakePackageConfigHelpers)
 include(CompileOptions)

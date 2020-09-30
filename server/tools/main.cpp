@@ -23,9 +23,9 @@ DEFINE_string(dbname, ogawayama::common::param::SHARED_MEMORY_NAME, "database na
 DEFINE_bool(terminate, false, "terminate commnand");  // NOLINT
 DEFINE_bool(dump, false, "Database contents are dumpd to the location just before shutdown");  //NOLINT
 DEFINE_bool(load, false, "Database contents are loaded from the location just after boot");  //NOLINT
-DEFINE_string(create_table, "", "CREATE TABLE statement");  // NOLINT
 DEFINE_string(statement, "", "SQL statement");  // NOLINT
 DEFINE_string(query, "", "SQL query");  // NOLINT
+DEFINE_int32(schema, -1, "object id for recieve_message()");  // NOLINT
 DEFINE_bool(remove_shm, false, "remove the shared memory prior to the execution");  // NOLINT
 
 void prt_err(int line)
@@ -47,7 +47,7 @@ int main(int argc, char **argv) {
     }
 
     StubPtr stub;
-    if (FLAGS_dump || FLAGS_load || FLAGS_create_table != "" || FLAGS_statement != "" || FLAGS_query != "" || FLAGS_terminate) {
+    if (FLAGS_dump || FLAGS_load || FLAGS_statement != "" || FLAGS_query != "" || FLAGS_schema >= 0 || FLAGS_terminate) {
         ERROR_CODE err = make_stub(stub, FLAGS_dbname.c_str());
         if (err != ERROR_CODE::OK) { prt_err(__LINE__, err); return 1; }
     }
@@ -60,7 +60,7 @@ int main(int argc, char **argv) {
         send_load_requests(stub->get_impl()->get_channel());
     }
 
-    if (FLAGS_create_table != "") {
+    if (FLAGS_schema >= 0) {
         ConnectionPtr connection;
         ERROR_CODE err;
 
@@ -69,10 +69,11 @@ int main(int argc, char **argv) {
         TransactionPtr transaction;
         err = connection->begin(transaction);
         if (err != ERROR_CODE::OK) { prt_err(__LINE__, err); return 1; }
-        std::cerr << "execute_create_table \"" << FLAGS_create_table << "\"" << std::endl;
-        err = transaction->execute_create_table(FLAGS_create_table);
+        std::cerr << "set schema \"" << FLAGS_schema << "\"" << std::endl;
+        err = transaction->get_impl()->create_table(static_cast<std::size_t>(FLAGS_schema));
         if (err != ERROR_CODE::OK) { prt_err(__LINE__, err); return 1; }
-        transaction->commit();
+        err = transaction->commit();
+        if (err != ERROR_CODE::OK) { prt_err(__LINE__, err); return 1; }
     }
 
     if (FLAGS_statement != "") {
@@ -87,7 +88,8 @@ int main(int argc, char **argv) {
         std::cerr << "execute_statement \"" << FLAGS_statement << "\"" << std::endl;
         err = transaction->execute_statement(FLAGS_statement);
         if (err != ERROR_CODE::OK) { prt_err(__LINE__, err); return 1; }
-        transaction->commit();
+        err = transaction->commit();
+        if (err != ERROR_CODE::OK) { prt_err(__LINE__, err); return 1; }
     }
 
     if (FLAGS_query != "") {
@@ -186,7 +188,8 @@ int main(int argc, char **argv) {
             }
             case ERROR_CODE::END_OF_ROW: {
                 std::cout << "=== end of row ===" << std::endl;
-                transaction->commit();
+                err = transaction->commit();
+                if (err != ERROR_CODE::OK) { prt_err(__LINE__, err); return 1; }
                 goto finish;
             }
             default: {

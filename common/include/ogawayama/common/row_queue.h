@@ -13,8 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#ifndef ROW_QUEUE_H_
-#define ROW_QUEUE_H_
+#pragma once
 
 #include "boost/lockfree/spsc_queue.hpp"
 #include "boost/interprocess/sync/interprocess_condition.hpp"
@@ -364,5 +363,3 @@ namespace ogawayama::common {
     };
     
 };  // namespace ogawayama::common
-
-#endif //  ROW_QUEUE_H_

@@ -13,8 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#ifndef SHARED_MEMORY_H_
-#define SHARED_MEMORY_H_
+#pragma once
 
 #include <iostream>
 #include <string.h>
@@ -203,5 +202,3 @@ private:
 };
 
 };  // namespace ogawayama::common
-
-#endif //  SHARED_MEMORY_H_

@@ -33,6 +33,7 @@ target_include_directories(prepare
 
 target_link_libraries(prepare
     PRIVATE stub
+    PRIVATE manager-message-interface
     PRIVATE pthread
     PRIVATE rt
 )

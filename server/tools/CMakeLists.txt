@@ -33,6 +33,7 @@ target_include_directories(cli
 
 target_link_libraries(cli
     PRIVATE stub
+    PRIVATE manager-message-interface
     PRIVATE gflags::gflags
     PRIVATE rt
 )
