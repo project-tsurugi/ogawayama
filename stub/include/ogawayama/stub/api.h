@@ -206,7 +206,7 @@ public:
     ErrorCode execute_query(std::string_view, ResultSetPtr &);
 
     /**
-     * @brief execute a query.
+     * @brief execute a prepared query.
      * @param pointer to the prepared query
      * @param result_set returns a result set of the query
      * @return error code defined in error_code.h
