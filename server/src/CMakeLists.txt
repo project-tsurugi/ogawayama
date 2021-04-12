@@ -21,7 +21,7 @@ if(NOT DEFINED SHARKSFIN_IMPLEMENTATION)
     )
 endif()
 
-find_package(umikongo-${SHARKSFIN_IMPLEMENTATION} REQUIRED)
+find_package(jogasaki-${SHARKSFIN_IMPLEMENTATION} REQUIRED)
 find_package(shakujo REQUIRED)
 
 file(GLOB SOURCES
@@ -43,7 +43,7 @@ target_include_directories(server
 )
 
 target_link_libraries(server
-    PRIVATE umikongo-${SHARKSFIN_IMPLEMENTATION}-executor-${SHARKSFIN_IMPLEMENTATION}
+    PRIVATE jogasaki-${SHARKSFIN_IMPLEMENTATION}
     PRIVATE shakujo-common
     PRIVATE manager-metadata
     PRIVATE manager-message-interface
