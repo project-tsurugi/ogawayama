@@ -21,6 +21,37 @@ if(NOT DEFINED SHARKSFIN_IMPLEMENTATION)
     )
 endif()
 
+## for include <libpq-fe.h>
+function(GET_PG_CONFIG var)
+  set(_temp)
+
+  if(NOT ${var})
+    execute_process(
+      COMMAND ${PG_CONFIG} ${ARGN}
+      OUTPUT_VARIABLE _temp
+      OUTPUT_STRIP_TRAILING_WHITESPACE)
+  endif()
+
+  set(${var} ${_temp} PARENT_SCOPE)
+endfunction()
+
+FIND_PROGRAM(PG_CONFIG pg_config)
+
+IF (PG_CONFIG)
+   SET(PG_CONFIG_FOUND TRUE)
+ENDIF (PG_CONFIG)
+
+IF (PG_CONFIG_FOUND)
+    MESSAGE(STATUS "Found pg_config for PostgreSQL: ${PG_CONFIG}")
+    get_pg_config(PG_INCLUDEDIR --includedir)
+    get_pg_config(PG_LIBDIR --libdir)
+ELSE (NOT DEFINED PKG_CONFIG_FOUND)
+    MESSAGE(FATAL_ERROR "pg_config not found in path")
+    MESSAGE(FATAL_ERROR "cannot build")
+ENDIF (PG_CONFIG_FOUND)
+
+find_package(takatori REQUIRED)
+find_package(fpdecimal REQUIRED)
 find_package(jogasaki-${SHARKSFIN_IMPLEMENTATION} REQUIRED)
 find_package(shakujo REQUIRED)
 
@@ -40,10 +71,13 @@ set_target_properties(server
 target_include_directories(server
     PRIVATE ../../stub/include
     PRIVATE ../../common/include
+    PRIVATE ${PG_INCLUDEDIR}
 )
 
 target_link_libraries(server
-    PRIVATE jogasaki-${SHARKSFIN_IMPLEMENTATION}
+    PRIVATE jogasaki-${SHARKSFIN_IMPLEMENTATION}-engine
+    PRIVATE takatori
+    PRIVATE fpdecimal
     PRIVATE shakujo-common
     PRIVATE manager-metadata
     PRIVATE manager-message-interface

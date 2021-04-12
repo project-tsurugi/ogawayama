@@ -32,7 +32,7 @@ option(ENABLE_COVERAGE "enable coverage on debug build" OFF)
 
 find_package(Threads REQUIRED)
 find_package(Boost
-        COMPONENTS system filesystem thread
+        COMPONENTS filesystem thread system container stacktrace_backtrace
         REQUIRED
 )
 find_package(glog REQUIRED)

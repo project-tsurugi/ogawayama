@@ -15,13 +15,13 @@
  */
 #pragma once
 
-#include "umikongo/api.h"
+#include "jogasaki/api.h"
 #include "ogawayama/common/channel_stream.h"
 
 namespace ogawayama::server {
 
 int backend_main(int, char **);
-void worker_main(umikongo::Database *, ogawayama::common::SharedMemory *, int);
+void worker_main(jogasaki::Database *, ogawayama::common::SharedMemory *, int);
 
 template <class T>
 class DBCloser final { //NOLINT

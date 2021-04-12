@@ -18,7 +18,7 @@
 #include <future>
 #include <thread>
 
-#include "umikongo/api.h"
+#include "jogasaki/api.h"
 #include "ogawayama/stub/api.h"
 #include "ogawayama/common/channel_stream.h"
 #include "ogawayama/common/row_queue.h"
@@ -38,12 +38,12 @@ class Worker {
             executable_ = nullptr;
         }
         std::unique_ptr<ogawayama::common::RowQueue> row_queue_{};
-        std::unique_ptr<umikongo::Iterator> iterator_{};
-        std::unique_ptr<umikongo::ExecutableStatement> executable_{};
+        std::unique_ptr<jogasaki::Iterator> iterator_{};
+        std::unique_ptr<jogasaki::ExecutableStatement> executable_{};
     };
 
  public:
-    Worker(umikongo::Database *, std::size_t);
+    Worker(jogasaki::Database *, std::size_t);
     ~Worker() {
         clear_all();
         if(thread_.joinable()) thread_.join();
@@ -60,17 +60,17 @@ class Worker {
     bool execute_prepared_query(std::size_t, std::size_t);
     void deploy_metadata(std::size_t);
 
-    umikongo::Database *db_;
+    jogasaki::Database *db_;
     std::size_t id_;
 
     std::unique_ptr<ogawayama::common::SharedMemory> shm4_connection_;
     std::unique_ptr<ogawayama::common::ChannelStream> channel_;
     std::unique_ptr<ogawayama::common::ParameterSet> parameters_;
 
-    std::unique_ptr<umikongo::Transaction> transaction_;
-    umikongo::Context* context_;
+    std::unique_ptr<jogasaki::Transaction> transaction_;
+    jogasaki::Context* context_;
     std::vector<Cursor> cursors_;
-    std::vector<std::unique_ptr<umikongo::PreparedStatement>> prepared_statements_{};
+    std::vector<std::unique_ptr<jogasaki::PreparedStatement>> prepared_statements_{};
 
     std::packaged_task<void()> task_;
     std::future<void> future_;
@@ -79,7 +79,7 @@ class Worker {
     std::unique_ptr<ogawayama::common::SharedMemory> shm4_row_queue_;
 
     void send_metadata(std::size_t);
-    void set_params(umikongo::PreparedStatement::Parameters *);
+    void set_params(jogasaki::PreparedStatement::Parameters *);
     void clear_transaction() {
         cursors_.clear();
         transaction_ = nullptr;
