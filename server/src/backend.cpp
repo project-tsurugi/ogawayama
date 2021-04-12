@@ -18,8 +18,10 @@
 #include <exception>
 #include <iostream>
 
-#include "gflags/gflags.h"
-#include "glog/logging.h"
+#include <gflags/gflags.h>
+#include <glog/logging.h>
+
+#include <jogasaki/configuration.h>
 
 #include "worker.h"
 #include "SignalHandler.h"
@@ -39,7 +41,7 @@ static constexpr std::string_view KEY_LOCATION { "location" };  //NOLINT
 
 int backend_main(int argc, char **argv) {
     // database environment
-    auto env = umikongo::create_environment();
+    auto env = jogasaki::api::create_environment();
     env->initialize();
 
     // command arguments
@@ -47,10 +49,10 @@ int backend_main(int argc, char **argv) {
     gflags::ParseCommandLineFlags(&argc, &argv, true);
 
     // database
-    auto db = umikongo::create_database();
-    std::map<std::string, std::string> options;
-    options.insert_or_assign(std::string(KEY_LOCATION), FLAGS_location);
-    db->open(options);
+    auto cfg = std::make_shared<jogasaki::configuration>();
+    cfg->prepare_benchmark_tables(true);
+    auto db = jogasaki::api::create_database(cfg);
+    db->start();
     DBCloser dbcloser{db};
 
     // communication channel
@@ -98,7 +100,7 @@ int backend_main(int argc, char **argv) {
             }
             try {
                 std::unique_ptr<Worker> &worker = workers.at(index);
-                worker = std::make_unique<Worker>(db.get(), index);
+                worker = std::make_unique<Worker>(*db, index);
                 worker->task_ = std::packaged_task<void()>([&]{worker->run();});
                 worker->future_ = worker->task_.get_future();
                 worker->thread_ = std::thread(std::move(worker->task_));
@@ -110,7 +112,7 @@ int backend_main(int argc, char **argv) {
         case ogawayama::common::CommandMessage::Type::DUMP_DATABASE:
             try {
                 std::string name(string);
-                dump(db.get(), FLAGS_location, name);
+                dump(*db, FLAGS_location, name);
             } catch (std::exception& e) {
                 std::cerr << e.what() << std::endl;
             }
@@ -118,7 +120,7 @@ int backend_main(int argc, char **argv) {
         case ogawayama::common::CommandMessage::Type::LOAD_DATABASE:
             try {
                 std::string name(string);
-                load(db.get(), FLAGS_location, name);
+                load(*db, FLAGS_location, name);
             } catch (std::exception& e) {
                 std::cerr << e.what() << std::endl;
             }

@@ -21,7 +21,7 @@
 namespace ogawayama::server {
 
 int backend_main(int, char **);
-void worker_main(jogasaki::Database *, ogawayama::common::SharedMemory *, int);
+void worker_main(jogasaki::api::database&, ogawayama::common::SharedMemory *, int);
 
 template <class T>
 class DBCloser final { //NOLINT
@@ -32,7 +32,7 @@ public:
     DBCloser& operator=(const DBCloser& other) = delete; //NOLINT
     DBCloser& operator=(DBCloser&& other) = delete;
     ~DBCloser() {
-        t_->close();
+        t_->stop();
     }
     explicit DBCloser(T& t) : t_(t) {} //NOLINT
 private:

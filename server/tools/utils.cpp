@@ -20,16 +20,16 @@
 #include <string>
 
 std::vector<std::string> tables = {  // NOLINT
-    "warehouse",
-    "district",
-    "customer",
-    "customer_secondary",
-    "new_order",
-    "orders",
-    "orders_secondary",
-    "order_line",
-    "item",
-    "stock"
+    "WAREHOUSE",
+    "DISTRICT",
+    "CUSTOMER",
+    "CUSTOMER_SECONDARY",
+    "NEW_ORDER",
+    "ORDERS",
+    "ORDERS_SECONDARY",
+    "ORDER_LINE",
+    "ITEM",
+    "STOCK"
 };
 
 void send_dump_requests(ogawayama::common::ChannelStream *channel) {

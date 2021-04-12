@@ -19,7 +19,7 @@
 
 namespace ogawayama::server {
 
-    void dump(jogasaki::Database *, std::string &, std::string &);
-    void load(jogasaki::Database *, std::string &, std::string &);
+    void dump(jogasaki::api::database&, std::string &, std::string &);
+    void load(jogasaki::api::database&, std::string &, std::string &);
 
 }  // ogawayama::server

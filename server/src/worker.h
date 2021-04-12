@@ -34,16 +34,18 @@ class Worker {
     class Cursor {
     public:
         void clear() {
-            iterator_ = nullptr;
-            executable_ = nullptr;
+            result_set_ = nullptr;
+//            iterator_ = nullptr;
+            prepared_ = nullptr;
         }
         std::unique_ptr<ogawayama::common::RowQueue> row_queue_{};
-        std::unique_ptr<jogasaki::Iterator> iterator_{};
-        std::unique_ptr<jogasaki::ExecutableStatement> executable_{};
+        std::unique_ptr<jogasaki::api::result_set> result_set_{};
+//        std::unique_ptr<jogasaki::api::result_set_iterator> iterator_{};
+        std::unique_ptr<jogasaki::api::prepared_statement> prepared_{};
     };
 
  public:
-    Worker(jogasaki::Database *, std::size_t);
+    Worker(jogasaki::api::database&, std::size_t);
     ~Worker() {
         clear_all();
         if(thread_.joinable()) thread_.join();
@@ -60,17 +62,16 @@ class Worker {
     bool execute_prepared_query(std::size_t, std::size_t);
     void deploy_metadata(std::size_t);
 
-    jogasaki::Database *db_;
+    jogasaki::api::database& db_;
     std::size_t id_;
 
     std::unique_ptr<ogawayama::common::SharedMemory> shm4_connection_;
     std::unique_ptr<ogawayama::common::ChannelStream> channel_;
     std::unique_ptr<ogawayama::common::ParameterSet> parameters_;
 
-    std::unique_ptr<jogasaki::Transaction> transaction_;
-    jogasaki::Context* context_;
+    std::unique_ptr<jogasaki::api::transaction> transaction_;
     std::vector<Cursor> cursors_;
-    std::vector<std::unique_ptr<jogasaki::PreparedStatement>> prepared_statements_{};
+    std::vector<std::unique_ptr<jogasaki::api::prepared_statement>> prepared_statements_{};
 
     std::packaged_task<void()> task_;
     std::future<void> future_;
@@ -79,7 +80,7 @@ class Worker {
     std::unique_ptr<ogawayama::common::SharedMemory> shm4_row_queue_;
 
     void send_metadata(std::size_t);
-    void set_params(jogasaki::PreparedStatement::Parameters *);
+    void set_params(std::unique_ptr<jogasaki::api::parameter_set>&);
     void clear_transaction() {
         cursors_.clear();
         transaction_ = nullptr;
