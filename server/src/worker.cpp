@@ -195,6 +195,7 @@ bool Worker::execute_query(std::string_view sql, std::size_t rid)
     }
     
     send_metadata(rid);
+    channel_->send_ack(ERROR_CODE::OK);
     return true;
 }
 
