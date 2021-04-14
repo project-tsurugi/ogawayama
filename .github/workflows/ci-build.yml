@@ -116,7 +116,7 @@ jobs:
           cmake -DCMAKE_BUILD_TYPE=Debug -DBUILD_TESTS=OFF -DBUILD_DOCUMENTS=OFF -DFORCE_INSTALL_RPATH=ON -DCMAKE_INSTALL_PREFIX=${GITHUB_WORKSPACE}/.local -DCMAKE_PREFIX_PATH="${BISON_DIR};${GITHUB_WORKSPACE}/.local" ..
           cmake --build . --target install --clean-first -- -j
 
-     - id: Install_jogasaki
+      - id: Install_jogasaki
         name: Install_jogasaki
         run: |
           cd third_party/jogasaki
