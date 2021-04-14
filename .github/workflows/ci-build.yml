@@ -33,7 +33,7 @@ jobs:
           cd build
           rm -f CMakeCache.txt
           cmake -DCMAKE_BUILD_TYPE=Debug -DCMAKE_INSTALL_PREFIX=${GITHUB_WORKSPACE}/.local ..
-          cmake --build . --target install --clean-first -- -j8
+          cmake --build . --target install --clean-first -- -j
 
       - id: Install_sharksfin
         name: Install_sharksfin
@@ -43,7 +43,7 @@ jobs:
           cd build
           rm -f CMakeCache.txt
           cmake -DCMAKE_BUILD_TYPE=Debug -DBUILD_FOEDUS_BRIDGE=OFF -DFORCE_INSTALL_RPATH=ON -DBUILD_TESTS=OFF -DBUILD_DOCUMENTS=OFF -DBUILD_EXAMPLES=OFF -DCMAKE_INSTALL_PREFIX=${GITHUB_WORKSPACE}/.local ..
-          cmake --build . --target install --clean-first -- -j8
+          cmake --build . --target install --clean-first -- -j
 
       - id: Install_fpdecimal
         name: Install_fpdecimal
@@ -122,8 +122,8 @@ jobs:
           mkdir -p build
           cd build
           rm -f CMakeCache.txt
-          cmake -DCMAKE_BUILD_TYPE=Debug -DSHARKSFIN_IMPLEMENTATION=memory -DFORCE_INSTALL_RPATH=ON -DFIXED_PAYLOAD_SIZE=ON -DBUILD_TESTS=OFF -DBUILD_DOCUMENTS=OFF -DBUILD_EXAMPLES=OFF -DCMAKE_INSTALL_PREFIX=${GITHUB_WORKSPACE}/.local -DCMAKE_EXPORT_COMPILE_COMMANDS=ON ..
-          cmake --build . --target install --clean-first -- -j8
+          cmake -DCMAKE_BUILD_TYPE=Debug -DSHARKSFIN_IMPLEMENTATION=memory -DCMAKE_EXPORT_COMPILE_COMMANDS=ON -DCMAKE_INSTALL_PREFIX=${GITHUB_WORKSPACE}/.local -DCMAKE_PREFIX_PATH=${GITHUB_WORKSPACE}/.local ..
+          cmake --build . --target install --clean-first -- -j
 
       - id: Install_manager
         name: Install_manager
@@ -133,7 +133,7 @@ jobs:
           cd build
           rm -f CMakeCache.txt
           cmake -DCMAKE_BUILD_TYPE=Debug -DFORCE_INSTALL_RPATH=ON -DCMAKE_INSTALL_PREFIX=${GITHUB_WORKSPACE}/.local ..
-          cmake --build . --target install --clean-first -- -j8
+          cmake --build . --target install --clean-first -- -j
 
       - id: CMake_Build
         name: CMake_Build
@@ -141,7 +141,7 @@ jobs:
           mkdir build
           cd build
           cmake -DCMAKE_BUILD_TYPE=Debug -DCMAKE_PREFIX_PATH=${GITHUB_WORKSPACE}/.local -DCMAKE_EXPORT_COMPILE_COMMANDS=ON ..
-          cmake --build . --target all --clean-first -- -j8
+          cmake --build . --target all --clean-first -- -j
 
       - id: CTest
         name: CTest
