@@ -108,7 +108,7 @@ jobs:
       - id: Install_performance_tools
         name: Install_performance_tools
         run: |
-          cd third_party/performance-tools
+          cd third_party/jogasaki/third_party/performance-tools
           mkdir -p build
           cd build
           rm -f CMakeCache.txt
