@@ -37,7 +37,7 @@ class PrepareTest : public ::testing::Test {
     }
 };
 
-TEST_F(PrepareTest, use_executable_statement) {
+TEST_F(PrepareTest, DISABLED_use_executable_statement) {
     StubPtr stub;
     ConnectionPtr connection;
     TransactionPtr transaction;
@@ -130,7 +130,7 @@ TEST_F(PrepareTest, use_executable_statement) {
     EXPECT_EQ(ERROR_CODE::OK, transaction->commit());
 }
 
-TEST_F(PrepareTest, mixing_executable_statement) {
+TEST_F(PrepareTest, DISABLED_mixing_executable_statement) {
     StubPtr stub;
     ConnectionPtr connection;
     TransactionPtr transaction;
@@ -235,7 +235,7 @@ TEST_F(PrepareTest, mixing_executable_statement) {
 // TEST_F(PrepareTest, mixing_transactions) {
 // }
 
-TEST_F(PrepareTest, fetch_metadata) {
+TEST_F(PrepareTest, DISABLED_fetch_metadata) {
     StubPtr stub;
     ConnectionPtr connection;
     TransactionPtr transaction;
@@ -345,7 +345,7 @@ TEST_F(PrepareTest, fetch_metadata) {
     EXPECT_EQ(ERROR_CODE::OK, transaction->commit());
 }
 
-TEST_F(PrepareTest, passing_multiple_row) {
+TEST_F(PrepareTest, DISABLED_passing_multiple_row) {
     StubPtr stub;
     ConnectionPtr connection;
     TransactionPtr transaction;
