@@ -27,13 +27,13 @@ jobs:
             curl -sL https://ftp.postgresql.org/pub/source/v${PG_VERSION}/postgresql-${PG_VERSION}.tar.bz2 | tar -xj
           fi
           cd postgresql-${PG_VERSION}
-          ./configure --prefix=${GITHUB_WORKSPACE}/pgsql
+          ./configure --prefix=${GITHUB_WORKSPACE}/.local/pgsql
           make -j8
           make install
-          echo @@@@ ${GITHUB_WORKSPACE}/pgsql @@@
-          ls ${GITHUB_WORKSPACE}/pgsql
-          echo @@@@ ${GITHUB_WORKSPACE}/pgsql/bin @@@
-          ls ${GITHUB_WORKSPACE}/pgsql/bin
+          echo @@@@ ${GITHUB_WORKSPACE}/.local/pgsql @@@
+          ls ${GITHUB_WORKSPACE}/.local/pgsql
+          echo @@@@ ${GITHUB_WORKSPACE}/.local/pgsql/bin @@@
+          ls ${GITHUB_WORKSPACE}/.local/pgsql/bin
 
       - id: Checkout
         name: Checkout
@@ -149,11 +149,11 @@ jobs:
           mkdir -p build
           cd build
           rm -f CMakeCache.txt
-          echo @@@@ ${GITHUB_WORKSPACE}/pgsql @@@
-          ls ${GITHUB_WORKSPACE}/pgsql
-          echo @@@@ ${GITHUB_WORKSPACE}/pgsql/bin @@@
-          ls ${GITHUB_WORKSPACE}/pgsql/bin
-          export PATH=$PATH:${GITHUB_WORKSPACE}/pgsql/bin
+          echo @@@@ ${GITHUB_WORKSPACE}/.local/pgsql @@@
+          ls ${GITHUB_WORKSPACE}/.local/pgsql
+          echo @@@@ ${GITHUB_WORKSPACE}/.local/pgsql/bin @@@
+          ls ${GITHUB_WORKSPACE}/.local/pgsql/bin
+          export PATH=$PATH:${GITHUB_WORKSPACE}/.local/pgsql/bin
           cmake -DCMAKE_BUILD_TYPE=Debug -DFORCE_INSTALL_RPATH=ON -DCMAKE_INSTALL_PREFIX=${GITHUB_WORKSPACE}/.local ..
           cmake --build . --target install --clean-first -- -j
 
