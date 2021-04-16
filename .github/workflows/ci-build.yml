@@ -142,7 +142,7 @@ jobs:
         name: Install_manager
         run: |
           cd third_party/manager
-	  ls ${GITHUB_WORKSPACE}/pgsql/bin
+          ls ${GITHUB_WORKSPACE}/pgsql/bin
           mkdir -p build
           cd build
           rm -f CMakeCache.txt
