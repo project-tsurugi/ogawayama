@@ -30,7 +30,10 @@ jobs:
           ./configure --prefix=${GITHUB_WORKSPACE}/pgsql
           make -j8
           make install
+          echo @@@@ ${GITHUB_WORKSPACE}/pgsql @@@
           ls ${GITHUB_WORKSPACE}/pgsql
+          echo @@@@ ${GITHUB_WORKSPACE}/pgsql/bin @@@
+          ls ${GITHUB_WORKSPACE}/pgsql/bin
 
       - id: Checkout
         name: Checkout
@@ -143,11 +146,15 @@ jobs:
         name: Install_manager
         run: |
           cd third_party/manager
-          ls ${GITHUB_WORKSPACE}/pgsql/bin
           mkdir -p build
           cd build
           rm -f CMakeCache.txt
-          PATH=$PATH:${GITHUB_WORKSPACE}/pgsql/bin cmake -DCMAKE_BUILD_TYPE=Debug -DFORCE_INSTALL_RPATH=ON -DCMAKE_INSTALL_PREFIX=${GITHUB_WORKSPACE}/.local ..
+          echo @@@@ ${GITHUB_WORKSPACE}/pgsql @@@
+          ls ${GITHUB_WORKSPACE}/pgsql
+          echo @@@@ ${GITHUB_WORKSPACE}/pgsql/bin @@@
+          ls ${GITHUB_WORKSPACE}/pgsql/bin
+          export PATH=$PATH:${GITHUB_WORKSPACE}/pgsql/bin
+	  cmake -DCMAKE_BUILD_TYPE=Debug -DFORCE_INSTALL_RPATH=ON -DCMAKE_INSTALL_PREFIX=${GITHUB_WORKSPACE}/.local ..
           cmake --build . --target install --clean-first -- -j
 
       - id: CMake_Build
