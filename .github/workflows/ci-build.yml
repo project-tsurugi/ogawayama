@@ -34,7 +34,7 @@ jobs:
             curl -sL https://ftp.postgresql.org/pub/source/v${PG_VERSION}/postgresql-${PG_VERSION}.tar.bz2 | tar -xj
           fi
           cd postgresql-${PG_VERSION}
-          ./configure --prefix=${GITHUB_WORKSPACE}/.local/pgsql
+          ./configure --prefix=${GITHUB_WORKSPACE}/pgsql
           make -j8
           make install
 
@@ -55,7 +55,7 @@ jobs:
           mkdir -p build
           cd build
           rm -f CMakeCache.txt
-          cmake -DCMAKE_BUILD_TYPE=Debug -DBUILD_FOEDUS_BRIDGE=OFF -DFORCE_INSTALL_RPATH=ON -DBUILD_TESTS=OFF -DBUILD_DOCUMENTS=OFF -DBUILD_EXAMPLES=OFF -DCMAKE_INSTALL_PREFIX=${GITHUB_WORKSPACE}/.local ..
+          cmake -DCMAKE_BUILD_TYPE=Debug -DFORCE_INSTALL_RPATH=ON -DBUILD_TESTS=OFF -DBUILD_DOCUMENTS=OFF -DBUILD_EXAMPLES=OFF -DCMAKE_INSTALL_PREFIX=${GITHUB_WORKSPACE}/.local ..
           cmake --build . --target install --clean-first -- -j
 
       - id: Install_fpdecimal
@@ -141,7 +141,7 @@ jobs:
       - id: Install_manager
         name: Install_manager
         run: |
-          export PATH=$PATH:${GITHUB_WORKSPACE}/.local/pgsql/bin
+          export PATH=$PATH:${GITHUB_WORKSPACE}/pgsql/bin
           cd third_party/manager
           mkdir -p build
           cd build
@@ -152,7 +152,7 @@ jobs:
       - id: CMake_Build
         name: CMake_Build
         run: |
-          export LD_LIBRARY_PATH=${GITHUB_WORKSPACE}/.local/pgsql/lib
+          export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:${GITHUB_WORKSPACE}/pgsql/lib
           mkdir build
           cd build
           cmake -DCMAKE_BUILD_TYPE=Debug -DCMAKE_PREFIX_PATH=${GITHUB_WORKSPACE}/.local -DCMAKE_EXPORT_COMPILE_COMMANDS=ON ..
@@ -164,7 +164,7 @@ jobs:
         env:
           GTEST_OUTPUT: xml
         run: |
-          export LD_LIBRARY_PATH=${GITHUB_WORKSPACE}/.local/pgsql/lib
+          export LD_LIBRARY_PATH=${GITHUB_WORKSPACE}/pgsql/lib
           cd build
           ctest --verbose
 
