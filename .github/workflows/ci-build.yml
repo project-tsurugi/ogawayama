@@ -154,7 +154,7 @@ jobs:
           echo @@@@ ${GITHUB_WORKSPACE}/pgsql/bin @@@
           ls ${GITHUB_WORKSPACE}/pgsql/bin
           export PATH=$PATH:${GITHUB_WORKSPACE}/pgsql/bin
-	  cmake -DCMAKE_BUILD_TYPE=Debug -DFORCE_INSTALL_RPATH=ON -DCMAKE_INSTALL_PREFIX=${GITHUB_WORKSPACE}/.local ..
+          cmake -DCMAKE_BUILD_TYPE=Debug -DFORCE_INSTALL_RPATH=ON -DCMAKE_INSTALL_PREFIX=${GITHUB_WORKSPACE}/.local ..
           cmake --build . --target install --clean-first -- -j
 
       - id: CMake_Build
