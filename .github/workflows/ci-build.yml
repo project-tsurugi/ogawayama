@@ -51,6 +51,8 @@ jobs:
           rm -f CMakeCache.txt
           cmake -DCMAKE_BUILD_TYPE=Debug -DCMAKE_INSTALL_PREFIX=${GITHUB_WORKSPACE}/.local ..
           cmake --build . --target install --clean-first -- -j
+          echo @@@@ ${GITHUB_WORKSPACE}/.local @@@
+          ls ${GITHUB_WORKSPACE}/.local
 
       - id: Install_sharksfin
         name: Install_sharksfin
@@ -61,6 +63,8 @@ jobs:
           rm -f CMakeCache.txt
           cmake -DCMAKE_BUILD_TYPE=Debug -DBUILD_FOEDUS_BRIDGE=OFF -DFORCE_INSTALL_RPATH=ON -DBUILD_TESTS=OFF -DBUILD_DOCUMENTS=OFF -DBUILD_EXAMPLES=OFF -DCMAKE_INSTALL_PREFIX=${GITHUB_WORKSPACE}/.local ..
           cmake --build . --target install --clean-first -- -j
+          echo @@@@ ${GITHUB_WORKSPACE}/.local @@@
+          ls ${GITHUB_WORKSPACE}/.local
 
       - id: Install_fpdecimal
         name: Install_fpdecimal
@@ -71,6 +75,8 @@ jobs:
           rm -f CMakeCache.txt
           cmake -DCMAKE_BUILD_TYPE=Debug -DBUILD_TESTS=OFF -DBUILD_DOCUMENTS=OFF -DCMAKE_INSTALL_PREFIX=${GITHUB_WORKSPACE}/.local ..
           cmake --build . --target install --clean-first -- -j
+          echo @@@@ ${GITHUB_WORKSPACE}/.local @@@
+          ls ${GITHUB_WORKSPACE}/.local
 
       - id: Install_takatori
         name: Install_takatori
@@ -81,6 +87,8 @@ jobs:
           rm -f CMakeCache.txt
           cmake -DCMAKE_BUILD_TYPE=Debug -DBUILD_TESTS=OFF -DBUILD_DOCUMENTS=OFF -DFORCE_INSTALL_RPATH=ON -DCMAKE_INSTALL_PREFIX=${GITHUB_WORKSPACE}/.local ..
           cmake --build . --target install --clean-first -- -j
+          echo @@@@ ${GITHUB_WORKSPACE}/.local @@@
+          ls ${GITHUB_WORKSPACE}/.local
 
       - id: Install_hopscotch-map
         name: Install_hopscotch-map
@@ -91,6 +99,8 @@ jobs:
           rm -f CMakeCache.txt
           cmake -DCMAKE_INSTALL_PREFIX=${GITHUB_WORKSPACE}/.local ../third_party/hopscotch-map
           cmake --build . --target install -- -j
+          echo @@@@ ${GITHUB_WORKSPACE}/.local @@@
+          ls ${GITHUB_WORKSPACE}/.local
 
       - id: Install_yugawara
         name: Install_yugawara
@@ -101,6 +111,8 @@ jobs:
           rm -f CMakeCache.txt
           cmake -DCMAKE_BUILD_TYPE=Debug -DBUILD_TESTS=OFF -DBUILD_DOCUMENTS=OFF -DFORCE_INSTALL_RPATH=ON -DCMAKE_INSTALL_PREFIX=${GITHUB_WORKSPACE}/.local ..
           cmake --build . --target install --clean-first -- -j
+          echo @@@@ ${GITHUB_WORKSPACE}/.local @@@
+          ls ${GITHUB_WORKSPACE}/.local
 
       - id: Install_shakujo
         name: Install_shakujo
@@ -111,6 +123,8 @@ jobs:
           rm -f CMakeCache.txt
           cmake -DCMAKE_BUILD_TYPE=Debug -DBUILD_TESTS=OFF -DBUILD_DOCUMENTS=OFF -DBUILD_EXAMPLES=OFF -DCMAKE_INSTALL_PREFIX=${GITHUB_WORKSPACE}/.local ..
           cmake --build . --target install --clean-first -- -j
+          echo @@@@ ${GITHUB_WORKSPACE}/.local @@@
+          ls ${GITHUB_WORKSPACE}/.local
 
       - id: Install_mizugaki
         name: Install_mizugaki
@@ -131,6 +145,8 @@ jobs:
           rm -f CMakeCache.txt
           cmake -DCMAKE_BUILD_TYPE=Debug -DBUILD_TESTS=OFF -DBUILD_DOCUMENTS=OFF -DBUILD_EXAMPLES=OFF -DCMAKE_INSTALL_PREFIX=${GITHUB_WORKSPACE}/.local ..
           cmake --build . --target install --clean-first -- -j
+          echo @@@@ ${GITHUB_WORKSPACE}/.local @@@
+          ls ${GITHUB_WORKSPACE}/.local
 
       - id: Install_jogasaki
         name: Install_jogasaki
@@ -141,6 +157,8 @@ jobs:
           rm -f CMakeCache.txt
           cmake -DCMAKE_BUILD_TYPE=Debug -DSHARKSFIN_IMPLEMENTATION=memory -DCMAKE_EXPORT_COMPILE_COMMANDS=ON -DCMAKE_INSTALL_PREFIX=${GITHUB_WORKSPACE}/.local -DCMAKE_PREFIX_PATH=${GITHUB_WORKSPACE}/.local ..
           cmake --build . --target install --clean-first -- -j
+          echo @@@@ ${GITHUB_WORKSPACE}/.local @@@
+          ls ${GITHUB_WORKSPACE}/.local
 
       - id: Install_manager
         name: Install_manager
@@ -149,6 +167,8 @@ jobs:
           mkdir -p build
           cd build
           rm -f CMakeCache.txt
+          echo @@@@ ${GITHUB_WORKSPACE}/.local @@@
+          ls ${GITHUB_WORKSPACE}/.local
           echo @@@@ ${GITHUB_WORKSPACE}/.local/pgsql @@@
           ls ${GITHUB_WORKSPACE}/.local/pgsql
           echo @@@@ ${GITHUB_WORKSPACE}/.local/pgsql/bin @@@
