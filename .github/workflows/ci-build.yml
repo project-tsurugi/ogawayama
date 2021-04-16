@@ -141,6 +141,7 @@ jobs:
       - id: Install_manager
         name: Install_manager
         run: |
+          export path=$path:${GITHUB_WORKSPACE}/pgsql/bin
           cd third_party/manager
           mkdir -p build
           cd build
