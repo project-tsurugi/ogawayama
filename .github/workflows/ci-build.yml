@@ -141,12 +141,12 @@ jobs:
       - id: Install_manager
         name: Install_manager
         run: |
-          export path=$path:${GITHUB_WORKSPACE}/pgsql/bin
           cd third_party/manager
+	  ls ${GITHUB_WORKSPACE}/pgsql/bin
           mkdir -p build
           cd build
           rm -f CMakeCache.txt
-          cmake -DCMAKE_BUILD_TYPE=Debug -DFORCE_INSTALL_RPATH=ON -DCMAKE_INSTALL_PREFIX=${GITHUB_WORKSPACE}/.local ..
+          PATH=$PATH:${GITHUB_WORKSPACE}/pgsql/bin cmake -DCMAKE_BUILD_TYPE=Debug -DFORCE_INSTALL_RPATH=ON -DCMAKE_INSTALL_PREFIX=${GITHUB_WORKSPACE}/.local ..
           cmake --build . --target install --clean-first -- -j
 
       - id: CMake_Build
