@@ -20,6 +20,13 @@ jobs:
       PG_VERSION: 12.6
 
     steps:
+      - id: Checkout
+        name: Checkout
+        uses: actions/checkout@v2
+        with:
+          submodules: recursive
+          token: ${{ secrets.GHA_PAT }}
+
       - id: Setup_PostgreSQL
         name: Setup_PostgreSQL
         run: |
@@ -34,13 +41,6 @@ jobs:
           ls ${GITHUB_WORKSPACE}/.local/pgsql
           echo @@@@ ${GITHUB_WORKSPACE}/.local/pgsql/bin @@@
           ls ${GITHUB_WORKSPACE}/.local/pgsql/bin
-
-      - id: Checkout
-        name: Checkout
-        uses: actions/checkout@v2
-        with:
-          submodules: recursive
-          token: ${{ secrets.GHA_PAT }}
 
       - id: Install_shirakami
         name: Install_shirakami
