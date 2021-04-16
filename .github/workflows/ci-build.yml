@@ -155,7 +155,7 @@ jobs:
           export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:${GITHUB_WORKSPACE}/pgsql/lib
           mkdir build
           cd build
-          cmake -DCMAKE_BUILD_TYPE=Debug -DCMAKE_PREFIX_PATH=${GITHUB_WORKSPACE}/.local -DCMAKE_EXPORT_COMPILE_COMMANDS=ON ..
+          cmake -DCMAKE_BUILD_TYPE=Debug -DCMAKE_PREFIX_PATH=${GITHUB_WORKSPACE}/.local -DCMAKE_EXPORT_COMPILE_COMMANDS=ON -DCMAKE_SHARED_LINKER_FLAGS=${GITHUB_WORKSPACE}/pgsql/lib ..
           cmake --build . --target all --clean-first -- -j
 
       - id: CTest
