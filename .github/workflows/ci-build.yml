@@ -30,6 +30,7 @@ jobs:
           ./configure --prefix=${GITHUB_WORKSPACE}/pgsql
           make -j8
           make install
+          ls ${GITHUB_WORKSPACE}/pgsql
 
       - id: Checkout
         name: Checkout
