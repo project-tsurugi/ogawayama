@@ -163,7 +163,7 @@ jobs:
         env:
           GTEST_OUTPUT: xml
         run: |
-          export LD_LIBRARY_PATH=${GITHUB_WORKSPACE}/pgsql/lib
+          export LD_LIBRARY_PATH=${GITHUB_WORKSPACE}/.local/lib:${GITHUB_WORKSPACE}/pgsql/lib
           cd build
           ctest --verbose
 
