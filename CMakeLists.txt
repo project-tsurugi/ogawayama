@@ -40,6 +40,11 @@ find_package(gflags REQUIRED)
 
 find_package(manager REQUIRED)
 
+if (NOT BUILD_STUB_ONLY)
+  find_package(umikongo-${SHARKSFIN_IMPLEMENTATION} REQUIRED)
+  find_package(shakujo REQUIRED)
+endif()
+
 include(GNUInstallDirs)
 include(CMakePackageConfigHelpers)
 include(CompileOptions)
