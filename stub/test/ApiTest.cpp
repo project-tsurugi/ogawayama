@@ -375,7 +375,7 @@ TEST_F(ApiTest, DISABLED_passing_multiple_row) {
     EXPECT_EQ(ERROR_CODE::OK, transaction->commit());
 }
 
-TEST_F(ApiTest, DISABLED_empty_transaction) {
+TEST_F(ApiTest, empty_transaction) {
     StubPtr stub;
     ConnectionPtr connection;
     TransactionPtr transaction;
