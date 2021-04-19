@@ -21,11 +21,6 @@ if(NOT DEFINED SHARKSFIN_IMPLEMENTATION)
     )
 endif()
 
-find_package(takatori REQUIRED)
-find_package(fpdecimal REQUIRED)
-find_package(jogasaki-${SHARKSFIN_IMPLEMENTATION} REQUIRED)
-find_package(shakujo REQUIRED)
-
 file(GLOB SOURCES
     "*.cpp"
 )
