@@ -32,6 +32,15 @@ option(BUILD_TESTS "Build test programs" ON)
 option(BUILD_SHARED_LIBS "build shared libraries instead of static" ON)
 option(BUILD_STUB_ONLY "build the stub only" OFF)
 
+if(NOT DEFINED SHARKSFIN_IMPLEMENTATION)
+    set(
+            SHARKSFIN_IMPLEMENTATION "memory"
+            CACHE STRING
+            "sharksfin target name to link"
+            FORCE
+    )
+endif()
+
 find_package(Threads REQUIRED)
 find_package(Boost
         COMPONENTS filesystem thread system container stacktrace_backtrace
