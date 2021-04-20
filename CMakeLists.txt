@@ -52,6 +52,7 @@ find_package(manager REQUIRED)
 
 if (NOT BUILD_STUB_ONLY)
   find_package(takatori REQUIRED)
+  find_package(yugawara REQUIRED)
   find_package(fpdecimal REQUIRED)
   find_package(jogasaki-${SHARKSFIN_IMPLEMENTATION} REQUIRED)
   find_package(shakujo REQUIRED)

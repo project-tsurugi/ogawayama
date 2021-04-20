@@ -43,6 +43,7 @@ target_include_directories(server
 target_link_libraries(server
     PRIVATE jogasaki-${SHARKSFIN_IMPLEMENTATION}-engine
     PRIVATE takatori
+    PRIVATE yugawara
     PRIVATE fpdecimal
     PRIVATE shakujo-common
     PRIVATE manager-metadata

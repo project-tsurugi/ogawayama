@@ -25,6 +25,11 @@
 #include "shakujo/common/core/type/Float.h"
 #include "shakujo/common/core/type/Char.h"
 
+#include <takatori/type/int.h>
+#include <takatori/type/float.h>
+#include <takatori/type/character.h>
+#include <yugawara/storage/configurable_provider.h>
+
 #include "worker.h"
 
 namespace ogawayama::server {
@@ -351,15 +356,7 @@ bool Worker::execute_prepared_query(std::size_t sid, std::size_t rid)
 
 void Worker::deploy_metadata(std::size_t table_id)
 {
-#if 0
-    using namespace shakujo::common::schema;
-    using namespace shakujo::common::core;
-
     manager::metadata::ErrorCode error;
-
-    if (!transaction_) {
-        transaction_ = db_.create_transaction();
-    }
 
     auto datatypes = std::make_unique<manager::metadata::DataTypes>(FLAGS_dbname);
     error = datatypes->Metadata::load();
@@ -386,7 +383,8 @@ void Worker::deploy_metadata(std::size_t table_id)
         }
 
         boost::property_tree::ptree primary_keys = table.get_child(manager::metadata::Tables::PRIMARY_KEY_NODE);
-        std::map<std::size_t, std::unique_ptr<IndexInfo::Column>> pk_columns;
+
+        std::map<std::size_t, std::unique_ptr<yugawara::storage::column>> pk_columns;
         BOOST_FOREACH (const boost::property_tree::ptree::value_type& node, primary_keys) {
             const boost::property_tree::ptree& value = node.second;
             boost::optional<uint64_t> primary_key = value.get_value_optional<uint64_t>();
@@ -398,7 +396,7 @@ void Worker::deploy_metadata(std::size_t table_id)
         }
 
         // column metadata
-        std::map<std::size_t, std::unique_ptr<TableInfo::Column>> columns_map;
+        std::map<std::size_t, std::unique_ptr<yugawara::storage::column>> columns_map;
         BOOST_FOREACH (const boost::property_tree::ptree::value_type& node, table.get_child(manager::metadata::Tables::COLUMNS_NODE)) {
             const boost::property_tree::ptree& column = node.second;
             
@@ -418,83 +416,59 @@ void Worker::deploy_metadata(std::size_t table_id)
                     return;
                 }
                 auto direction = column.get_optional<uint64_t>(manager::metadata::Tables::Column::DIRECTION);
-                Direction shakujo_direction;
+//                Direction shakujo_direction;
 
                 if (direction) {
                     auto direction_value = static_cast<manager::metadata::Tables::Column::Direction>(direction.value());
-                    shakujo_direction = (direction_value == manager::metadata::Tables::Column::Direction::DESCENDANT) ?
-                                            Direction::DESCENDANT : Direction::ASCENDANT;
+//                    shakujo_direction = (direction_value == manager::metadata::Tables::Column::Direction::DESCENDANT) ?
+//                                            Direction::DESCENDANT : Direction::ASCENDANT;
                 } else {
-                    shakujo_direction = Direction::ASCENDANT;
+//                    shakujo_direction = Direction::ASCENDANT;
                 }
-                itr->second = std::make_unique<IndexInfo::Column>(name.value(), shakujo_direction);
             }
 
-            auto shakujo_nullable = nullable.value() ? Type::Nullity::NULLABLE : Type::Nullity::NEVER_NULL;
-            std::size_t data_length_value{};
             auto data_type_id_value = static_cast<manager::metadata::DataTypes::DataTypesId>(data_type_id.value());
             switch(data_type_id_value) {
             case manager::metadata::DataTypes::DataTypesId::INT32:
-            case manager::metadata::DataTypes::DataTypesId::FLOAT32:
-                data_length_value = 32; break;
+                columns_map[ordinal_position.value()] = std::make_unique<yugawara::storage::column>(name.value(), takatori::type::int4(), yugawara::variable::nullity(nullable.value())); break;
             case manager::metadata::DataTypes::DataTypesId::INT64:
-            case manager::metadata::DataTypes::DataTypesId::FLOAT64:
-                data_length_value = 64; break;
-            }
-
-            switch(data_type_id_value) {
-            case manager::metadata::DataTypes::DataTypesId::INT32:
-            case manager::metadata::DataTypes::DataTypesId::INT64:
-                {
-                    auto shakujo_type = std::make_unique<type::Int>(data_length_value, shakujo_nullable);
-                    columns_map[ordinal_position.value()] = std::make_unique<TableInfo::Column>(name.value(), std::move(shakujo_type));
-                }
-                break;
+                columns_map[ordinal_position.value()] = std::make_unique<yugawara::storage::column>(name.value(), takatori::type::int8(), yugawara::variable::nullity(nullable.value())); break;
             case manager::metadata::DataTypes::DataTypesId::FLOAT32:
+                columns_map[ordinal_position.value()] = std::make_unique<yugawara::storage::column>(name.value(), takatori::type::float4(), yugawara::variable::nullity(nullable.value())); break;
             case manager::metadata::DataTypes::DataTypesId::FLOAT64:
-                {
-                    auto shakujo_type = std::make_unique<type::Float>(data_length_value, shakujo_nullable);
-                    columns_map[ordinal_position.value()] = std::make_unique<TableInfo::Column>(name.value(), std::move(shakujo_type));
-                }
-                break;
+                columns_map[ordinal_position.value()] = std::make_unique<yugawara::storage::column>(name.value(), takatori::type::float8(), yugawara::variable::nullity(nullable.value())); break;
             case manager::metadata::DataTypes::DataTypesId::CHAR:
             case manager::metadata::DataTypes::DataTypesId::VARCHAR:
-                {
-                    auto varying = column.get_optional<bool>(manager::metadata::Tables::Column::VARYING);
-                    if(!varying) {
-                        channel_->send_ack(ERROR_CODE::INVALID_PARAMETER);
-                        return;
-                    }
-                    auto varying_value = varying.value();
-                    if((!varying_value && (data_type_id_value != manager::metadata::DataTypes::DataTypesId::CHAR)) ||
-                       (varying_value && (data_type_id_value != manager::metadata::DataTypes::DataTypesId::VARCHAR))) {
-                        channel_->send_ack(ERROR_CODE::INVALID_PARAMETER);
-                        return;
-                    }
-
-                    auto data_length = column.get_optional<uint64_t>(manager::metadata::Tables::Column::DATA_LENGTH);
-                    if (!data_length) {
-                        if(varying_value) {
-                            channel_->send_ack(ERROR_CODE::UNSUPPORTED);
-                            return;
-                        }
-                        data_length_value = 1;  // CHAR
-                    } else {
-                        data_length_value = data_length.value();
-                    }
-                    
-                    auto shakujo_type = std::make_unique<type::Char>(varying_value, data_length_value, shakujo_nullable);
-                    columns_map[ordinal_position.value()] = std::make_unique<TableInfo::Column>(name.value(), std::move(shakujo_type));
-                }
-                break;
-            default:
-                {
-                    channel_->send_ack(ERROR_CODE::UNKNOWN);
+            {
+                std::size_t data_length_value{1};  // for CHAR not CHAR(n)
+                auto varying = column.get_optional<bool>(manager::metadata::Tables::Column::VARYING);
+                if(!varying) {
+                    channel_->send_ack(ERROR_CODE::INVALID_PARAMETER);
                     return;
                 }
+                auto varying_value = varying.value();
+                if((!varying_value && (data_type_id_value != manager::metadata::DataTypes::DataTypesId::CHAR)) ||
+                   (varying_value && (data_type_id_value != manager::metadata::DataTypes::DataTypesId::VARCHAR))) {
+                    channel_->send_ack(ERROR_CODE::INVALID_PARAMETER);
+                    return;
+                }
+                auto data_length = column.get_optional<uint64_t>(manager::metadata::Tables::Column::DATA_LENGTH);
+                if (!data_length) {
+                    if(varying_value) {
+                        channel_->send_ack(ERROR_CODE::UNSUPPORTED);
+                        return;
+                    }
+                } else {
+                    data_length_value = data_length.value();
+                }
+                columns_map[ordinal_position.value()] = std::make_unique<yugawara::storage::column>(name.value(), takatori::type::character(takatori::type::varying_t(varying_value), data_length_value), yugawara::variable::nullity(nullable.value())); break;
+            }
+            default:
+                std::abort();  // FIXME
             }
         }
 
+#if 0
         std::vector<TableInfo::Column> shakujo_columns;
         for (const auto& [key, value] : columns_map) {
             shakujo_columns.emplace_back(*value);
@@ -513,11 +487,11 @@ void Worker::deploy_metadata(std::size_t table_id)
             channel_->send_ack(ERROR_CODE::INVALID_PARAMETER);
             return;
         }
+#endif
         channel_->send_ack(ERROR_CODE::OK);
     } else {
         channel_->send_ack(ERROR_CODE::UNKNOWN);
     }
-#endif
 }
 
 }  // ogawayama::server
