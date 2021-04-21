@@ -21,10 +21,6 @@
 #include "gflags/gflags.h"
 #include "glog/logging.h"
 
-#include "shakujo/common/core/type/Int.h"
-#include "shakujo/common/core/type/Float.h"
-#include "shakujo/common/core/type/Char.h"
-
 #include <takatori/type/int.h>
 #include <takatori/type/float.h>
 #include <takatori/type/character.h>
@@ -145,8 +141,6 @@ void Worker::execute_statement(std::string_view sql)
 
 void Worker::send_metadata(std::size_t rid)
 {
-    using namespace shakujo::common::core;
-
     auto metadata = cursors_.at(rid).result_set_->meta();
     std::size_t n = metadata->field_count();
     for (std::size_t i = 0; i < n; i++) {
