@@ -152,6 +152,7 @@ jobs:
       - id: CMake_Build
         name: CMake_Build
         run: |
+          export LD_LIBRARY_PATH=${GITHUB_WORKSPACE}/.local/lib:${GITHUB_WORKSPACE}/pgsql/lib
           mkdir build
           cd build
           cmake -DCMAKE_BUILD_TYPE=Debug -DSHARKSFIN_IMPLEMENTATION=memory -DCMAKE_PREFIX_PATH=${GITHUB_WORKSPACE}/.local -DCMAKE_EXPORT_COMPILE_COMMANDS=ON ..
