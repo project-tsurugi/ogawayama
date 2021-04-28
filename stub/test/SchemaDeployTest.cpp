@@ -62,6 +62,7 @@ TEST_F(ApiTest, basic_flow) {
     EXPECT_EQ(ERROR_CODE::OK, transaction->execute_statement(
                                                              "INSERT INTO table_1 (column_1, column_2, column_3) VALUES (1.1, 'ABCDE', 1234)"
                                                             ));
+
     EXPECT_EQ(ERROR_CODE::OK, transaction->execute_query("SELECT * FROM table_1", result_set));
 
     EXPECT_EQ(ERROR_CODE::OK, result_set->get_metadata(metadata));
@@ -69,22 +70,22 @@ TEST_F(ApiTest, basic_flow) {
     auto& md = metadata->get_types();
     EXPECT_EQ(static_cast<std::size_t>(3), md.size());
 
-    EXPECT_EQ(TYPE::FLOAT32, md.at(0).get_type());
-    EXPECT_EQ(static_cast<std::size_t>(4), md.at(0).get_length());
+    EXPECT_EQ(TYPE::FLOAT64, md.at(0).get_type());
+    EXPECT_EQ(static_cast<std::size_t>(8), md.at(0).get_length());
 
     EXPECT_EQ(TYPE::TEXT, md.at(1).get_type());
-    EXPECT_EQ(static_cast<std::size_t>(8), md.at(1).get_length());
+//    EXPECT_EQ(static_cast<std::size_t>(8), md.at(1).get_length());  // text
 
     EXPECT_EQ(TYPE::INT64, md.at(2).get_type());
     EXPECT_EQ(static_cast<std::size_t>(8), md.at(2).get_length());
  
-    float f;
+    double f;
     std::string_view t;
     std::int64_t b;
     EXPECT_EQ(ERROR_CODE::OK, result_set->next());
     
     EXPECT_EQ(ERROR_CODE::OK, result_set->next_column(f));
-    EXPECT_EQ(static_cast<float>(1.1), f);
+    EXPECT_EQ(static_cast<double>(1.1), f);
 
     EXPECT_EQ(ERROR_CODE::OK, result_set->next_column(t));
     EXPECT_EQ("ABCDE", t);
