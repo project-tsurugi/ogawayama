@@ -390,24 +390,38 @@ void Worker::deploy_metadata(std::size_t table_id)
         }
 
         // column metadata
-        std::map<std::size_t, std::unique_ptr<yugawara::storage::column>> columns_map;  // key: Column.ordinalPosition
-        std::map<std::size_t, bool> is_descendant;                                      // key: Column.ordinalPosition
-        std::vector<std::size_t> value_columns;                                         // index: received order, content: ordinalPosition
+        std::map<std::size_t, const boost::property_tree::ptree*> columns_map;          // key: Column.ordinalPosition
         BOOST_FOREACH (const boost::property_tree::ptree::value_type& node, table.get_child(manager::metadata::Tables::COLUMNS_NODE)) {
-            const boost::property_tree::ptree& column = node.second;
+            auto ordinal_position = node.second.get_optional<uint64_t>(manager::metadata::Tables::Column::ORDINAL_POSITION);
+            if (!ordinal_position) {
+                channel_->send_ack(ERROR_CODE::INVALID_PARAMETER);
+                return;
+            }
+            columns_map[ordinal_position.value()] = &node.second;
+        }
+
+        takatori::util::reference_vector<yugawara::storage::column> columns;            // ordinalPosition of the column
+        std::vector<std::size_t> value_columns;                                         // index: received order, content: ordinalPosition of the column
+        std::map<std::size_t, bool> is_descendant;                                      // key: Column.ordinalPosition
+        std::size_t ordinal_position_value = 1;
+        for(auto &&e : columns_map) {
+            if (ordinal_position_value != e.first) {
+                channel_->send_ack(ERROR_CODE::INVALID_PARAMETER);
+                return;
+            }
+            const boost::property_tree::ptree& column = *e.second;
             
             auto nullable = column.get_optional<bool>(manager::metadata::Tables::Column::NULLABLE);
             auto data_type_id = column.get_optional<manager::metadata::ObjectIdType>(manager::metadata::Tables::Column::DATA_TYPE_ID);
             auto name = column.get_optional<std::string>(manager::metadata::Tables::Column::NAME);
             auto ordinal_position = column.get_optional<uint64_t>(manager::metadata::Tables::Column::ORDINAL_POSITION);
-            if (!nullable || !data_type_id || !name || !ordinal_position) {
+            if (!nullable || !data_type_id || !name) {
                 channel_->send_ack(ERROR_CODE::INVALID_PARAMETER);
                 return;
             }
             auto nullable_value = nullable.value();
             auto data_type_id_value = static_cast<manager::metadata::DataTypes::DataTypesId>(data_type_id.value());
             auto name_value = name.value();
-            auto ordinal_position_value = ordinal_position.value();
 
             if (std::vector<std::size_t>::iterator itr = std::find(pk_columns.begin(), pk_columns.end(), ordinal_position_value); itr != pk_columns.end()) {  // is this pk_column ?
                 bool d{false};
@@ -426,13 +440,13 @@ void Worker::deploy_metadata(std::size_t table_id)
 
             switch(data_type_id_value) {  // build yugawara::storage::column
             case manager::metadata::DataTypes::DataTypesId::INT32:
-                columns_map[ordinal_position_value] = std::make_unique<yugawara::storage::column>(name_value, takatori::type::int4(), yugawara::variable::nullity(nullable_value)); break;
+                columns.emplace_back(yugawara::storage::column(name_value, takatori::type::int4(), yugawara::variable::nullity(nullable_value))); break;
             case manager::metadata::DataTypes::DataTypesId::INT64:
-                columns_map[ordinal_position_value] = std::make_unique<yugawara::storage::column>(name_value, takatori::type::int8(), yugawara::variable::nullity(nullable_value)); break;
+                columns.emplace_back(yugawara::storage::column(name_value, takatori::type::int8(), yugawara::variable::nullity(nullable_value))); break;
             case manager::metadata::DataTypes::DataTypesId::FLOAT32:
-                columns_map[ordinal_position_value] = std::make_unique<yugawara::storage::column>(name_value, takatori::type::float4(), yugawara::variable::nullity(nullable_value)); break;
+                columns.emplace_back(yugawara::storage::column(name_value, takatori::type::float4(), yugawara::variable::nullity(nullable_value))); break;
             case manager::metadata::DataTypes::DataTypesId::FLOAT64:
-                columns_map[ordinal_position_value] = std::make_unique<yugawara::storage::column>(name_value, takatori::type::float8(), yugawara::variable::nullity(nullable_value)); break;
+                columns.emplace_back(yugawara::storage::column(name_value, takatori::type::float8(), yugawara::variable::nullity(nullable_value))); break;
             case manager::metadata::DataTypes::DataTypesId::CHAR:
             case manager::metadata::DataTypes::DataTypesId::VARCHAR:
             {
@@ -457,46 +471,53 @@ void Worker::deploy_metadata(std::size_t table_id)
                 } else {
                     data_length_value = data_length.value();
                 }
-                columns_map[ordinal_position_value] = std::make_unique<yugawara::storage::column>(name_value, takatori::type::character(takatori::type::varying_t(varying_value), data_length_value), yugawara::variable::nullity(nullable_value)); break;
+                columns.emplace_back(yugawara::storage::column(name_value,
+                                                                    takatori::type::character(takatori::type::varying_t(varying_value), data_length_value),
+                                                                    yugawara::variable::nullity(nullable_value)));
+                break;
             }
             default:
                 std::abort();  // FIXME
             }
+            ordinal_position_value++;
         }
 
         // build key metadata (yugawara::storage::index::key)
         std::vector<yugawara::storage::index::key> keys;  // index: received order
         for (std::size_t index : pk_columns) {
             auto sort_direction = is_descendant[index] ? takatori::relation::sort_direction::descendant : takatori::relation::sort_direction::ascendant;
-            keys.emplace_back(yugawara::storage::index::key(*columns_map[index], sort_direction));
+            keys.emplace_back(yugawara::storage::index::key(columns[index], sort_direction));
         }
 
         // build value metadata (yugawara::storage::index::column_ref)
         std::vector<yugawara::storage::index::column_ref> values;
         for(auto &&e : value_columns) {
-            values.emplace_back(yugawara::storage::index::column_ref(*columns_map[e]));
+            values.emplace_back(yugawara::storage::index::column_ref(columns[e]));
         }
 
-#if 0
-        std::vector<TableInfo::Column> shakujo_columns;
-        for (const auto& [key, value] : columns_map) {
-            shakujo_columns.emplace_back(*value);
-        }
-        std::vector<IndexInfo::Column> shakujo_pk_columns;
-        for (const auto& [key, value] : pk_columns) {
-            shakujo_pk_columns.emplace_back(*value);
-        }
-
-        TableInfo table { table_name.value(), shakujo_columns, shakujo_pk_columns };
-        
-        auto provider = db_.provider();
-        try {
-            provider->add(table, false);
-        } catch (std::exception &ex) {
-            channel_->send_ack(ERROR_CODE::INVALID_PARAMETER);
+        auto t = std::make_shared<yugawara::storage::table>(table_name.value(), columns);
+        if (db_.create_table(t) != jogasaki::status::ok) {
+            channel_->send_ack(ERROR_CODE::UNKNOWN);
             return;
         }
-#endif
+        
+        auto i = std::make_shared<yugawara::storage::index>(
+            t,
+            table_name.value(),
+            keys,
+            values,
+            yugawara::storage::index_feature_set{
+                ::yugawara::storage::index_feature::find,
+                ::yugawara::storage::index_feature::scan,
+                ::yugawara::storage::index_feature::unique,
+                ::yugawara::storage::index_feature::primary,
+            }
+        );
+        if(db_.create_index(i) != jogasaki::status::ok) {
+            channel_->send_ack(ERROR_CODE::UNKNOWN);
+            return;
+        }
+
         channel_->send_ack(ERROR_CODE::OK);
     } else {
         channel_->send_ack(ERROR_CODE::UNKNOWN);
