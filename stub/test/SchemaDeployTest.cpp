@@ -44,7 +44,7 @@ class ApiTest : public ::testing::Test {
     }
 };
 
-TEST_F(ApiTest, DISABLED_basic_flow) {
+TEST_F(ApiTest, basic_flow) {
     StubPtr stub;
     ConnectionPtr connection;
     TransactionPtr transaction;
@@ -62,7 +62,6 @@ TEST_F(ApiTest, DISABLED_basic_flow) {
     EXPECT_EQ(ERROR_CODE::OK, transaction->execute_statement(
                                                              "INSERT INTO table_1 (column_1, column_2, column_3) VALUES (1.1, 'ABCDE', 1234)"
                                                             ));
-
     EXPECT_EQ(ERROR_CODE::OK, transaction->execute_query("SELECT * FROM table_1", result_set));
 
     EXPECT_EQ(ERROR_CODE::OK, result_set->get_metadata(metadata));
@@ -98,7 +97,7 @@ TEST_F(ApiTest, DISABLED_basic_flow) {
     EXPECT_EQ(ERROR_CODE::OK, transaction->commit());
 }
 
-TEST_F(ApiTest, DISABLED_register_twice) {
+TEST_F(ApiTest, register_twice) {
     StubPtr stub;
     ConnectionPtr connection;
     TransactionPtr transaction;
@@ -114,7 +113,7 @@ TEST_F(ApiTest, DISABLED_register_twice) {
     EXPECT_EQ(ERROR_CODE::INVALID_PARAMETER, transaction->get_impl()->create_table(1));
 }
 
-TEST_F(ApiTest, DISABLED_nullable_pkey) {
+TEST_F(ApiTest, nullable_pkey) {
     StubPtr stub;
     ConnectionPtr connection;
     TransactionPtr transaction;
