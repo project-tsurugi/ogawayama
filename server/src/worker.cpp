@@ -494,14 +494,14 @@ void Worker::deploy_metadata(std::size_t table_id)
         }
         
         // build key metadata (yugawara::storage::index::key)
-        std::vector<yugawara::storage::index::key, takatori::util::object_allocator<yugawara::storage::index::key>> keys;
+        std::vector<yugawara::storage::index::key> keys;
         for (std::size_t position : pk_columns) {
             auto sort_direction = is_descendant[position-1] ? takatori::relation::sort_direction::descendant : takatori::relation::sort_direction::ascendant;
             keys.emplace_back(yugawara::storage::index::key(t->columns()[position-1], sort_direction));
         }
 
         // build value metadata (yugawara::storage::index::column_ref)
-        std::vector<yugawara::storage::index::column_ref, takatori::util::object_allocator<yugawara::storage::index::column_ref>> values;
+        std::vector<yugawara::storage::index::column_ref> values;
         for(std::size_t position : value_columns) {
             values.emplace_back(yugawara::storage::index::column_ref(t->columns()[position-1]));
         }
