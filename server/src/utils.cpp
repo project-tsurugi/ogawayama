@@ -41,25 +41,25 @@ namespace ogawayama::server {
     }
 
     void
-    dump(umikongo::Database *db, std::string &location, std::string &table)
+    dump(jogasaki::api::database& db, std::string &location, std::string &table)
     {
         boost::filesystem::path dir = prepare(location);
         std::ofstream ofs((dir / (table+".tbldmp")).c_str());
         if (ofs.fail()) {
             throw std::ios_base::failure("Failed to open file.");
         }
-        db->dump(ofs, table, FLAGS_read_batch_size);
+        db.dump(ofs, table, FLAGS_read_batch_size);
     }
 
     void
-    load(umikongo::Database *db, std::string &location, std::string &table)
+    load(jogasaki::api::database& db, std::string &location, std::string &table)
     {
         boost::filesystem::path dir = prepare(location);
         std::ifstream ifs((dir / (table+".tbldmp")).c_str());
         if (ifs.fail()) {
             throw std::ios_base::failure("Failed to open file.");
         }
-        db->load(ifs, table, FLAGS_write_batch_size);
+        db.load(ifs, table, FLAGS_write_batch_size);
     }
 
 }  // ogawayama::server

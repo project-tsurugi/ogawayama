@@ -13,7 +13,7 @@
                 {
                     "name": "column_1",
                     "ordinalPosition": "1",
-                    "dataTypeId": "8",
+                    "dataTypeId": "9",
                     "varying": "false",
                     "nullable": "false",
                     "default": "default_expr1",

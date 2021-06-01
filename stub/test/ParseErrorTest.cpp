@@ -37,7 +37,7 @@ class ParseErrorTest : public ::testing::Test {
     }
 };
 
-TEST_F(ParseErrorTest, execute_statement) {
+TEST_F(ParseErrorTest, DISABLED_execute_statement) {
     StubPtr stub;
     ConnectionPtr connection;
     TransactionPtr transaction;
@@ -62,7 +62,7 @@ TEST_F(ParseErrorTest, execute_statement) {
 
 }
 
-TEST_F(ParseErrorTest, execute_query) {
+TEST_F(ParseErrorTest, DISABLED_execute_query) {
     StubPtr stub;
     ConnectionPtr connection;
     TransactionPtr transaction;

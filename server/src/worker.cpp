@@ -21,9 +21,10 @@
 #include "gflags/gflags.h"
 #include "glog/logging.h"
 
-#include "shakujo/common/core/type/Int.h"
-#include "shakujo/common/core/type/Float.h"
-#include "shakujo/common/core/type/Char.h"
+#include <takatori/type/int.h>
+#include <takatori/type/float.h>
+#include <takatori/type/character.h>
+#include <yugawara/storage/configurable_provider.h>
 
 #include "worker.h"
 
@@ -31,7 +32,7 @@ namespace ogawayama::server {
 
 DECLARE_string(dbname);
 
-Worker::Worker(umikongo::Database *db, std::size_t id) : db_(db), id_(id)
+Worker::Worker(jogasaki::api::database& db, std::size_t id) : db_(db), id_(id)
 {
     std::string name = FLAGS_dbname + std::to_string(id);
     shm4_connection_ = std::make_unique<ogawayama::common::SharedMemory>(name, ogawayama::common::param::SheredMemoryType::SHARED_MEMORY_CONNECTION);
@@ -122,60 +123,45 @@ void Worker::run()
 void Worker::execute_statement(std::string_view sql)
 {
     if (!transaction_) {
-        transaction_ = db_->create_transaction();
-        context_ = transaction_->context();
+        transaction_ = db_.create_transaction();
     }
-    try {
-        context_->execute_statement(sql);
-        channel_->send_ack(ERROR_CODE::OK);
-    } catch (umikongo::Exception& e) {
-        if (e.reason() == umikongo::Exception::ReasonCode::ERR_UNSUPPORTED) {
-            channel_->send_ack(ERROR_CODE::UNSUPPORTED);
-            return;
-        }
-        std::cerr << e.what() << std::endl;
+
+    std::unique_ptr<jogasaki::api::executable_statement> e{};
+    if(auto rc = db_.create_executable(sql, e); rc != jogasaki::status::ok) {
         channel_->send_ack(ERROR_CODE::UNKNOWN);
+        return;
     }
+    if(auto rc = transaction_->execute(*e); rc != jogasaki::status::ok) {
+        channel_->send_ack(ERROR_CODE::UNKNOWN);
+        return;
+    }
+    channel_->send_ack(ERROR_CODE::OK);
+    return;
 }
 
 void Worker::send_metadata(std::size_t rid)
 {
-    using namespace shakujo::common::core;
-
-    auto metadata = cursors_.at(rid).executable_->metadata();
-    for (auto& t: metadata->column_types()) {
-        switch(t->kind()) {
-        case Type::Kind::INT:
-            switch((static_cast<type::Numeric const *>(t))->size()) {
-            case 16:
-                cursors_.at(rid).row_queue_->push_type(TYPE::INT16, 2);
-                break;
-            case 32:
-                cursors_.at(rid).row_queue_->push_type(TYPE::INT32, 4);
-                break;
-            case 64:
-                cursors_.at(rid).row_queue_->push_type(TYPE::INT64, 8);
-                break;
-            }
+    auto metadata = cursors_.at(rid).result_set_->meta();
+    std::size_t n = metadata->field_count();
+    for (std::size_t i = 0; i < n; i++) {
+        switch(metadata->at(i).kind()) {
+        case jogasaki::api::field_type_kind::int4:
+            cursors_.at(rid).row_queue_->push_type(TYPE::INT32, 4);
             break;
-        case Type::Kind::FLOAT:
-            switch((static_cast<type::Float const *>(t))->size()) {
-            case 32:
-                cursors_.at(rid).row_queue_->push_type(TYPE::FLOAT32, 4);
-                break;
-            case 64:
-                cursors_.at(rid).row_queue_->push_type(TYPE::FLOAT64, 8);
-                break;
-            }
+        case jogasaki::api::field_type_kind::int8:
+            cursors_.at(rid).row_queue_->push_type(TYPE::INT64, 8);
             break;
-        case Type::Kind::CHAR:
-            cursors_.at(rid).row_queue_->push_type(TYPE::TEXT, (static_cast<type::Char const *>(t))->size());
+        case jogasaki::api::field_type_kind::float4:
+            cursors_.at(rid).row_queue_->push_type(TYPE::FLOAT32, 4);
             break;
-        case Type::Kind::STRING:
+        case jogasaki::api::field_type_kind::float8:
+            cursors_.at(rid).row_queue_->push_type(TYPE::FLOAT64, 8);
+            break;
+        case jogasaki::api::field_type_kind::character:
             cursors_.at(rid).row_queue_->push_type(TYPE::TEXT, INT32_MAX);
             break;
         default:
-            std::cerr << "unsurpported data type: " << t->kind() << std::endl;
+            std::cerr << "unsurpported data type: " << metadata->at(i).kind() << std::endl;
             break;
         }
     }
@@ -184,8 +170,7 @@ void Worker::send_metadata(std::size_t rid)
 bool Worker::execute_query(std::string_view sql, std::size_t rid)
 {
     if (!transaction_) {
-        transaction_ = db_->create_transaction();
-        context_ = transaction_->context();
+        transaction_ = db_.create_transaction();
     }
     if (cursors_.size() < (rid + 1)) {
         cursors_.resize(rid + 1);
@@ -193,76 +178,63 @@ bool Worker::execute_query(std::string_view sql, std::size_t rid)
 
     auto& cursor = cursors_.at(rid);
     
-    try {
-        cursor.row_queue_ = std::make_unique<ogawayama::common::RowQueue>
-            (shm4_row_queue_->shm_name(ogawayama::common::param::resultset, rid), shm4_row_queue_.get());
-        cursor.row_queue_->clear();
-    } catch (umikongo::Exception& e) {
-        std::cerr << e.what() << std::endl;
+    cursor.row_queue_ = std::make_unique<ogawayama::common::RowQueue>
+        (shm4_row_queue_->shm_name(ogawayama::common::param::resultset, rid), shm4_row_queue_.get());
+    cursor.row_queue_->clear();
+
+    std::unique_ptr<jogasaki::api::executable_statement> e{};
+    if(auto rc = db_.create_executable(sql, e); rc != jogasaki::status::ok) {
         channel_->send_ack(ERROR_CODE::UNKNOWN);
         return false;
     }
-    try {
-        cursor.executable_ = db_->compile(sql);
-        send_metadata(rid);
-        cursor.iterator_ = context_->execute_query(cursor.executable_.get());
-        channel_->send_ack(ERROR_CODE::OK);
-    } catch (umikongo::Exception& e) {
-        if (e.reason() == umikongo::Exception::ReasonCode::ERR_UNSUPPORTED) {
-            channel_->send_ack(ERROR_CODE::UNSUPPORTED);
-            return false;
-        }
-        std::cerr << e.what() << std::endl;
+    auto& rs =  cursor.result_set_;
+    if(auto rc = transaction_->execute(*e, rs); rc != jogasaki::status::ok || !rs) {
         channel_->send_ack(ERROR_CODE::UNKNOWN);
         return false;
     }
+    
+    send_metadata(rid);
+    channel_->send_ack(ERROR_CODE::OK);
     return true;
 }
 
 void Worker::next(std::size_t rid)
 {
-    try {
-        auto& cursor = cursors_.at(rid);
-        auto& rq = cursor.row_queue_;
-        if(!cursor.iterator_) { return; }
-        std::size_t limit = rq->get_requested();
-        for(std::size_t i = 0; i < limit; i++) {
-            auto row = cursor.iterator_->next();
-            if (row != nullptr) {
-                rq->resize_writing_row(rq->get_metadata_ptr()->get_types().size());
-                for (auto& t: rq->get_metadata_ptr()->get_types()) {
-                    std::size_t cindex = rq->get_cindex();
-                    if (row->is_null(cindex)) {
-                        rq->put_next_column(std::monostate());
-                    } else {
-                        switch (t.get_type()) {
-                        case TYPE::INT16:
-                            rq->put_next_column(row->get<std::int16_t>(cindex)); break;
-                        case TYPE::INT32:
-                            rq->put_next_column(row->get<std::int32_t>(cindex)); break;
-                        case TYPE::INT64:
-                            rq->put_next_column(row->get<std::int64_t>(cindex)); break;
-                        case TYPE::FLOAT32:
-                            rq->put_next_column(row->get<float>(cindex)); break;
-                        case TYPE::FLOAT64:
-                            rq->put_next_column(row->get<double>(cindex)); break;
-                        case TYPE::TEXT:
-                            rq->put_next_column(row->get<std::string_view>(cindex)); break;
-                        case TYPE::NULL_VALUE:
-                            std::cerr << "NULL_VALUE type should not be used" << std::endl; break;
-                        }
+    auto& cursor = cursors_.at(rid);
+    auto& rq = cursor.row_queue_;
+    auto iterator = cursor.result_set_->iterator();
+    std::size_t limit = rq->get_requested();
+    for(std::size_t i = 0; i < limit; i++) {
+        auto record = iterator->next();
+        if (record != nullptr) {
+            rq->resize_writing_row(rq->get_metadata_ptr()->get_types().size());
+            for (auto& t: rq->get_metadata_ptr()->get_types()) {
+                std::size_t cindex = rq->get_cindex();
+                if (record->is_null(cindex)) {
+                    rq->put_next_column(std::monostate());
+                } else {
+                    switch (t.get_type()) {
+                    case TYPE::INT32:
+                        rq->put_next_column(record->get_int4(cindex)); break;
+                    case TYPE::INT64:
+                        rq->put_next_column(record->get_int8(cindex)); break;
+                    case TYPE::FLOAT32:
+                        rq->put_next_column(record->get_float4(cindex)); break;
+                    case TYPE::FLOAT64:
+                        rq->put_next_column(record->get_float8(cindex)); break;
+                    case TYPE::TEXT:
+                        rq->put_next_column(record->get_character(cindex)); break;
+                    case TYPE::NULL_VALUE:
+                        std::cerr << "NULL_VALUE type should not be used" << std::endl; break;
                     }
                 }
-                rq->push_writing_row();
-            } else {
-                rq->push_writing_row();
-                cursor.clear();
-                break;
             }
+            rq->push_writing_row();
+        } else {
+            rq->push_writing_row();
+            cursor.clear();
+            break;
         }
-    } catch (umikongo::Exception& e) {
-        std::cerr << e.what() << std::endl;
-        channel_->send_ack(ERROR_CODE::UNKNOWN);
     }
 }
 
@@ -271,19 +243,15 @@ void Worker::prepare(std::string_view sql, std::size_t sid)
     if (prepared_statements_.size() < (sid + 1)) {
         prepared_statements_.resize(sid + 1);
     }
-    try {
-        prepared_statements_.at(sid) = db_->prepare(sql);
-    } catch (umikongo::Exception& e) {
-        if (e.reason() == umikongo::Exception::ReasonCode::ERR_UNSUPPORTED) {
-            channel_->send_ack(ERROR_CODE::UNSUPPORTED);
-        }
-        std::cerr << e.what() << std::endl;
+
+    if(auto rc = db_.prepare(sql, prepared_statements_.at(sid)); rc != jogasaki::status::ok) {
         channel_->send_ack(ERROR_CODE::UNKNOWN);
+        return;
     }
-    channel_->send_ack(ERROR_CODE::OK);
+    channel_->send_ack(ERROR_CODE::OK);    
 }
 
-void Worker::set_params(umikongo::PreparedStatement::Parameters *p)
+void Worker::set_params(std::unique_ptr<jogasaki::api::parameter_set>& p)
 {
     auto& params = parameters_->get_params();
     for(auto& param: params) {
@@ -291,26 +259,23 @@ void Worker::set_params(umikongo::PreparedStatement::Parameters *p)
         std::visit([&p, &idx](auto&& arg) {
                 using T = std::decay_t<decltype(arg)>;
                 std::string prefix = "p";
-                if constexpr (std::is_same_v<T, std::int16_t>) {
-                        p->setInt(prefix + std::to_string(idx+1), arg);
-                    }
-                else if constexpr (std::is_same_v<T, std::int32_t>) {
-                        p->setInt32(prefix + std::to_string(idx+1), arg);
+                if constexpr (std::is_same_v<T, std::int32_t>) {
+                        p->set_int4(prefix + std::to_string(idx+1), arg);
                     }
                 else if constexpr (std::is_same_v<T, std::int64_t>) {
-                        p->setInt64(prefix + std::to_string(idx+1), arg);
+                        p->set_int8(prefix + std::to_string(idx+1), arg);
                     }
                 else if constexpr (std::is_same_v<T, float>) {
-                        p->setFloat(prefix + std::to_string(idx+1), arg);
+                        p->set_float4(prefix + std::to_string(idx+1), arg);
                     }
                 else if constexpr (std::is_same_v<T, double>) {
-                        p->setDouble(prefix + std::to_string(idx+1), arg);
+                        p->set_float8(prefix + std::to_string(idx+1), arg);
                     }
                 else if constexpr (std::is_same_v<T, ogawayama::common::ShmString>) {
-                        p->setString(prefix + std::to_string(idx+1), std::string_view(arg));
+                        p->set_character(prefix + std::to_string(idx+1), std::string_view(arg));
                     }
                 else if constexpr (std::is_same_v<T, std::monostate>) {
-                        p->setNull(prefix + std::to_string(idx+1));
+                        p->set_null(prefix + std::to_string(idx+1));
                     }
                 else {
                     std::cerr << __func__ << " " << __LINE__ << ": received a type of parameter that cannot be handled" << std::endl;
@@ -327,22 +292,21 @@ void Worker::execute_prepared_statement(std::size_t sid)
     }
 
     if (!transaction_) {
-        transaction_ = db_->create_transaction();
-        context_ = transaction_->context();
+        transaction_ = db_.create_transaction();
     }
-    try {
-        auto params = umikongo::PreparedStatement::Parameters::get();
-        set_params(params.get());
-        context_->execute_statement(prepared_statements_.at(sid).get(), std::move(params));
-        channel_->send_ack(ERROR_CODE::OK);
-    } catch (umikongo::Exception& e) {
-        if (e.reason() == umikongo::Exception::ReasonCode::ERR_UNSUPPORTED) {
-            channel_->send_ack(ERROR_CODE::UNSUPPORTED);
-            return;
-        }
-        std::cerr << e.what() << std::endl;
+    auto params = jogasaki::api::create_parameter_set();
+    set_params(params);
+
+    std::unique_ptr<jogasaki::api::executable_statement> e{};
+    if(auto rc = db_.resolve(*cursors_.at(sid).prepared_, *params, e); rc != jogasaki::status::ok) {
         channel_->send_ack(ERROR_CODE::UNKNOWN);
+        return;
     }
+    if(auto rc = transaction_->execute(*e); rc != jogasaki::status::ok) {
+        channel_->send_ack(ERROR_CODE::UNKNOWN);
+        return;
+    }
+    channel_->send_ack(ERROR_CODE::OK);
 }
 
 bool Worker::execute_prepared_query(std::size_t sid, std::size_t rid)
@@ -353,8 +317,7 @@ bool Worker::execute_prepared_query(std::size_t sid, std::size_t rid)
     }
 
     if (!transaction_) {
-        transaction_ = db_->create_transaction();
-        context_ = transaction_->context();
+        transaction_ = db_.create_transaction();
     }
     if (cursors_.size() < (rid + 1)) {
         cursors_.resize(rid + 1);
@@ -362,45 +325,32 @@ bool Worker::execute_prepared_query(std::size_t sid, std::size_t rid)
 
     auto& cursor = cursors_.at(rid);
 
-    try {
-        cursor.row_queue_ = std::make_unique<ogawayama::common::RowQueue>
-            (shm4_row_queue_->shm_name(ogawayama::common::param::resultset, rid), shm4_row_queue_.get());
-        cursor.row_queue_->clear();
-    } catch (umikongo::Exception& e) {
-        std::cerr << e.what() << std::endl;
+    cursor.row_queue_ = std::make_unique<ogawayama::common::RowQueue>
+        (shm4_row_queue_->shm_name(ogawayama::common::param::resultset, rid), shm4_row_queue_.get());
+    cursor.row_queue_->clear();
+
+    auto params = jogasaki::api::create_parameter_set();
+    set_params(params);
+
+    std::unique_ptr<jogasaki::api::executable_statement> e{};
+    if(auto rc = db_.resolve(*cursors_.at(sid).prepared_, *params, e); rc != jogasaki::status::ok) {
         channel_->send_ack(ERROR_CODE::UNKNOWN);
         return false;
     }
-    try {
-        auto params = umikongo::PreparedStatement::Parameters::get();
-        set_params(params.get());
-        cursor.executable_ = db_->compile(prepared_statements_.at(sid).get(), std::move(params));
-        send_metadata(rid);
-        cursor.iterator_ = context_->execute_query(cursor.executable_.get());
-        channel_->send_ack(ERROR_CODE::OK);
-    } catch (umikongo::Exception& e) {
-        if (e.reason() == umikongo::Exception::ReasonCode::ERR_UNSUPPORTED) {
-            channel_->send_ack(ERROR_CODE::UNSUPPORTED);
-            return false;
-        }
-        std::cerr << e.what() << std::endl;
+    auto& rs =  cursor.result_set_;
+    if(auto rc = transaction_->execute(*e, rs); rc != jogasaki::status::ok || !rs) {
         channel_->send_ack(ERROR_CODE::UNKNOWN);
         return false;
     }
+
+    send_metadata(rid);
+    channel_->send_ack(ERROR_CODE::OK);
     return true;
 }
 
 void Worker::deploy_metadata(std::size_t table_id)
 {
-    using namespace shakujo::common::schema;
-    using namespace shakujo::common::core;
-
     manager::metadata::ErrorCode error;
-
-    if (!transaction_) {
-        transaction_ = db_->create_transaction();
-        context_ = transaction_->context();
-    }
 
     auto datatypes = std::make_unique<manager::metadata::DataTypes>(FLAGS_dbname);
     error = datatypes->Metadata::load();
@@ -427,11 +377,12 @@ void Worker::deploy_metadata(std::size_t table_id)
         }
 
         boost::property_tree::ptree primary_keys = table.get_child(manager::metadata::Tables::PRIMARY_KEY_NODE);
-        std::map<std::size_t, std::unique_ptr<IndexInfo::Column>> pk_columns;
+
+        std::vector<std::size_t> pk_columns;  // index: received order, content: ordinalPosition
         BOOST_FOREACH (const boost::property_tree::ptree::value_type& node, primary_keys) {
             const boost::property_tree::ptree& value = node.second;
             boost::optional<uint64_t> primary_key = value.get_value_optional<uint64_t>();
-            pk_columns[primary_key.value()] = nullptr;
+            pk_columns.emplace_back(primary_key.value());
         }
         if(pk_columns.empty()) {
             channel_->send_ack(ERROR_CODE::INVALID_PARAMETER);
@@ -439,121 +390,139 @@ void Worker::deploy_metadata(std::size_t table_id)
         }
 
         // column metadata
-        std::map<std::size_t, std::unique_ptr<TableInfo::Column>> columns_map;
+        std::map<std::size_t, const boost::property_tree::ptree*> columns_map;          // key: Column.ordinalPosition
         BOOST_FOREACH (const boost::property_tree::ptree::value_type& node, table.get_child(manager::metadata::Tables::COLUMNS_NODE)) {
-            const boost::property_tree::ptree& column = node.second;
+            auto ordinal_position = node.second.get_optional<uint64_t>(manager::metadata::Tables::Column::ORDINAL_POSITION);
+            if (!ordinal_position) {
+                channel_->send_ack(ERROR_CODE::INVALID_PARAMETER);
+                return;
+            }
+            columns_map[ordinal_position.value()] = &node.second;
+        }
+
+        takatori::util::reference_vector<yugawara::storage::column> columns;            // index: ordinalPosition order (the first value of index and order are different)
+        std::vector<std::size_t> value_columns;                                         // index: received order, content: ordinalPosition of the column
+        std::vector<bool> is_descendant;                                                // index: ordinalPosition order (the first value of index and order are different)
+        std::size_t ordinal_position_value = 1;
+        for(auto &&e : columns_map) {
+            if (ordinal_position_value != e.first) {
+                channel_->send_ack(ERROR_CODE::INVALID_PARAMETER);
+                return;
+            }
+            const boost::property_tree::ptree& column = *e.second;
             
             auto nullable = column.get_optional<bool>(manager::metadata::Tables::Column::NULLABLE);
             auto data_type_id = column.get_optional<manager::metadata::ObjectIdType>(manager::metadata::Tables::Column::DATA_TYPE_ID);
             auto name = column.get_optional<std::string>(manager::metadata::Tables::Column::NAME);
             auto ordinal_position = column.get_optional<uint64_t>(manager::metadata::Tables::Column::ORDINAL_POSITION);
-            if (!nullable || !data_type_id || !name || !ordinal_position) {
+            if (!nullable || !data_type_id || !name) {
                 channel_->send_ack(ERROR_CODE::INVALID_PARAMETER);
                 return;
             }
+            auto nullable_value = nullable.value();
+            auto data_type_id_value = static_cast<manager::metadata::DataTypes::DataTypesId>(data_type_id.value());
+            auto name_value = name.value();
 
-            auto itr = pk_columns.find(ordinal_position.value());
-            if (itr != pk_columns.end()) {
-                if(nullable.value()) {
-                    channel_->send_ack(ERROR_CODE::INVALID_PARAMETER);
+            if (std::vector<std::size_t>::iterator itr = std::find(pk_columns.begin(), pk_columns.end(), ordinal_position_value); itr != pk_columns.end()) {  // is this pk_column ?
+                if(nullable_value) {
+                    channel_->send_ack(ERROR_CODE::INVALID_PARAMETER);  // pk_column must not be nullable
                     return;
                 }
-                auto direction = column.get_optional<uint64_t>(manager::metadata::Tables::Column::DIRECTION);
-                Direction shakujo_direction;
-
-                if (direction) {
-                    auto direction_value = static_cast<manager::metadata::Tables::Column::Direction>(direction.value());
-                    shakujo_direction = (direction_value == manager::metadata::Tables::Column::Direction::DESCENDANT) ?
-                                            Direction::DESCENDANT : Direction::ASCENDANT;
-                } else {
-                    shakujo_direction = Direction::ASCENDANT;
-                }
-                itr->second = std::make_unique<IndexInfo::Column>(name.value(), shakujo_direction);
+            } else {  // this is value column
+                value_columns.emplace_back(ordinal_position_value);
             }
 
-            auto shakujo_nullable = nullable.value() ? Type::Nullity::NULLABLE : Type::Nullity::NEVER_NULL;
-            std::size_t data_length_value{};
-            auto data_type_id_value = static_cast<manager::metadata::DataTypes::DataTypesId>(data_type_id.value());
-            switch(data_type_id_value) {
-            case manager::metadata::DataTypes::DataTypesId::INT32:
-            case manager::metadata::DataTypes::DataTypesId::FLOAT32:
-                data_length_value = 32; break;
-            case manager::metadata::DataTypes::DataTypesId::INT64:
-            case manager::metadata::DataTypes::DataTypesId::FLOAT64:
-                data_length_value = 64; break;
+            bool d{false};
+            auto direction = column.get_optional<uint64_t>(manager::metadata::Tables::Column::DIRECTION);
+            if (direction) {
+                d = static_cast<manager::metadata::Tables::Column::Direction>(direction.value()) == manager::metadata::Tables::Column::Direction::DESCENDANT;
             }
+            is_descendant.emplace_back(d);                              // is_descendant will be used in PK section
 
-            switch(data_type_id_value) {
+            switch(data_type_id_value) {  // build yugawara::storage::column
             case manager::metadata::DataTypes::DataTypesId::INT32:
+                columns.emplace_back(yugawara::storage::column(name_value, takatori::type::int4(), yugawara::variable::nullity(nullable_value)));
+                break;
             case manager::metadata::DataTypes::DataTypesId::INT64:
-                {
-                    auto shakujo_type = std::make_unique<type::Int>(data_length_value, shakujo_nullable);
-                    columns_map[ordinal_position.value()] = std::make_unique<TableInfo::Column>(name.value(), std::move(shakujo_type));
-                }
+                columns.emplace_back(yugawara::storage::column(name_value, takatori::type::int8(), yugawara::variable::nullity(nullable_value)));
                 break;
             case manager::metadata::DataTypes::DataTypesId::FLOAT32:
+                columns.emplace_back(yugawara::storage::column(name_value, takatori::type::float4(), yugawara::variable::nullity(nullable_value)));
+                break;
             case manager::metadata::DataTypes::DataTypesId::FLOAT64:
-                {
-                    auto shakujo_type = std::make_unique<type::Float>(data_length_value, shakujo_nullable);
-                    columns_map[ordinal_position.value()] = std::make_unique<TableInfo::Column>(name.value(), std::move(shakujo_type));
-                }
+                columns.emplace_back(yugawara::storage::column(name_value, takatori::type::float8(), yugawara::variable::nullity(nullable_value)));
                 break;
             case manager::metadata::DataTypes::DataTypesId::CHAR:
             case manager::metadata::DataTypes::DataTypesId::VARCHAR:
-                {
-                    auto varying = column.get_optional<bool>(manager::metadata::Tables::Column::VARYING);
-                    if(!varying) {
-                        channel_->send_ack(ERROR_CODE::INVALID_PARAMETER);
-                        return;
-                    }
-                    auto varying_value = varying.value();
-                    if((!varying_value && (data_type_id_value != manager::metadata::DataTypes::DataTypesId::CHAR)) ||
-                       (varying_value && (data_type_id_value != manager::metadata::DataTypes::DataTypesId::VARCHAR))) {
-                        channel_->send_ack(ERROR_CODE::INVALID_PARAMETER);
-                        return;
-                    }
-
-                    auto data_length = column.get_optional<uint64_t>(manager::metadata::Tables::Column::DATA_LENGTH);
-                    if (!data_length) {
-                        if(varying_value) {
-                            channel_->send_ack(ERROR_CODE::UNSUPPORTED);
-                            return;
-                        }
-                        data_length_value = 1;  // CHAR
-                    } else {
-                        data_length_value = data_length.value();
-                    }
-                    
-                    auto shakujo_type = std::make_unique<type::Char>(varying_value, data_length_value, shakujo_nullable);
-                    columns_map[ordinal_position.value()] = std::make_unique<TableInfo::Column>(name.value(), std::move(shakujo_type));
-                }
-                break;
-            default:
-                {
-                    channel_->send_ack(ERROR_CODE::UNKNOWN);
+            {
+                std::size_t data_length_value{1};  // for CHAR
+                auto varying = column.get_optional<bool>(manager::metadata::Tables::Column::VARYING);
+                if(!varying) {  // varying field is necessary for CHAR/VARCHRA
+                    channel_->send_ack(ERROR_CODE::INVALID_PARAMETER);
                     return;
                 }
+                auto varying_value = varying.value();
+                if((!varying_value && (data_type_id_value != manager::metadata::DataTypes::DataTypesId::CHAR)) ||
+                   (varying_value && (data_type_id_value != manager::metadata::DataTypes::DataTypesId::VARCHAR))) {
+                    channel_->send_ack(ERROR_CODE::INVALID_PARAMETER);
+                    return;
+                }
+                auto data_length = column.get_optional<uint64_t>(manager::metadata::Tables::Column::DATA_LENGTH);
+                if (!data_length) {
+                    if(varying_value) {  // data_length field is necessary for VARCHAR
+                        channel_->send_ack(ERROR_CODE::UNSUPPORTED);
+                        return;
+                    }
+                } else {
+                    data_length_value = data_length.value();
+                }
+                columns.emplace_back(yugawara::storage::column(name_value,
+                                                                    takatori::type::character(takatori::type::varying_t(varying_value), data_length_value),
+                                                                    yugawara::variable::nullity(nullable_value)));
+                break;
             }
+            default:
+                std::abort();  // FIXME
+            }
+            ordinal_position_value++;
         }
 
-        std::vector<TableInfo::Column> shakujo_columns;
-        for (const auto& [key, value] : columns_map) {
-            shakujo_columns.emplace_back(*value);
-        }
-        std::vector<IndexInfo::Column> shakujo_pk_columns;
-        for (const auto& [key, value] : pk_columns) {
-            shakujo_pk_columns.emplace_back(*value);
-        }
-
-        TableInfo table { table_name.value(), shakujo_columns, shakujo_pk_columns };
-        
-        auto provider = db_->provider();
-        try {
-            provider->add(table, false);
-        } catch (std::exception &ex) {
-            channel_->send_ack(ERROR_CODE::INVALID_PARAMETER);
+        auto t = std::make_shared<yugawara::storage::table>(yugawara::storage::table::simple_name_type(table_name.value()), std::move(columns));
+        if (auto rc = db_.create_table(t); rc != jogasaki::status::ok) {
+            channel_->send_ack((rc == jogasaki::status::err_already_exists) ? ERROR_CODE::INVALID_PARAMETER : ERROR_CODE::UNKNOWN);
             return;
         }
+        
+        // build key metadata (yugawara::storage::index::key)
+        std::vector<yugawara::storage::index::key> keys;
+        for (std::size_t position : pk_columns) {
+            auto sort_direction = is_descendant[position-1] ? takatori::relation::sort_direction::descendant : takatori::relation::sort_direction::ascendant;
+            keys.emplace_back(yugawara::storage::index::key(t->columns()[position-1], sort_direction));
+        }
+
+        // build value metadata (yugawara::storage::index::column_ref)
+        std::vector<yugawara::storage::index::column_ref> values;
+        for(std::size_t position : value_columns) {
+            values.emplace_back(yugawara::storage::index::column_ref(t->columns()[position-1]));
+        }
+
+        auto i = std::make_shared<yugawara::storage::index>(
+            t,
+            yugawara::storage::index::simple_name_type(table_name.value()),
+            std::move(keys),
+            std::move(values),
+            yugawara::storage::index_feature_set{
+                ::yugawara::storage::index_feature::find,
+                ::yugawara::storage::index_feature::scan,
+                ::yugawara::storage::index_feature::unique,
+                ::yugawara::storage::index_feature::primary,
+            }
+        );
+        if(db_.create_index(i) != jogasaki::status::ok) {
+            channel_->send_ack(ERROR_CODE::UNKNOWN);
+            return;
+        }
+
         channel_->send_ack(ERROR_CODE::OK);
     } else {
         channel_->send_ack(ERROR_CODE::UNKNOWN);

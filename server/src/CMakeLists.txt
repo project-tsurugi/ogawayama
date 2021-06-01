@@ -37,10 +37,14 @@ set_target_properties(server
 target_include_directories(server
     PRIVATE ../../stub/include
     PRIVATE ../../common/include
+    PRIVATE ${PG_INCLUDEDIR}
 )
 
 target_link_libraries(server
-    PRIVATE umikongo-${SHARKSFIN_IMPLEMENTATION}-executor-${SHARKSFIN_IMPLEMENTATION}
+    PRIVATE jogasaki-${SHARKSFIN_IMPLEMENTATION}-engine
+    PRIVATE takatori
+    PRIVATE yugawara
+    PRIVATE fpdecimal
     PRIVATE shakujo-common
     PRIVATE manager-metadata
     PRIVATE manager-message-interface
