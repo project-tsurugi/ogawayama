@@ -15,11 +15,11 @@
  */
 #pragma once
 
-#include "umikongo/api.h"
+#include "jogasaki/api.h"
 
 namespace ogawayama::server {
 
-    void dump(umikongo::Database *, std::string &, std::string &);
-    void load(umikongo::Database *, std::string &, std::string &);
+    void dump(jogasaki::api::database&, std::string &, std::string &);
+    void load(jogasaki::api::database&, std::string &, std::string &);
 
 }  // ogawayama::server

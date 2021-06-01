@@ -1,4 +1,4 @@
-# Copyright 2019-2019 tsurugi project.
+# Copyright 2019-2021 tsurugi project.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -19,29 +19,42 @@ project(ogawayama
     DESCRIPTION "PostgreSQL FDW interface"
     LANGUAGES CXX)
 
-list(APPEND CMAKE_MODULE_PATH "${PROJECT_SOURCE_DIR}/cmake")
+set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_EXTENSIONS OFF)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
-option(BUILD_SHARED_LIBS "build shared libraries instead of static" ON)
-option(BUILD_STUB_ONLY "build the stub only" OFF)
-option(BUILD_TESTS "Build test programs" ON)
-option(FORCE_INSTALL_RPATH "Force add lib dir of custom prefixes to INSTALL_RPATH" OFF)
+list(APPEND CMAKE_MODULE_PATH "${PROJECT_SOURCE_DIR}/cmake")
 
 option(ENABLE_SANITIZER "enable sanitizer on debug build" ON)
 option(ENABLE_UB_SANITIZER "enable undefined behavior sanitizer on debug build" OFF)
 option(ENABLE_COVERAGE "enable coverage on debug build" OFF)
+option(BUILD_TESTS "Build test programs" ON)
+option(BUILD_SHARED_LIBS "build shared libraries instead of static" ON)
+option(BUILD_STUB_ONLY "build the stub only" OFF)
+
+if(NOT DEFINED SHARKSFIN_IMPLEMENTATION)
+    set(
+            SHARKSFIN_IMPLEMENTATION "memory"
+            CACHE STRING
+            "sharksfin target name to link"
+            FORCE
+    )
+endif()
 
 find_package(Threads REQUIRED)
 find_package(Boost
-        COMPONENTS system filesystem thread
+        COMPONENTS filesystem thread system container stacktrace_backtrace
         REQUIRED
 )
 find_package(glog REQUIRED)
 find_package(gflags REQUIRED)
-
 find_package(manager REQUIRED)
 
 if (NOT BUILD_STUB_ONLY)
-  find_package(umikongo-${SHARKSFIN_IMPLEMENTATION} REQUIRED)
+  find_package(takatori REQUIRED)
+  find_package(yugawara REQUIRED)
+  find_package(fpdecimal REQUIRED)
+  find_package(jogasaki-${SHARKSFIN_IMPLEMENTATION} REQUIRED)
   find_package(shakujo REQUIRED)
 endif()
 
