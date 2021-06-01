@@ -14,7 +14,6 @@
  * limitations under the License.
  */
 
-#include <iostream>
 #include <vector>
 #include <boost/foreach.hpp>
 
