@@ -21,9 +21,6 @@ if(NOT DEFINED SHARKSFIN_IMPLEMENTATION)
     )
 endif()
 
-find_package(umikongo-${SHARKSFIN_IMPLEMENTATION} REQUIRED)
-find_package(shakujo REQUIRED)
-
 file(GLOB SOURCES
     "*.cpp"
 )
