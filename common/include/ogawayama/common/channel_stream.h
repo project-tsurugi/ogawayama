@@ -133,10 +133,6 @@ public:
     CommandMessage(CommandMessage&&) = delete;
     CommandMessage& operator=(CommandMessage&&) = delete;
 
-    CommandMessage( Type type, std::size_t ivalue, std::string_view string ) : type_(type), ivalue_(ivalue), string_(string) {}
-    CommandMessage( Type type, std::size_t ivalue ) : CommandMessage(type, ivalue, std::string()) {}
-    CommandMessage( Type type ) : CommandMessage(type, 0, std::string()) {}
-
     Type get_type() const { return type_; }
     std::size_t get_ivalue() const { return ivalue_; }
     std::string_view get_string() const { return std::string_view(string_.data(), string_.size()); }
