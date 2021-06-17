@@ -28,6 +28,8 @@
 #include "manager/metadata/error_code.h"
 #include "manager/metadata/datatypes.h"
 
+#include "server_wires.h"
+
 namespace ogawayama::server {
 
 class Worker {
@@ -45,7 +47,7 @@ class Worker {
     };
 
  public:
-    Worker(jogasaki::api::database&, std::size_t);
+    Worker(jogasaki::api::database&, std::size_t, tsubakuro::common::wire::wire_container*);
     ~Worker() {
         clear_all();
         if(thread_.joinable()) thread_.join();
@@ -65,10 +67,8 @@ class Worker {
     jogasaki::api::database& db_;
     std::size_t id_;
 
-    std::unique_ptr<ogawayama::common::SharedMemory> shm4_connection_;
-    std::unique_ptr<ogawayama::common::ChannelStream> channel_;
     std::unique_ptr<ogawayama::common::ParameterSet> parameters_;
-
+    
     std::unique_ptr<jogasaki::api::transaction> transaction_;
     std::vector<Cursor> cursors_;
     std::vector<std::unique_ptr<jogasaki::api::prepared_statement>> prepared_statements_{};
@@ -76,8 +76,6 @@ class Worker {
     std::packaged_task<void()> task_;
     std::future<void> future_;
     std::thread thread_{};
-
-    std::unique_ptr<ogawayama::common::SharedMemory> shm4_row_queue_;
 
     void send_metadata(std::size_t);
     void set_params(std::unique_ptr<jogasaki::api::parameter_set>&);
@@ -87,9 +85,10 @@ class Worker {
     }
     void clear_all() {
         clear_transaction();
-        shm4_row_queue_ = nullptr;
         prepared_statements_.clear();
     }
+
+    tsubakuro::common::wire::wire_container* wire_;
 };
 
 }  // ogawayama::server

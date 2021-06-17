@@ -58,6 +58,11 @@ if (NOT BUILD_STUB_ONLY)
   find_package(shakujo REQUIRED)
 endif()
 
+find_package(PkgConfig REQUIRED)
+set(ENV{PKG_CONFIG_PATH} "${CMAKE_PREFIX_PATH}/lib/pkgconfig")
+pkg_check_modules(PROTOBUF REQUIRED protobuf)
+find_package(Protobuf REQUIRED)
+
 include(GNUInstallDirs)
 include(CMakePackageConfigHelpers)
 include(CompileOptions)
@@ -108,9 +113,9 @@ install(
     EXPORT_LINK_INTERFACE_LIBRARIES
 )
 
-add_subdirectory(stub)
+# add_subdirectory(stub)
 if(NOT BUILD_STUB_ONLY)
     add_subdirectory(server)
-    add_subdirectory(examples)
-    add_subdirectory(third_party)
+#     add_subdirectory(examples)
+#     add_subdirectory(third_party)
 endif()
