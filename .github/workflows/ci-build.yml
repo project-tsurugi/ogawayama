@@ -49,9 +49,9 @@ jobs:
         run: |
           if [ ! -e ./protobuf ]; then
             git clone -b 3.17.x https://github.com/protocolbuffers/protobuf.git
-	    cd protobuf
+            cd protobuf
             git submodule update --init --recursive
-	    cd ..
+            cd ..
           fi
           cd protobuf
           ./autogen.sh
