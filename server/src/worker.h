@@ -47,7 +47,7 @@ class Worker {
     };
 
  public:
-    Worker(jogasaki::api::database&, std::size_t, tsubakuro::common::wire::wire_container*);
+    Worker(jogasaki::api::database&, std::size_t, tsubakuro::common::wire::server_wire_container*);
     ~Worker() {
         clear_all();
         if(thread_.joinable()) thread_.join();
@@ -88,7 +88,7 @@ class Worker {
         prepared_statements_.clear();
     }
 
-    tsubakuro::common::wire::wire_container* wire_;
+    tsubakuro::common::wire::server_wire_container* wire_;
 };
 
 }  // ogawayama::server

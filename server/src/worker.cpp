@@ -33,7 +33,7 @@ namespace ogawayama::server {
 
 DECLARE_string(dbname);
 
-Worker::Worker(jogasaki::api::database& db, std::size_t id, tsubakuro::common::wire::wire_container* wire) : db_(db), id_(id), wire_(wire)
+Worker::Worker(jogasaki::api::database& db, std::size_t id, tsubakuro::common::wire::server_wire_container* wire) : db_(db), id_(id), wire_(wire)
 {
 }
 
@@ -43,18 +43,57 @@ void Worker::run()
 
     while(true) {
 
-
     auto& request_wire = wire_->get_request_wire();
-    auto h = request_wire.peep(wire_->get_request_bip_buffer(), true);
+    auto h = request_wire.peep(true);
     if (h.get_idx() != 0) {
         std::abort();  // out of the scope of this test program
     }
     std::size_t length = h.get_length();
     std::string msg;
     msg.resize(length);
-    request_wire.read(reinterpret_cast<signed char*>(msg.data()), wire_->get_request_bip_buffer(), length);
+    request_wire.read(reinterpret_cast<signed char*>(msg.data()), length);
     if (!request.ParseFromString(msg)) { std::cout << "parse error" << std::endl; }
     else { std::cout << request.session_handle().handle() << std::endl; }
+
+    switch (request.request_case()) {
+    case request::Request::RequestCase::kBegin:
+        std::cout << "begin" << std::endl;
+        break;
+    case request::Request::RequestCase::kPrepare:
+        std::cout << "prepare" << std::endl;
+        break;
+    case request::Request::RequestCase::kExecuteStatement:
+        std::cout << "execute_statement" << std::endl;
+        break;
+    case request::Request::RequestCase::kExecuteQuery:
+        std::cout << "execute_query" << std::endl;
+        break;
+    case request::Request::RequestCase::kExecutePreparedStatement:
+        std::cout << "execute_prepared_statement" << std::endl;
+        break;
+    case request::Request::RequestCase::kExecutePreparedQuery:
+        std::cout << "execute_prepared_query" << std::endl;
+        break;
+    case request::Request::RequestCase::kCommit:
+        std::cout << "commit" << std::endl;
+        break;
+    case request::Request::RequestCase::kRollback:
+        std::cout << "rollback" << std::endl;
+        break;
+    case request::Request::RequestCase::kDisposePreparedStatement:
+        std::cout << "dispose_prepared_statement" << std::endl;
+        break;
+    case request::Request::RequestCase::kDisconnect:
+        std::cout << "disconnect" << std::endl;
+        break;
+    case request::Request::RequestCase::REQUEST_NOT_SET:
+        std::cout << "not used" << std::endl;
+        break;
+    default:
+        std::cout << "????" << std::endl;
+        break;
+    }
+    
 #if 0
         ogawayama::common::CommandMessage::Type type;
         std::size_t ivalue;

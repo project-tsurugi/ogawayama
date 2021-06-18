@@ -41,7 +41,22 @@ jobs:
           fi
           cd postgresql-${PG_VERSION}
           ./configure --prefix=${GITHUB_WORKSPACE}/pgsql
-          make -j8
+          make -j
+          make install
+
+      - id: Setup_protocolbuffers
+        name: Setup_protocolbuffers
+        run: |
+          if [ ! -e ./protobuf ]; then
+            git clone -b 3.17.x https://github.com/protocolbuffers/protobuf.git
+	    cd protobuf
+            git submodule update --init --recursive
+	    cd ..
+          fi
+          cd protobuf
+          ./autogen.sh
+          ./configure --prefix=/home/horikawa/local
+          make -j
           make install
 
       - id: Install_shirakami

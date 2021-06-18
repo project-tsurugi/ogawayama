@@ -66,8 +66,7 @@ int backend_main(int argc, char **argv) {
         std::string session_name = FLAGS_dbname;
         session_name += "-";
         session_name += std::to_string(session_id);
-        tsubakuro::common::wire::wire_container* wire = new tsubakuro::common::wire::wire_container(session_name);
-        std::cout << session_name << std::endl;
+        tsubakuro::common::wire::server_wire_container* wire = new tsubakuro::common::wire::server_wire_container(session_name);
         container->get_connection_queue().accept(session_id);
         
         if (workers.size() < (index + 1)) {
