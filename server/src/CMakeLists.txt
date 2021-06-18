@@ -38,6 +38,8 @@ target_include_directories(server
     PRIVATE ../../stub/include
     PRIVATE ../../common/include
     PRIVATE ${PG_INCLUDEDIR}
+    PRIVATE ${CMAKE_CURRENT_BINARY_DIR}/../protos
+    PRIVATE ${PROTOBUF_INCLUDE_DIRS}
 )
 
 target_link_libraries(server
@@ -54,6 +56,8 @@ target_link_libraries(server
     PRIVATE Boost::thread
     PRIVATE pthread
     PRIVATE rt
+    PRIVATE ${PROTOBUF_LIBRARY}
+    messages    
 )
 
 install_custom(server ${export_name})

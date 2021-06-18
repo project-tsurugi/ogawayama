@@ -26,6 +26,8 @@
 #include <yugawara/storage/configurable_provider.h>
 
 #include "worker.h"
+#include "request.pb.h"
+#include "common.pb.h"
 
 namespace ogawayama::server {
 
@@ -37,6 +39,8 @@ Worker::Worker(jogasaki::api::database& db, std::size_t id, tsubakuro::common::w
 
 void Worker::run()
 {
+    request::Request request;
+
     while(true) {
 
 
@@ -49,7 +53,8 @@ void Worker::run()
     std::string msg;
     msg.resize(length);
     request_wire.read(reinterpret_cast<signed char*>(msg.data()), wire_->get_request_bip_buffer(), length);
-    std::cout << msg << std::endl;
+    if (!request.ParseFromString(msg)) { std::cout << "parse error" << std::endl; }
+    else { std::cout << request.session_handle().handle() << std::endl; }
 #if 0
         ogawayama::common::CommandMessage::Type type;
         std::size_t ivalue;
