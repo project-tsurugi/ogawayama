@@ -55,7 +55,7 @@ jobs:
           fi
           cd protobuf
           ./autogen.sh
-          ./configure --prefix=/home/horikawa/local
+          ./configure --prefix=${GITHUB_WORKSPACE}/.local
           make -j
           make install
 
