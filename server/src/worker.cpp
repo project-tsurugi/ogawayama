@@ -27,6 +27,7 @@
 
 #include "worker.h"
 #include "request.pb.h"
+#include "response.pb.h"
 #include "common.pb.h"
 
 namespace ogawayama::server {
@@ -44,19 +45,35 @@ void Worker::run()
     while(true) {
 
     auto& request_wire = wire_->get_request_wire();
+    auto& response_wire = wire_->get_response_wire();
     auto h = request_wire.peep(true);
-    if (h.get_idx() != 0) {
-        std::abort();  // out of the scope of this test program
-    }
     std::size_t length = h.get_length();
     std::string msg;
     msg.resize(length);
     request_wire.read(reinterpret_cast<signed char*>(msg.data()), length);
     if (!request.ParseFromString(msg)) { std::cout << "parse error" << std::endl; }
-    else { std::cout << request.session_handle().handle() << std::endl; }
+    else { std::cout << request.session_handle().handle() << ":" << h.get_idx() << std::endl; }
 
     switch (request.request_case()) {
     case request::Request::RequestCase::kBegin:
+        transaction_ = db_.create_transaction();
+        {
+            ::common::Transaction t;
+            protocol::Begin b;
+            protocol::Response r;
+
+            t.set_handle(++transaction_id_);
+            b.set_allocated_transaction_handle(&t);
+            r.set_allocated_begin(&b);
+
+            std::string output;
+            if (!r.SerializeToString(&output)) { std::abort(); }
+            response_wire.write(reinterpret_cast<const signed char*>(output.data()), tsubakuro::common::wire::message_header(h.get_idx(), output.size()));
+
+            r.release_begin();
+            b.release_transaction_handle();
+        }
+        
         std::cout << "begin" << std::endl;
         break;
     case request::Request::RequestCase::kPrepare:
@@ -67,6 +84,12 @@ void Worker::run()
         break;
     case request::Request::RequestCase::kExecuteQuery:
         std::cout << "execute_query" << std::endl;
+        {
+            auto eq = request.mutable_execute_query();
+            std::cout << eq->mutable_transaction_handle()->handle() << ":"
+                      << *(eq->mutable_sql())
+                      << std::endl;
+        }
         break;
     case request::Request::RequestCase::kExecutePreparedStatement:
         std::cout << "execute_prepared_statement" << std::endl;

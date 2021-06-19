@@ -72,6 +72,7 @@ class Worker {
     std::unique_ptr<jogasaki::api::transaction> transaction_;
     std::vector<Cursor> cursors_;
     std::vector<std::unique_ptr<jogasaki::api::prepared_statement>> prepared_statements_{};
+    std::size_t transaction_id_{};
 
     std::packaged_task<void()> task_;
     std::future<void> future_;
