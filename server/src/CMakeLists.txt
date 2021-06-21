@@ -56,7 +56,6 @@ target_link_libraries(server
     PRIVATE Boost::thread
     PRIVATE pthread
     PRIVATE rt
-    PRIVATE ${PROTOBUF_LIBRARY}
     messages    
 )
 

@@ -44,21 +44,6 @@ jobs:
           make -j
           make install
 
-      - id: Setup_protocolbuffers
-        name: Setup_protocolbuffers
-        run: |
-          if [ ! -e ./protobuf ]; then
-            git clone -b 3.17.x https://github.com/protocolbuffers/protobuf.git
-            cd protobuf
-            git submodule update --init --recursive
-            cd ..
-          fi
-          cd protobuf
-          ./autogen.sh
-          ./configure --prefix=${GITHUB_WORKSPACE}/.local
-          make -j
-          make install
-
       - id: Install_shirakami
         name: Install_shirakami
         run: |
