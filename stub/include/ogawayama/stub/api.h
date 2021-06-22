@@ -28,8 +28,8 @@
 #include "manager/message/message.h"
 #include "manager/message/status.h"
 
-using MetadataPtr = ogawayama::stub::Metadata const *;
-using TYPE = ogawayama::stub::Metadata::ColumnType::Type;
+using MetadataPtr = ogawayama::stub::Metadata<> const *;
+using TYPE = ogawayama::stub::ColumnType::Type;
 using ERROR_CODE = ogawayama::stub::ErrorCode;
 
 namespace ogawayama::stub {

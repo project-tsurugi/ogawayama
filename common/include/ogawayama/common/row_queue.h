@@ -29,6 +29,7 @@ namespace ogawayama::common {
     using VoidAllocator = boost::interprocess::allocator<void, boost::interprocess::managed_shared_memory::segment_manager>;
     using ShMemRef = boost::shared_ptr<boost::interprocess::managed_shared_memory>;
     using ShmQueue = std::vector<ShmRowArgs, ShmRowArgsAllocator>;
+    using Metadata = ogawayama::stub::Metadata<boost::interprocess::allocator<ogawayama::stub::ColumnType, boost::interprocess::managed_shared_memory::segment_manager>>;
 
     /**
      * @brief one to one communication channel, intended for communication between server and stub through boost binary_archive.
@@ -141,11 +142,11 @@ namespace ogawayama::common {
                 m_types_.clear();
             }
 
-            void push_type(ogawayama::stub::Metadata::ColumnType::Type type, std::size_t length) {
+            void push_type(ogawayama::stub::ColumnType::Type type, std::size_t length) {
                 m_types_.push(type, length);
             }
 
-            ogawayama::stub::Metadata const * get_metadata_ptr() {
+            Metadata const * get_metadata_ptr() {
                 return &m_types_;
             }
 
@@ -170,7 +171,7 @@ namespace ogawayama::common {
             std::size_t index(std::size_t n) const { return n %  capacity_; }
             
             ShmQueue m_container_;
-            ogawayama::stub::Metadata m_types_;
+            Metadata m_types_;
             VoidAllocator allocator_;
             std::size_t capacity_;
             std::size_t pushed_{0};
@@ -308,7 +309,7 @@ namespace ogawayama::common {
             }
         }
 
-        void push_type(ogawayama::stub::Metadata::ColumnType::Type type, std::size_t length) {
+        void push_type(ogawayama::stub::ColumnType::Type type, std::size_t length) {
             queue_->push_type(type, length);
         }
 

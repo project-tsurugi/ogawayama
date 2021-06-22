@@ -31,11 +31,6 @@ namespace ogawayama::stub {
  */
 using ColumnValueType = std::variant<std::monostate, std::int16_t, std::int32_t, std::int64_t, float, double, std::string>;
 
-/**
- * @brief Provides semantic information of a ResultSet.
- */
-class Metadata {
-public:
     /**
      * @brief Provides semantic information of a Column.
      */
@@ -87,8 +82,9 @@ public:
          * @param type tag for the column type
          * @param byte length for the column data
          */
-        ColumnType(Type type, std::size_t length) : type_(type), length_(length) {}
-        ColumnType(Type type) : ColumnType(type, 0) {}
+        ColumnType(Type type, std::size_t length, bool nullable) : type_(type), length_(length), nullable_(nullable) {}
+        ColumnType(Type type, std::size_t length) : ColumnType(type, length, false) {}
+        ColumnType(Type type) : ColumnType(type, 0, false) {}
         
         /**
          * @brief Copy and move constructers.
@@ -111,30 +107,34 @@ public:
         ColumnType::Type get_type() const { return type_; }
     
         /**
-         * @brief get type for this column.
-         * @return Type of this column
+         * @brief get length for this column.
+         * @return length of this column
          */
         std::size_t get_length() const { return length_; }
+
+        /**
+         * @brief get nullable attribute for this column.
+         * @return nullable of this column
+         */
+        bool get_nullable() const { return nullable_; }
 
     private:
         Type type_{};
         std::size_t length_{};
+        bool nullable_{};
     };
 
-    /**
-     * @brief Container to store type data for the columns.
-     */
-    using SetOfTypeData = std::vector<ColumnType, boost::interprocess::allocator<ColumnType, boost::interprocess::managed_shared_memory::segment_manager>>;
-    
+/**
+ * @brief Provides semantic information of a ResultSet.
+ */
+template <class Allocator = std::allocator<ColumnType>> class Metadata {
+public:
     /**
      * @brief Construct a new object.
      */
-    Metadata() = delete;
+    Metadata() = default;
 
-    /**
-     * @brief Construct a new object.
-     */
-    explicit Metadata(boost::interprocess::allocator<ogawayama::stub::Metadata::ColumnType, boost::interprocess::managed_shared_memory::segment_manager> allocator) : columns_(allocator) {};
+    explicit Metadata(boost::interprocess::allocator<ogawayama::stub::ColumnType, boost::interprocess::managed_shared_memory::segment_manager> allocator) : columns_(allocator) {};
 
     /**
      * @brief destructs this object.
@@ -146,14 +146,15 @@ public:
      * @param columns returns the type data
      * @return error code defined in error_code.h
      */
-    const SetOfTypeData& get_types() const noexcept { return columns_; }
+    const std::vector<ColumnType, Allocator>& get_column_types() const noexcept { return columns_; }
 
     /**
      * @brief push a column type.
      * @param type of the column
      * @param data length of the columns
+     * @param nullable of the columns
      */
-    void push(ColumnType::Type t, std::size_t l) { columns_.emplace_back(ColumnType(t, l)); } 
+    void push(ColumnType::Type t, std::size_t l, bool n = false) { columns_.emplace_back(ColumnType(t, l, n)); } 
 
     /**
      * @brief clear this metadata.
@@ -161,7 +162,7 @@ public:
     void clear() { columns_.clear(); }
 
 private:
-    SetOfTypeData columns_;
+    std::vector<ColumnType, Allocator> columns_;
 };
 
 }  // namespace ogawayama::stub
