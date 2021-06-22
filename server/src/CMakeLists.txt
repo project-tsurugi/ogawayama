@@ -56,7 +56,8 @@ target_link_libraries(server
     PRIVATE Boost::thread
     PRIVATE pthread
     PRIVATE rt
-    messages    
+    messages
+    PRIVATE msgpack-cpp
 )
 
 install_custom(server ${export_name})

@@ -62,6 +62,7 @@ public:
     static constexpr std::size_t size = sizeof(std::uint16_t);
     
     explicit length_header(std::uint16_t length) : length_(length) {}
+    explicit length_header(std::size_t length) : length_(static_cast<std::uint16_t>(length)) {}
     length_header() : length_header(static_cast<std::uint16_t>(0)) {}
     explicit length_header(const signed char* buffer) {
         std::memcpy(&length_, buffer, sizeof(std::uint16_t));
@@ -216,10 +217,10 @@ private:
     std::size_t poped_{0};
     std::size_t chunk_end_{0};
 
+protected:
     boost::interprocess::interprocess_mutex m_mutex_{};
     boost::interprocess::interprocess_condition c_empty_{};
     boost::interprocess::interprocess_condition c_full_{};
-
 };
 
 class unidirectional_message_wire : public simple_wire<message_header> {
@@ -230,7 +231,13 @@ public:
 class unidirectional_simple_wire : public simple_wire<length_header> {
 public:
     unidirectional_simple_wire(boost::interprocess::managed_shared_memory* managed_shm_ptr, std::size_t capacity) : simple_wire<length_header>(managed_shm_ptr, capacity) {}
-    void set_eor() { eor_ = true; }
+    void set_eor() {
+        eor_ = true;
+        {
+            boost::interprocess::scoped_lock lock(m_mutex_);
+            c_empty_.notify_one();
+        }
+    }
     bool is_eor() { return eor_; }
 private:
     bool eor_{false};

@@ -17,8 +17,9 @@
 #include <vector>
 #include <boost/foreach.hpp>
 
-#include "gflags/gflags.h"
-#include "glog/logging.h"
+#include <gflags/gflags.h>
+#include <glog/logging.h>
+#include <msgpack.hpp>
 
 #include <takatori/type/int.h>
 #include <takatori/type/float.h>
@@ -29,6 +30,7 @@
 #include "request.pb.h"
 #include "response.pb.h"
 #include "common.pb.h"
+#include "schema.pb.h"
 
 namespace ogawayama::server {
 
@@ -44,19 +46,23 @@ void Worker::run()
 
     while(true) {
 
-    auto& request_wire = wire_->get_request_wire();
-    auto& response_wire = wire_->get_response_wire();
-    auto h = request_wire.peep(true);
+    auto& request_wire_container = wire_->get_request_wire();
+    auto& response_wire_container = wire_->get_response_wire();
+    auto h = request_wire_container.peep(true);
     std::size_t length = h.get_length();
     std::string msg;
     msg.resize(length);
-    request_wire.read(reinterpret_cast<signed char*>(msg.data()), length);
+    request_wire_container.read(reinterpret_cast<signed char*>(msg.data()), length);
     if (!request.ParseFromString(msg)) { std::cout << "parse error" << std::endl; }
-    else { std::cout << request.session_handle().handle() << ":" << h.get_idx() << std::endl; }
+    else { std::cout << "s:" << request.session_handle().handle() << "-" << "idx:" << h.get_idx() << std::endl; }
 
     switch (request.request_case()) {
     case request::Request::RequestCase::kBegin:
-        transaction_ = db_.create_transaction();
+        if (!transaction_) {
+            transaction_ = db_.create_transaction();
+        } else {
+            std::cout << "already begin a transaction" << std::endl;
+        }
         {
             ::common::Transaction t;
             protocol::Begin b;
@@ -68,7 +74,7 @@ void Worker::run()
 
             std::string output;
             if (!r.SerializeToString(&output)) { std::abort(); }
-            response_wire.write(reinterpret_cast<const signed char*>(output.data()), tsubakuro::common::wire::message_header(h.get_idx(), output.size()));
+            response_wire_container.write(reinterpret_cast<const signed char*>(output.data()), tsubakuro::common::wire::message_header(h.get_idx(), output.size()));
 
             r.release_begin();
             b.release_transaction_handle();
@@ -81,14 +87,51 @@ void Worker::run()
         break;
     case request::Request::RequestCase::kExecuteStatement:
         std::cout << "execute_statement" << std::endl;
+        {
+            auto eq = request.mutable_execute_statement();
+            std::cout << "tx:" << eq->mutable_transaction_handle()->handle() << "-"
+                      << "idx:" << h.get_idx() << " : "
+                      << *(eq->mutable_sql())
+                      << std::endl;
+            execute_statement(*(eq->mutable_sql()));
+            protocol::Success s;
+            protocol::ResultOnly ok;
+            protocol::Response r;
+
+            ok.set_allocated_success(&s);
+            r.set_allocated_result_only(&ok);
+
+            std::string output;
+            if (!r.SerializeToString(&output)) { std::abort(); }
+            response_wire_container.write(reinterpret_cast<const signed char*>(output.data()), tsubakuro::common::wire::message_header(h.get_idx(), output.size()));
+
+            r.release_result_only();
+            ok.release_success();
+        }
         break;
     case request::Request::RequestCase::kExecuteQuery:
         std::cout << "execute_query" << std::endl;
         {
             auto eq = request.mutable_execute_query();
-            std::cout << eq->mutable_transaction_handle()->handle() << ":"
+            std::cout << "tx:" << eq->mutable_transaction_handle()->handle() << "-"
+                      << "idx:" << h.get_idx() << " : "
                       << *(eq->mutable_sql())
                       << std::endl;
+
+            if (execute_query(*(eq->mutable_sql()), ++resultset_id_)) {
+                    protocol::ExecuteQuery e;
+                    protocol::Response r;
+
+                    e.set_name(cursors_.at(resultset_id_).wire_name_);
+                    r.set_allocated_execute_query(&e);
+
+                    std::string output;
+                    if (!r.SerializeToString(&output)) { std::abort(); }
+                    response_wire_container.write(reinterpret_cast<const signed char*>(output.data()), tsubakuro::common::wire::message_header(h.get_idx(), output.size()));
+
+                    r.release_execute_query();
+            }
+            next(resultset_id_);
         }
         break;
     case request::Request::RequestCase::kExecutePreparedStatement:
@@ -99,6 +142,33 @@ void Worker::run()
         break;
     case request::Request::RequestCase::kCommit:
         std::cout << "commit" << std::endl;
+        {
+            if (transaction_) {
+                transaction_->commit();
+                transaction_ = nullptr;
+            } else {
+                std::cout << "transaction has not begun" << std::endl;
+            }
+
+            auto eq = request.mutable_commit();
+            std::cout << "tx:" << eq->mutable_transaction_handle()->handle() << "-"
+                      << "idx:" << h.get_idx()
+                      << std::endl;
+
+            protocol::Success s;
+            protocol::ResultOnly ok;
+            protocol::Response r;
+
+            ok.set_allocated_success(&s);
+            r.set_allocated_result_only(&ok);
+
+            std::string output;
+            if (!r.SerializeToString(&output)) { std::abort(); }
+            response_wire_container.write(reinterpret_cast<const signed char*>(output.data()), tsubakuro::common::wire::message_header(h.get_idx(), output.size()));
+
+            r.release_result_only();
+            ok.release_success();
+        }
         break;
     case request::Request::RequestCase::kRollback:
         std::cout << "rollback" << std::endl;
@@ -197,10 +267,6 @@ void Worker::run()
 
 void Worker::execute_statement(std::string_view sql)
 {
-    if (!transaction_) {
-        transaction_ = db_.create_transaction();
-    }
-
     std::unique_ptr<jogasaki::api::executable_statement> e{};
     if(auto rc = db_.create_executable(sql, e); rc != jogasaki::status::ok) {
 //        channel_->send_ack(ERROR_CODE::UNKNOWN);
@@ -218,28 +284,47 @@ void Worker::send_metadata(std::size_t rid)
 {
     auto metadata = cursors_.at(rid).result_set_->meta();
     std::size_t n = metadata->field_count();
+    schema::RecordMeta meta;
+
     for (std::size_t i = 0; i < n; i++) {
+        auto* column = new schema::RecordMeta_Column;
         switch(metadata->at(i).kind()) {
         case jogasaki::api::field_type_kind::int4:
-            cursors_.at(rid).row_queue_->push_type(TYPE::INT32, 4);
-            break;
+            column->set_type(::common::DataType::INT4);
+            column->set_nullable(metadata->nullable(i));
+            *meta.add_columns() = *column;
+        break;
         case jogasaki::api::field_type_kind::int8:
-            cursors_.at(rid).row_queue_->push_type(TYPE::INT64, 8);
-            break;
+            column->set_type(::common::DataType::INT8);
+            column->set_nullable(metadata->nullable(i));
+            *meta.add_columns() = *column;
+        break;
         case jogasaki::api::field_type_kind::float4:
-            cursors_.at(rid).row_queue_->push_type(TYPE::FLOAT32, 4);
-            break;
+            column->set_type(::common::DataType::FLOAT4);
+            column->set_nullable(metadata->nullable(i));
+            *meta.add_columns() = *column;
+        break;
         case jogasaki::api::field_type_kind::float8:
-            cursors_.at(rid).row_queue_->push_type(TYPE::FLOAT64, 8);
-            break;
+            column->set_type(::common::DataType::FLOAT8);
+            column->set_nullable(metadata->nullable(i));
+            *meta.add_columns() = *column;
+        break;
         case jogasaki::api::field_type_kind::character:
-            cursors_.at(rid).row_queue_->push_type(TYPE::TEXT, INT32_MAX);
-            break;
+            column->set_type(::common::DataType::STRING);
+            column->set_nullable(metadata->nullable(i));
+            *meta.add_columns() = *column;
+        break;
         default:
+        std::cout << __LINE__ << ":" << i << std::endl;
             std::cerr << "unsurpported data type: " << metadata->at(i).kind() << std::endl;
             break;
         }
     }
+
+    std::string output;
+    if (!meta.SerializeToString(&output)) { std::abort(); }
+    cursors_.at(rid).resultset_wire_container_->write(reinterpret_cast<const signed char*>(output.data()),
+                                            tsubakuro::common::wire::length_header(output.size()));
 }
 
 bool Worker::execute_query(std::string_view sql, std::size_t rid)
@@ -252,11 +337,11 @@ bool Worker::execute_query(std::string_view sql, std::size_t rid)
     }
 
     auto& cursor = cursors_.at(rid);
+    cursor.wire_name_ = std::string("resultset-");
+    cursor.wire_name_ += std::to_string(rid);
+    cursor.metadata_ = std::make_unique<ogawayama::stub::Metadata<>>();
+    cursor.resultset_wire_container_ = wire_->create_resultset_wire(cursor.wire_name_);
     
-//    cursor.row_queue_ = std::make_unique<ogawayama::common::RowQueue>
-//        (shm4_row_queue_->shm_name(ogawayama::common::param::resultset, rid), shm4_row_queue_.get());
-//    cursor.row_queue_->clear();
-
     std::unique_ptr<jogasaki::api::executable_statement> e{};
     if(auto rc = db_.create_executable(sql, e); rc != jogasaki::status::ok) {
 //        channel_->send_ack(ERROR_CODE::UNKNOWN);
@@ -267,8 +352,10 @@ bool Worker::execute_query(std::string_view sql, std::size_t rid)
 //        channel_->send_ack(ERROR_CODE::UNKNOWN);
         return false;
     }
-    
+
+    cursor.iterator_ = rs->iterator();
     send_metadata(rid);
+
 //    channel_->send_ack(ERROR_CODE::OK);
     return true;
 }
@@ -276,38 +363,35 @@ bool Worker::execute_query(std::string_view sql, std::size_t rid)
 void Worker::next(std::size_t rid)
 {
     auto& cursor = cursors_.at(rid);
-    auto& rq = cursor.row_queue_;
+    tsubakuro::common::wire::server_wire_container::resultset_wire_container& wire = *cursor.resultset_wire_container_;
+    const jogasaki::api::record_meta* meta = cursor.result_set_->meta();
     auto iterator = cursor.result_set_->iterator();
-    std::size_t limit = rq->get_requested();
-    for(std::size_t i = 0; i < limit; i++) {
+    while(true) {
         auto record = iterator->next();
         if (record != nullptr) {
-            rq->resize_writing_row(rq->get_metadata_ptr()->get_types().size());
-            for (auto& t: rq->get_metadata_ptr()->get_types()) {
-                std::size_t cindex = rq->get_cindex();
+            for (std::size_t cindex = 0; cindex < meta->field_count(); cindex++) {
                 if (record->is_null(cindex)) {
-                    rq->put_next_column(std::monostate());
+                    msgpack::pack(wire, msgpack::type::nil_t());
                 } else {
-                    switch (t.get_type()) {
-                    case TYPE::INT32:
-                        rq->put_next_column(record->get_int4(cindex)); break;
-                    case TYPE::INT64:
-                        rq->put_next_column(record->get_int8(cindex)); break;
-                    case TYPE::FLOAT32:
-                        rq->put_next_column(record->get_float4(cindex)); break;
-                    case TYPE::FLOAT64:
-                        rq->put_next_column(record->get_float8(cindex)); break;
-                    case TYPE::TEXT:
-                        rq->put_next_column(record->get_character(cindex)); break;
-                    case TYPE::NULL_VALUE:
-                        std::cerr << "NULL_VALUE type should not be used" << std::endl; break;
+                    switch (meta->at(cindex).kind()) {
+                    case jogasaki::api::field_type_kind::int4:
+                        msgpack::pack(wire, record->get_int4(cindex)); break;
+                    case jogasaki::api::field_type_kind::int8:
+                        msgpack::pack(wire, record->get_int8(cindex)); break;
+                    case jogasaki::api::field_type_kind::float4:
+                        msgpack::pack(wire, record->get_float4(cindex)); break;
+                    case jogasaki::api::field_type_kind::float8:
+                        msgpack::pack(wire, record->get_float8(cindex)); break;
+                    case jogasaki::api::field_type_kind::character:
+                        msgpack::pack(wire, record->get_character(cindex)); break;
+                    default:
+                        std::cerr << "type undefined" << std::endl; break;
                     }
                 }
             }
-            rq->push_writing_row();
         } else {
-            rq->push_writing_row();
-            cursor.clear();
+            std::cout << "detect eor" << std::endl;
+            wire.set_eor();
             break;
         }
     }

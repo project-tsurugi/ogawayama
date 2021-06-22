@@ -34,8 +34,15 @@ public:
             resultset_wire_ = envelope_->managed_shared_memory_->construct<unidirectional_simple_wire>(rsw_name_.c_str())(envelope_->managed_shared_memory_.get(), resultset_wire_size);
             bip_buffer_ = resultset_wire_->get_bip_address(envelope_->managed_shared_memory_.get());
         }
-        unidirectional_simple_wire& get_resultset_wire() { return *resultset_wire_; }
-        signed char* get_bip_buffer() { return bip_buffer_; }
+        void write(const signed char* from, length_header&& header) {
+            resultset_wire_->write(bip_buffer_, from, std::move(header));
+        }
+        void write(const char* from, std::size_t length) {
+            resultset_wire_->write(bip_buffer_, reinterpret_cast<const signed char*>(from), length);
+        }
+        void set_eor() {
+            resultset_wire_->set_eor();
+        }
     private:
         server_wire_container *envelope_;
         signed char* bip_buffer_;
@@ -94,8 +101,8 @@ public:
     wire_container& get_request_wire() { return request_wire_; }
     wire_container& get_response_wire() { return response_wire_; }
 
-    resultset_wire_container *create_resultset_wire(std::string_view name_) {
-        return new resultset_wire_container(this, name_);
+    std::unique_ptr<resultset_wire_container> create_resultset_wire(std::string_view name_) {
+        return std::make_unique<resultset_wire_container>(this, name_);
     }
     
 private:

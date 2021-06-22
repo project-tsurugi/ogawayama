@@ -37,13 +37,15 @@ class Worker {
     public:
         void clear() {
             result_set_ = nullptr;
-//            iterator_ = nullptr;
+            iterator_ = nullptr;
             prepared_ = nullptr;
         }
-        std::unique_ptr<ogawayama::common::RowQueue> row_queue_{};
+        std::unique_ptr<ogawayama::stub::Metadata<>> metadata_{};
         std::unique_ptr<jogasaki::api::result_set> result_set_{};
-//        std::unique_ptr<jogasaki::api::result_set_iterator> iterator_{};
+        std::unique_ptr<jogasaki::api::result_set_iterator> iterator_{};
         std::unique_ptr<jogasaki::api::prepared_statement> prepared_{};
+        std::unique_ptr<tsubakuro::common::wire::server_wire_container::resultset_wire_container> resultset_wire_container_{};
+        std::string wire_name_;
     };
 
  public:
@@ -90,6 +92,7 @@ class Worker {
     }
 
     tsubakuro::common::wire::server_wire_container* wire_;
+    std::size_t resultset_id_{};
 };
 
 }  // ogawayama::server
