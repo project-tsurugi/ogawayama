@@ -59,7 +59,7 @@ if (NOT BUILD_STUB_ONLY)
 endif()
 
 find_package(Protobuf REQUIRED)
-find_package(MessagePack REQUIRED)
+find_package(msgpack REQUIRED)
 
 include(GNUInstallDirs)
 include(CMakePackageConfigHelpers)
