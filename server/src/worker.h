@@ -63,7 +63,7 @@ class Worker {
     void next(std::size_t);
     void prepare(std::string_view, std::size_t);
     void execute_prepared_statement(std::size_t);
-    bool execute_prepared_query(std::size_t, std::size_t);
+    bool execute_prepared_query(std::size_t, jogasaki::api::parameter_set&, std::size_t);
     void deploy_metadata(std::size_t);
 
     jogasaki::api::database& db_;
@@ -72,9 +72,10 @@ class Worker {
     std::unique_ptr<ogawayama::common::ParameterSet> parameters_;
     
     std::unique_ptr<jogasaki::api::transaction> transaction_;
+    std::size_t transaction_id_{};
     std::vector<Cursor> cursors_;
     std::vector<std::unique_ptr<jogasaki::api::prepared_statement>> prepared_statements_{};
-    std::size_t transaction_id_{};
+    std::size_t prepared_statements_index_{};
 
     std::packaged_task<void()> task_;
     std::future<void> future_;
