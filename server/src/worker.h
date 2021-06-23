@@ -62,7 +62,7 @@ class Worker {
     bool execute_query(std::string_view, std::size_t);
     void next(std::size_t);
     void prepare(std::string_view, std::size_t);
-    void execute_prepared_statement(std::size_t);
+    void execute_prepared_statement(std::size_t, jogasaki::api::parameter_set&);
     bool execute_prepared_query(std::size_t, jogasaki::api::parameter_set&, std::size_t);
     void deploy_metadata(std::size_t);
 

@@ -192,6 +192,58 @@ void Worker::run()
         break;
     case request::Request::RequestCase::kExecutePreparedStatement:
         std::cout << "execute_prepared_statement" << std::endl;
+        {
+            auto pq = request.mutable_execute_prepared_statement();
+            auto ph = pq->mutable_prepared_statement_handle();
+            auto sid = ph->handle();
+            std::cout << "tx:" << pq->mutable_transaction_handle()->handle() << "-"
+                      << "idx:" << h.get_idx() << " : "
+                      << "sid:" << sid
+                      << std::endl;
+
+            auto ps = pq->mutable_parameters();
+            auto params = jogasaki::api::create_parameter_set();
+            for (std::size_t i = 0; i < ps->parameters_size() ;i++) {
+                auto p = ps->mutable_parameters(i);
+                switch (p->value_case()) {
+                case request::ParameterSet::Parameter::ValueCase::kIValue:
+                    params->set_int4(p->name(), p->l_value());
+                    break;
+                case request::ParameterSet::Parameter::ValueCase::kLValue:
+                    params->set_int8(p->name(), p->l_value());
+                    break;
+                case request::ParameterSet::Parameter::ValueCase::kFValue:
+                    params->set_float4(p->name(), p->l_value());
+                    break;
+                case request::ParameterSet::Parameter::ValueCase::kDValue:
+                    params->set_float8(p->name(), p->l_value());
+                    break;
+                case request::ParameterSet::Parameter::ValueCase::kSValue:
+                    params->set_character(p->name(), p->s_value());
+                    break;
+                default:
+                    std::cerr << "type undefined" << std::endl;
+                    std::abort();
+                    break;
+                }
+            }
+
+            execute_prepared_statement(sid, *params);
+
+            protocol::Success s;
+            protocol::ResultOnly ok;
+            protocol::Response r;
+
+            ok.set_allocated_success(&s);
+            r.set_allocated_result_only(&ok);
+
+            std::string output;
+            if (!r.SerializeToString(&output)) { std::abort(); }
+            response_wire_container.write(reinterpret_cast<const signed char*>(output.data()), tsubakuro::common::wire::message_header(h.get_idx(), output.size()));
+
+            r.release_result_only();
+            ok.release_success();
+        }
         break;
     case request::Request::RequestCase::kExecutePreparedQuery:
         std::cout << "execute_prepared_query" << std::endl;
@@ -209,8 +261,24 @@ void Worker::run()
             for (std::size_t i = 0; i < ps->parameters_size() ;i++) {
                 auto p = ps->mutable_parameters(i);
                 switch (p->value_case()) {
+                case request::ParameterSet::Parameter::ValueCase::kIValue:
+                    params->set_int4(p->name(), p->l_value());
+                    break;
                 case request::ParameterSet::Parameter::ValueCase::kLValue:
                     params->set_int8(p->name(), p->l_value());
+                    break;
+                case request::ParameterSet::Parameter::ValueCase::kFValue:
+                    params->set_float4(p->name(), p->l_value());
+                    break;
+                case request::ParameterSet::Parameter::ValueCase::kDValue:
+                    params->set_float8(p->name(), p->l_value());
+                    break;
+                case request::ParameterSet::Parameter::ValueCase::kSValue:
+                    params->set_character(p->name(), p->s_value());
+                    break;
+                default:
+                    std::cerr << "type undefined" << std::endl;
+                    std::abort();
                     break;
                 }
             }
@@ -536,21 +604,14 @@ void Worker::set_params(std::unique_ptr<jogasaki::api::parameter_set>& p)
     }
 }
 
-void Worker::execute_prepared_statement(std::size_t sid)
+void Worker::execute_prepared_statement(std::size_t sid, jogasaki::api::parameter_set& params)
 {
-    if (sid >= prepared_statements_.size()) {
-//        channel_->send_ack(ERROR_CODE::UNKNOWN);
-        return;
-    }
-
     if (!transaction_) {
         transaction_ = db_.create_transaction();
     }
-    auto params = jogasaki::api::create_parameter_set();
-    set_params(params);
 
     std::unique_ptr<jogasaki::api::executable_statement> e{};
-    if(auto rc = db_.resolve(*cursors_.at(sid).prepared_, *params, e); rc != jogasaki::status::ok) {
+    if(auto rc = db_.resolve(*prepared_statements_.at(sid), params, e); rc != jogasaki::status::ok) {
 //        channel_->send_ack(ERROR_CODE::UNKNOWN);
         return;
     }
@@ -577,7 +638,7 @@ bool Worker::execute_prepared_query(std::size_t sid, jogasaki::api::parameter_se
     cursor.resultset_wire_container_ = wire_->create_resultset_wire(cursor.wire_name_);
 
     std::unique_ptr<jogasaki::api::executable_statement> e{};
-    if(auto rc = db_.resolve(*prepared_statements_.at(sid), std::move(params), e); rc != jogasaki::status::ok) {
+    if(auto rc = db_.resolve(*prepared_statements_.at(sid), params, e); rc != jogasaki::status::ok) {
 //        channel_->send_ack(ERROR_CODE::UNKNOWN);
         return false;
     }
