@@ -19,16 +19,16 @@
 #include <thread>
 
 #include "jogasaki/api.h"
-#include "ogawayama/stub/api.h"
-#include "ogawayama/common/channel_stream.h"
-#include "ogawayama/common/row_queue.h"
-#include "ogawayama/common/parameter_set.h"
 #include "manager/metadata/tables.h"
 #include "manager/metadata/metadata.h"
 #include "manager/metadata/error_code.h"
 #include "manager/metadata/datatypes.h"
 
 #include "server_wires.h"
+#include "request.pb.h"
+#include "response.pb.h"
+#include "common.pb.h"
+#include "schema.pb.h"
 
 namespace ogawayama::server {
 
@@ -40,7 +40,6 @@ class Worker {
             iterator_ = nullptr;
             prepared_ = nullptr;
         }
-        std::unique_ptr<ogawayama::stub::Metadata<>> metadata_{};
         std::unique_ptr<jogasaki::api::result_set> result_set_{};
         std::unique_ptr<jogasaki::api::result_set_iterator> iterator_{};
         std::unique_ptr<jogasaki::api::prepared_statement> prepared_{};
@@ -49,7 +48,8 @@ class Worker {
     };
 
  public:
-    Worker(jogasaki::api::database&, std::size_t, tsubakuro::common::wire::server_wire_container*);
+    Worker(jogasaki::api::database& db, std::size_t id, tsubakuro::common::wire::server_wire_container* wire) :
+        db_(db), id_(id), wire_(wire), request_wire_container_(wire->get_request_wire()), response_wire_container_(wire->get_response_wire()) {}
     ~Worker() {
         clear_all();
         if(thread_.joinable()) thread_.join();
@@ -66,23 +66,8 @@ class Worker {
     bool execute_prepared_query(std::size_t, jogasaki::api::parameter_set&, std::size_t);
     void deploy_metadata(std::size_t);
 
-    jogasaki::api::database& db_;
-    std::size_t id_;
-
-    std::unique_ptr<ogawayama::common::ParameterSet> parameters_;
-    
-    std::unique_ptr<jogasaki::api::transaction> transaction_;
-    std::size_t transaction_id_{};
-    std::vector<Cursor> cursors_;
-    std::vector<std::unique_ptr<jogasaki::api::prepared_statement>> prepared_statements_{};
-    std::size_t prepared_statements_index_{};
-
-    std::packaged_task<void()> task_;
-    std::future<void> future_;
-    std::thread thread_{};
-
     void send_metadata(std::size_t);
-    void set_params(std::unique_ptr<jogasaki::api::parameter_set>&);
+    void set_params(request::ParameterSet*, std::unique_ptr<jogasaki::api::parameter_set>&);
     void clear_transaction() {
         cursors_.clear();
         transaction_ = nullptr;
@@ -91,9 +76,85 @@ class Worker {
         clear_transaction();
         prepared_statements_.clear();
     }
+    void reply(protocol::Response &r, tsubakuro::common::wire::message_header::index_type idx) {
+        std::string output;
+        if (!r.SerializeToString(&output)) { std::abort(); }
+        response_wire_container_.write(reinterpret_cast<const signed char*>(output.data()), tsubakuro::common::wire::message_header(idx, output.size()));
+    }
+
+    template<typename T>
+    void error(std::string msg, tsubakuro::common::wire::message_header::index_type idx) {}
+        
+    jogasaki::api::database& db_;
+    std::size_t id_;
+
+    std::unique_ptr<jogasaki::api::transaction> transaction_;
+    std::size_t transaction_id_{};
+    std::size_t resultset_id_{};
+    std::vector<Cursor> cursors_;
+    std::vector<std::unique_ptr<jogasaki::api::prepared_statement>> prepared_statements_{};
+    std::size_t prepared_statements_index_{};
+
+    std::packaged_task<void()> task_;
+    std::future<void> future_;
+    std::thread thread_{};
 
     tsubakuro::common::wire::server_wire_container* wire_;
-    std::size_t resultset_id_{};
+    tsubakuro::common::wire::server_wire_container::wire_container& request_wire_container_;
+    tsubakuro::common::wire::server_wire_container::wire_container& response_wire_container_;
 };
+
+template<>
+inline void Worker::error<protocol::Begin>(std::string msg, tsubakuro::common::wire::message_header::index_type idx) {
+    protocol::Error e;
+    protocol::Begin p;
+    protocol::Response r;
+
+    e.set_detail(msg);
+    p.set_allocated_error(&e);
+    r.set_allocated_begin(&p);
+    reply(r, idx);
+    r.release_begin();
+    p.release_error();
+}
+template<>
+inline void Worker::error<protocol::Prepare>(std::string msg, tsubakuro::common::wire::message_header::index_type idx) {
+    protocol::Error e;
+    protocol::Prepare p;
+    protocol::Response r;
+
+    e.set_detail(msg);
+    p.set_allocated_error(&e);
+    r.set_allocated_prepare(&p);
+    reply(r, idx);
+    r.release_prepare();
+    p.release_error();
+}
+template<>
+inline void Worker::error<protocol::ResultOnly>(std::string msg, tsubakuro::common::wire::message_header::index_type idx) {
+    protocol::Error e;
+    protocol::ResultOnly p;
+    protocol::Response r;
+
+    e.set_detail(msg);
+    p.set_allocated_error(&e);
+    r.set_allocated_result_only(&p);
+    reply(r, idx);
+    r.release_result_only();
+    p.release_error();
+}
+template<>
+inline void Worker::error<protocol::ExecuteQuery>(std::string msg, tsubakuro::common::wire::message_header::index_type idx) {
+    protocol::Error e;
+    protocol::ExecuteQuery p;
+    protocol::Response r;
+
+    e.set_detail(msg);
+    p.set_allocated_error(&e);
+    r.set_allocated_execute_query(&p);
+    reply(r, idx);
+    r.release_execute_query();
+    p.release_error();
+}
 
 }  // ogawayama::server

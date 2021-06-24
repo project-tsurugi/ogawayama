@@ -27,18 +27,10 @@
 #include <yugawara/storage/configurable_provider.h>
 
 #include "worker.h"
-#include "request.pb.h"
-#include "response.pb.h"
-#include "common.pb.h"
-#include "schema.pb.h"
 
 namespace ogawayama::server {
 
 DECLARE_string(dbname);
-
-Worker::Worker(jogasaki::api::database& db, std::size_t id, tsubakuro::common::wire::server_wire_container* wire) : db_(db), id_(id), wire_(wire)
-{
-}
 
 void Worker::run()
 {
@@ -46,22 +38,21 @@ void Worker::run()
 
     while(true) {
 
-    auto& request_wire_container = wire_->get_request_wire();
-    auto& response_wire_container = wire_->get_response_wire();
-    auto h = request_wire_container.peep(true);
+    auto h = request_wire_container_.peep(true);
     std::size_t length = h.get_length();
     std::string msg;
     msg.resize(length);
-    request_wire_container.read(reinterpret_cast<signed char*>(msg.data()), length);
-    if (!request.ParseFromString(msg)) { std::cout << "parse error" << std::endl; }
-    else { std::cout << "s:" << request.session_handle().handle() << "-" << "idx:" << h.get_idx() << std::endl; }
+    request_wire_container_.read(reinterpret_cast<signed char*>(msg.data()), length);
+    if (!request.ParseFromString(msg)) { LOG(ERROR) << "parse error" << std::endl; }
+    else { VLOG(1) << "s:" << request.session_handle().handle() << "-" << "idx:" << h.get_idx() << std::endl; }
 
     switch (request.request_case()) {
     case request::Request::RequestCase::kBegin:
         if (!transaction_) {
             transaction_ = db_.create_transaction();
         } else {
-            std::cout << "already begin a transaction" << std::endl;
+            LOG(ERROR) << "already begin a transaction" << std::endl;
+            error<protocol::Begin>("transaction has already begun", h.get_idx());
         }
         {
             ::common::Transaction t;
@@ -71,54 +62,51 @@ void Worker::run()
             t.set_handle(++transaction_id_);
             b.set_allocated_transaction_handle(&t);
             r.set_allocated_begin(&b);
-
-            std::string output;
-            if (!r.SerializeToString(&output)) { std::abort(); }
-            response_wire_container.write(reinterpret_cast<const signed char*>(output.data()), tsubakuro::common::wire::message_header(h.get_idx(), output.size()));
-
+            reply(r, h.get_idx());
             r.release_begin();
             b.release_transaction_handle();
         }
         
-        std::cout << "begin" << std::endl;
+        VLOG(1) << "begin" << std::endl;
         break;
     case request::Request::RequestCase::kPrepare:
-        std::cout << "prepare" << std::endl;
+        VLOG(1) << "prepare" << std::endl;
         {
             std::size_t sid = prepared_statements_index_;
 
             auto pp = request.mutable_prepare();
-            auto hvs = *(pp->mutable_host_variables());
-            auto sql = *(pp->mutable_sql());
-            std::cout << "idx:" << h.get_idx() << " : "
-                      << sql
+            auto hvs = pp->mutable_host_variables();
+            auto sql = pp->mutable_sql();
+            VLOG(1) << "idx:" << h.get_idx() << " : "
+                      << *sql
                       << std::endl;
             if (prepared_statements_.size() < (sid + 1)) {
                 prepared_statements_.resize(sid + 1);
             }
 
-            for(std::size_t i = 0; i < hvs.variables_size() ;i++) {
-                auto hv = *hvs.mutable_variables(i);
-                switch(hv.type()) {
+            for(std::size_t i = 0; i < hvs->variables_size() ;i++) {
+                auto hv = hvs->mutable_variables(i);
+                switch(hv->type()) {
                 case ::common::DataType::INT4:
-                    db_.register_variable(hv.name(), jogasaki::api::field_type_kind::int4);
+                    db_.register_variable(hv->name(), jogasaki::api::field_type_kind::int4);
                     break;
                 case ::common::DataType::INT8:
-                    db_.register_variable(hv.name(), jogasaki::api::field_type_kind::int8);
+                    db_.register_variable(hv->name(), jogasaki::api::field_type_kind::int8);
                     break;
                 case ::common::DataType::FLOAT4:
-                    db_.register_variable(hv.name(), jogasaki::api::field_type_kind::float4);
+                    db_.register_variable(hv->name(), jogasaki::api::field_type_kind::float4);
                     break;
                 case ::common::DataType::FLOAT8:
-                    db_.register_variable(hv.name(), jogasaki::api::field_type_kind::float8);
+                    db_.register_variable(hv->name(), jogasaki::api::field_type_kind::float8);
                     break;
                 case ::common::DataType::STRING:
-                    db_.register_variable(hv.name(), jogasaki::api::field_type_kind::character);
+                    db_.register_variable(hv->name(), jogasaki::api::field_type_kind::character);
                     break;
                 }
             }
-            if(auto rc = db_.prepare(sql, prepared_statements_.at(sid)); rc != jogasaki::status::ok) {
-                std::cout << "error" << std::endl;
+            if(auto rc = db_.prepare(*sql, prepared_statements_.at(sid)); rc != jogasaki::status::ok) {
+                LOG(ERROR) << "error" << std::endl;
+                error<protocol::Prepare>("error", h.get_idx());
             }
 
             ::common::PreparedStatement ps;
@@ -128,11 +116,7 @@ void Worker::run()
             ps.set_handle(sid);
             *p.mutable_prepared_statement_handle() = ps;
             r.set_allocated_prepare(&p);
-
-            std::string output;
-            if (!r.SerializeToString(&output)) { std::abort(); }
-            response_wire_container.write(reinterpret_cast<const signed char*>(output.data()), tsubakuro::common::wire::message_header(h.get_idx(), output.size()));
-
+            reply(r, h.get_idx());
             r.release_prepare();
             p.release_prepared_statement_handle();
 
@@ -140,10 +124,10 @@ void Worker::run()
         }
         break;
     case request::Request::RequestCase::kExecuteStatement:
-        std::cout << "execute_statement" << std::endl;
+        VLOG(1) << "execute_statement" << std::endl;
         {
             auto eq = request.mutable_execute_statement();
-            std::cout << "tx:" << eq->mutable_transaction_handle()->handle() << "-"
+            VLOG(1) << "tx:" << eq->mutable_transaction_handle()->handle() << "-"
                       << "idx:" << h.get_idx() << " : "
                       << *(eq->mutable_sql())
                       << std::endl;
@@ -154,20 +138,16 @@ void Worker::run()
 
             ok.set_allocated_success(&s);
             r.set_allocated_result_only(&ok);
-
-            std::string output;
-            if (!r.SerializeToString(&output)) { std::abort(); }
-            response_wire_container.write(reinterpret_cast<const signed char*>(output.data()), tsubakuro::common::wire::message_header(h.get_idx(), output.size()));
-
+            reply(r, h.get_idx());
             r.release_result_only();
             ok.release_success();
         }
         break;
     case request::Request::RequestCase::kExecuteQuery:
-        std::cout << "execute_query" << std::endl;
+        VLOG(1) << "execute_query" << std::endl;
         {
             auto eq = request.mutable_execute_query();
-            std::cout << "tx:" << eq->mutable_transaction_handle()->handle() << "-"
+            VLOG(1) << "tx:" << eq->mutable_transaction_handle()->handle() << "-"
                       << "idx:" << h.get_idx() << " : "
                       << *(eq->mutable_sql())
                       << std::endl;
@@ -178,56 +158,28 @@ void Worker::run()
 
                     e.set_name(cursors_.at(resultset_id_).wire_name_);
                     r.set_allocated_execute_query(&e);
-
-                    std::string output;
-                    if (!r.SerializeToString(&output)) { std::abort(); }
-                    response_wire_container.write(reinterpret_cast<const signed char*>(output.data()), tsubakuro::common::wire::message_header(h.get_idx(), output.size()));
-
+                    reply(r, h.get_idx());
                     r.release_execute_query();
             } else {
+                error<protocol::ExecuteQuery>("execute_query fail", h.get_idx());
                 std::abort();
             }
             next(resultset_id_);
         }
         break;
     case request::Request::RequestCase::kExecutePreparedStatement:
-        std::cout << "execute_prepared_statement" << std::endl;
+        VLOG(1) << "execute_prepared_statement" << std::endl;
         {
             auto pq = request.mutable_execute_prepared_statement();
             auto ph = pq->mutable_prepared_statement_handle();
             auto sid = ph->handle();
-            std::cout << "tx:" << pq->mutable_transaction_handle()->handle() << "-"
+            VLOG(1) << "tx:" << pq->mutable_transaction_handle()->handle() << "-"
                       << "idx:" << h.get_idx() << " : "
                       << "sid:" << sid
                       << std::endl;
 
-            auto ps = pq->mutable_parameters();
             auto params = jogasaki::api::create_parameter_set();
-            for (std::size_t i = 0; i < ps->parameters_size() ;i++) {
-                auto p = ps->mutable_parameters(i);
-                switch (p->value_case()) {
-                case request::ParameterSet::Parameter::ValueCase::kIValue:
-                    params->set_int4(p->name(), p->l_value());
-                    break;
-                case request::ParameterSet::Parameter::ValueCase::kLValue:
-                    params->set_int8(p->name(), p->l_value());
-                    break;
-                case request::ParameterSet::Parameter::ValueCase::kFValue:
-                    params->set_float4(p->name(), p->l_value());
-                    break;
-                case request::ParameterSet::Parameter::ValueCase::kDValue:
-                    params->set_float8(p->name(), p->l_value());
-                    break;
-                case request::ParameterSet::Parameter::ValueCase::kSValue:
-                    params->set_character(p->name(), p->s_value());
-                    break;
-                default:
-                    std::cerr << "type undefined" << std::endl;
-                    std::abort();
-                    break;
-                }
-            }
-
+            set_params(pq->mutable_parameters(), params);
             execute_prepared_statement(sid, *params);
 
             protocol::Success s;
@@ -236,52 +188,24 @@ void Worker::run()
 
             ok.set_allocated_success(&s);
             r.set_allocated_result_only(&ok);
-
-            std::string output;
-            if (!r.SerializeToString(&output)) { std::abort(); }
-            response_wire_container.write(reinterpret_cast<const signed char*>(output.data()), tsubakuro::common::wire::message_header(h.get_idx(), output.size()));
-
+            reply(r, h.get_idx());
             r.release_result_only();
             ok.release_success();
         }
         break;
     case request::Request::RequestCase::kExecutePreparedQuery:
-        std::cout << "execute_prepared_query" << std::endl;
+        VLOG(1) << "execute_prepared_query" << std::endl;
         {
             auto pq = request.mutable_execute_prepared_query();
             auto ph = pq->mutable_prepared_statement_handle();
             auto sid = ph->handle();
-            std::cout << "tx:" << pq->mutable_transaction_handle()->handle() << "-"
+            VLOG(1) << "tx:" << pq->mutable_transaction_handle()->handle() << "-"
                       << "idx:" << h.get_idx() << " : "
                       << "sid:" << sid
                       << std::endl;
 
-            auto ps = pq->mutable_parameters();
             auto params = jogasaki::api::create_parameter_set();
-            for (std::size_t i = 0; i < ps->parameters_size() ;i++) {
-                auto p = ps->mutable_parameters(i);
-                switch (p->value_case()) {
-                case request::ParameterSet::Parameter::ValueCase::kIValue:
-                    params->set_int4(p->name(), p->l_value());
-                    break;
-                case request::ParameterSet::Parameter::ValueCase::kLValue:
-                    params->set_int8(p->name(), p->l_value());
-                    break;
-                case request::ParameterSet::Parameter::ValueCase::kFValue:
-                    params->set_float4(p->name(), p->l_value());
-                    break;
-                case request::ParameterSet::Parameter::ValueCase::kDValue:
-                    params->set_float8(p->name(), p->l_value());
-                    break;
-                case request::ParameterSet::Parameter::ValueCase::kSValue:
-                    params->set_character(p->name(), p->s_value());
-                    break;
-                default:
-                    std::cerr << "type undefined" << std::endl;
-                    std::abort();
-                    break;
-                }
-            }
+            set_params(pq->mutable_parameters(), params);
 
             if(execute_prepared_query(sid, *params, ++resultset_id_)) {
                     protocol::ExecuteQuery e;
@@ -289,30 +213,27 @@ void Worker::run()
 
                     e.set_name(cursors_.at(resultset_id_).wire_name_);
                     r.set_allocated_execute_query(&e);
-
-                    std::string output;
-                    if (!r.SerializeToString(&output)) { std::abort(); }
-                    response_wire_container.write(reinterpret_cast<const signed char*>(output.data()), tsubakuro::common::wire::message_header(h.get_idx(), output.size()));
-
+                    reply(r, h.get_idx());
                     r.release_execute_query();
             } else {
+                error<protocol::ExecuteQuery>("execute_prepared_query fail", h.get_idx());
                 std::abort();
             }
             next(resultset_id_);
         }
         break;
     case request::Request::RequestCase::kCommit:
-        std::cout << "commit" << std::endl;
+        VLOG(1) << "commit" << std::endl;
         {
             if (transaction_) {
                 transaction_->commit();
                 transaction_ = nullptr;
             } else {
-                std::cout << "transaction has not begun" << std::endl;
+                LOG(ERROR) << "transaction has not begun" << std::endl;
             }
 
             auto eq = request.mutable_commit();
-            std::cout << "tx:" << eq->mutable_transaction_handle()->handle() << "-"
+            VLOG(1) << "tx:" << eq->mutable_transaction_handle()->handle() << "-"
                       << "idx:" << h.get_idx()
                       << std::endl;
 
@@ -322,29 +243,54 @@ void Worker::run()
 
             ok.set_allocated_success(&s);
             r.set_allocated_result_only(&ok);
-
-            std::string output;
-            if (!r.SerializeToString(&output)) { std::abort(); }
-            response_wire_container.write(reinterpret_cast<const signed char*>(output.data()), tsubakuro::common::wire::message_header(h.get_idx(), output.size()));
-
+            reply(r, h.get_idx());
             r.release_result_only();
             ok.release_success();
         }
         break;
     case request::Request::RequestCase::kRollback:
-        std::cout << "rollback" << std::endl;
+        VLOG(1) << "rollback" << std::endl;
         break;
     case request::Request::RequestCase::kDisposePreparedStatement:
-        std::cout << "dispose_prepared_statement" << std::endl;
+        VLOG(1) << "dispose_prepared_statement" << std::endl;
+        {
+            auto dp = request.mutable_dispose_prepared_statement();
+            auto ph = dp->mutable_prepared_statement_handle();
+            auto sid = ph->handle();
+
+            VLOG(1) << "idx:" << h.get_idx() << " : "
+                    << "ps:" << sid
+                    << std::endl;
+
+            if(prepared_statements_.size() > sid) {
+                if(prepared_statements_.at(sid)) {
+                    prepared_statements_.at(sid) = nullptr;
+
+                    protocol::Success s;
+                    protocol::ResultOnly ok;
+                    protocol::Response r;
+
+                    ok.set_allocated_success(&s);
+                    r.set_allocated_result_only(&ok);
+                    reply(r, h.get_idx());
+                    r.release_result_only();
+                    ok.release_success();
+                } else {
+                    error<protocol::ResultOnly>("cannot find prepared statement with the index given", h.get_idx());
+                }
+            } else {
+                error<protocol::ResultOnly>("index is larger than the number of prepred statment registerd", h.get_idx());
+            }
+        }
         break;
     case request::Request::RequestCase::kDisconnect:
-        std::cout << "disconnect" << std::endl;
+        VLOG(1) << "disconnect" << std::endl;
         break;
     case request::Request::RequestCase::REQUEST_NOT_SET:
-        std::cout << "not used" << std::endl;
+        VLOG(1) << "not used" << std::endl;
         break;
     default:
-        std::cout << "????" << std::endl;
+        LOG(ERROR) << "????" << std::endl;
         break;
     }
     
@@ -357,7 +303,7 @@ void Worker::run()
                 std::cerr << __func__ << " " << __LINE__ << ": exiting" << std::endl;
                 return;
             }
-            VLOG(1) << __func__ << ":" << __LINE__ << " recieved " << ivalue << " " << ogawayama::common::type_name(type) << " \"" << string << "\"";
+            std::cout << __func__ << ":" << __LINE__ << " recieved " << ivalue << " " << ogawayama::common::type_name(type) << " \"" << string << "\"";
         } catch (std::exception &ex) {
             std::cerr << __func__ << " " << __LINE__ << ": exiting \"" << ex.what() << "\"" << std::endl;
             return;
@@ -500,7 +446,6 @@ bool Worker::execute_query(std::string_view sql, std::size_t rid)
     auto& cursor = cursors_.at(rid);
     cursor.wire_name_ = std::string("resultset-");
     cursor.wire_name_ += std::to_string(rid);
-    cursor.metadata_ = std::make_unique<ogawayama::stub::Metadata<>>();
     cursor.resultset_wire_container_ = wire_->create_resultset_wire(cursor.wire_name_);
     
     std::unique_ptr<jogasaki::api::executable_statement> e{};
@@ -551,7 +496,7 @@ void Worker::next(std::size_t rid)
                 }
             }
         } else {
-            std::cout << "detect eor" << std::endl;
+            VLOG(1) << "detect eor" << std::endl;
             wire.set_eor();
             break;
         }
@@ -571,36 +516,31 @@ void Worker::prepare(std::string_view sql, std::size_t sid)
 //    channel_->send_ack(ERROR_CODE::OK);
 }
 
-void Worker::set_params(std::unique_ptr<jogasaki::api::parameter_set>& p)
+void Worker::set_params(request::ParameterSet* ps, std::unique_ptr<jogasaki::api::parameter_set>& params)
 {
-    auto& params = parameters_->get_params();
-    for(auto& param: params) {
-        std::size_t idx = &param - &params[0];
-        std::visit([&p, &idx](auto&& arg) {
-                using T = std::decay_t<decltype(arg)>;
-                std::string prefix = "p";
-                if constexpr (std::is_same_v<T, std::int32_t>) {
-                        p->set_int4(prefix + std::to_string(idx+1), arg);
-                    }
-                else if constexpr (std::is_same_v<T, std::int64_t>) {
-                        p->set_int8(prefix + std::to_string(idx+1), arg);
-                    }
-                else if constexpr (std::is_same_v<T, float>) {
-                        p->set_float4(prefix + std::to_string(idx+1), arg);
-                    }
-                else if constexpr (std::is_same_v<T, double>) {
-                        p->set_float8(prefix + std::to_string(idx+1), arg);
-                    }
-                else if constexpr (std::is_same_v<T, ogawayama::common::ShmString>) {
-                        p->set_character(prefix + std::to_string(idx+1), std::string_view(arg));
-                    }
-                else if constexpr (std::is_same_v<T, std::monostate>) {
-                        p->set_null(prefix + std::to_string(idx+1));
-                    }
-                else {
-                    std::cerr << __func__ << " " << __LINE__ << ": received a type of parameter that cannot be handled" << std::endl;
-                }
-            }, param);
+    for (std::size_t i = 0; i < ps->parameters_size() ;i++) {
+        auto p = ps->mutable_parameters(i);
+        switch (p->value_case()) {
+        case request::ParameterSet::Parameter::ValueCase::kIValue:
+            params->set_int4(p->name(), p->l_value());
+            break;
+        case request::ParameterSet::Parameter::ValueCase::kLValue:
+            params->set_int8(p->name(), p->l_value());
+            break;
+        case request::ParameterSet::Parameter::ValueCase::kFValue:
+            params->set_float4(p->name(), p->l_value());
+            break;
+        case request::ParameterSet::Parameter::ValueCase::kDValue:
+            params->set_float8(p->name(), p->l_value());
+            break;
+        case request::ParameterSet::Parameter::ValueCase::kSValue:
+            params->set_character(p->name(), p->s_value());
+            break;
+        default:
+            std::cerr << "type undefined" << std::endl;
+            std::abort();
+            break;
+        }
     }
 }
 
@@ -634,7 +574,6 @@ bool Worker::execute_prepared_query(std::size_t sid, jogasaki::api::parameter_se
     auto& cursor = cursors_.at(rid);
     cursor.wire_name_ = std::string("resultset-");
     cursor.wire_name_ += std::to_string(rid);
-    cursor.metadata_ = std::make_unique<ogawayama::stub::Metadata<>>();
     cursor.resultset_wire_container_ = wire_->create_resultset_wire(cursor.wire_name_);
 
     std::unique_ptr<jogasaki::api::executable_statement> e{};

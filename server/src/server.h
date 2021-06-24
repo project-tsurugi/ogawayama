@@ -16,12 +16,10 @@
 #pragma once
 
 #include "jogasaki/api.h"
-#include "ogawayama/common/channel_stream.h"
 
 namespace ogawayama::server {
 
 int backend_main(int, char **);
-void worker_main(jogasaki::api::database&, ogawayama::common::SharedMemory *, int);
 
 template <class T>
 class DBCloser final { //NOLINT
