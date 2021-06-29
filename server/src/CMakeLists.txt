@@ -37,10 +37,6 @@ set_source_files_properties(
     PROPERTIES GENERATED TRUE
 )
 
-add_dependencies(server
-    build_protos
-)
-
 add_executable(server
     ${SOURCES}
     ${GENERATED_PROTO_SRCS}
@@ -49,6 +45,10 @@ add_executable(server
 set_target_properties(server
     PROPERTIES
         RUNTIME_OUTPUT_NAME "ogawayama-server"
+)
+
+add_dependencies(server
+    build_protos
 )
 
 target_include_directories(server
