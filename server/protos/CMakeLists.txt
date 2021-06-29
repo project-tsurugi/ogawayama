@@ -1,7 +1,11 @@
 file(GLOB ProtoFiles "${CMAKE_CURRENT_SOURCE_DIR}/*.proto")
 PROTOBUF_GENERATE_CPP(ProtoSources ProtoHeaders ${ProtoFiles})
-add_library(messages SHARED ${ProtoSources} ${ProtoHeaders})
-target_include_directories(messages
-  PRIVATE ${PROTOBUF_INCLUDE_DIRS}
+set(GENERATED_PROTO_SRCS
+  "${CMAKE_BINARY_DIR}/server/protos/request.pb.cc"
+  "${CMAKE_BINARY_DIR}/server/protos/response.pb.cc"
+  "${CMAKE_BINARY_DIR}/server/protos/common.pb.cc"
+  "${CMAKE_BINARY_DIR}/server/protos/schema.pb.cc"
 )
-target_link_libraries(messages ${Boost_LIBRARIES} ${PROTOBUF_LIBRARY})
+add_custom_target(build_protos
+  DEPENDS ${ProtoSources} ${GENERATED_PROTO_SRCS}
+)

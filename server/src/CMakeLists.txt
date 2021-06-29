@@ -25,8 +25,25 @@ file(GLOB SOURCES
     "*.cpp"
 )
 
+set(GENERATED_PROTO_SRCS
+    ${CMAKE_BINARY_DIR}/server/protos/request.pb.cc
+    ${CMAKE_BINARY_DIR}/server/protos/response.pb.cc
+    ${CMAKE_BINARY_DIR}/server/protos/common.pb.cc
+    ${CMAKE_BINARY_DIR}/server/protos/schema.pb.cc
+)
+
+set_source_files_properties(
+    ${GENERATED_PROTO_SRCS}
+    PROPERTIES GENERATED TRUE
+)
+
+add_dependencies(server
+    build_protos
+)
+
 add_executable(server
     ${SOURCES}
+    ${GENERATED_PROTO_SRCS}
 )
 
 set_target_properties(server
@@ -35,11 +52,9 @@ set_target_properties(server
 )
 
 target_include_directories(server
-    PRIVATE ../../stub/include
-    PRIVATE ../../common/include
     PRIVATE ${PG_INCLUDEDIR}
-    PRIVATE ${CMAKE_CURRENT_BINARY_DIR}/../protos
     PRIVATE ${PROTOBUF_INCLUDE_DIRS}
+    PRIVATE ${CMAKE_BINARY_DIR}/server/protos
 )
 
 target_link_libraries(server
@@ -57,7 +72,7 @@ target_link_libraries(server
     PRIVATE pthread
     PRIVATE rt
     PRIVATE msgpackc
-    messages
+    PRIVATE ${PROTOBUF_LIBRARY}
 )
 
 install_custom(server ${export_name})
