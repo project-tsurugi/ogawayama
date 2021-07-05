@@ -32,12 +32,19 @@ namespace ogawayama::server {
 
 DECLARE_string(dbname);
 
+constexpr static int str_length = 1024;
+
 void Worker::run()
 {
     request::Request request;
 
+    dummy_string_.resize(str_length);
+    for(std::size_t i = 0; i < str_length; i++) {
+//        dummy_string_.at(i) = rand() % 255 + 1;
+        dummy_string_.at(i) = rand() % 26 + 'a';
+    }
+    
     while(true) {
-
     auto h = request_wire_container_.peep(true);
     std::size_t length = h.get_length();
     std::string msg;
@@ -196,30 +203,58 @@ void Worker::run()
     case request::Request::RequestCase::kExecutePreparedQuery:
         VLOG(1) << "execute_prepared_query" << std::endl;
         {
+            std::size_t rsid = search_resultset();
+
             auto pq = request.mutable_execute_prepared_query();
             auto ph = pq->mutable_prepared_statement_handle();
             auto sid = ph->handle();
             VLOG(1) << "tx:" << pq->mutable_transaction_handle()->handle() << "-"
-                      << "idx:" << h.get_idx() << " : "
-                      << "sid:" << sid
-                      << std::endl;
+                    << "idx:" << h.get_idx() << " : "
+                    << "psid:" << sid << " : "
+                    << "rsid:" << rsid
+                    << std::endl;
 
-            auto params = jogasaki::api::create_parameter_set();
-            set_params(pq->mutable_parameters(), params);
+            if (cursors_.size() < (rsid + 1)) {
+                cursors_.resize(rsid + 1);
+                cursors_.at(rsid).wire_name_ = std::string("resultset-");
+                cursors_.at(rsid).wire_name_ += std::to_string(rsid);
+                cursors_.at(rsid).resultset_wire_container_ = wire_->create_resultset_wire(cursors_.at(rsid).wire_name_);
+            }
 
-            if(execute_prepared_query(sid, *params, ++resultset_id_)) {
+            auto& cursor = cursors_.at(rsid);
+//            auto params = jogasaki::api::create_parameter_set();
+//            set_params(pq->mutable_parameters(), params);
+
+//            if(execute_prepared_query(sid, *params, ++rsid)) {
                     protocol::ExecuteQuery e;
                     protocol::Response r;
 
-                    e.set_name(cursors_.at(resultset_id_).wire_name_);
+                    e.set_name(cursors_.at(rsid).wire_name_);
                     r.set_allocated_execute_query(&e);
                     reply(r, h.get_idx());
                     r.release_execute_query();
-            } else {
-                error<protocol::ExecuteQuery>("execute_prepared_query fail", h.get_idx());
-                std::abort();
-            }
-            next(resultset_id_);
+//            } else {
+//                error<protocol::ExecuteQuery>("execute_prepared_query fail", h.get_idx());
+//                std::abort();
+//            }
+//            next(rsid);
+
+//                    std::cout << __func__ << ":" << __LINE__ << std::endl;
+                    schema::RecordMeta meta;
+                    auto* column = new schema::RecordMeta_Column;
+                    column->set_type(::common::DataType::STRING);
+                    column->set_nullable(false);
+                    *meta.add_columns() = *column;
+
+                    std::string output;
+                    if (!meta.SerializeToString(&output)) { std::abort(); }
+                    cursors_.at(rsid).resultset_wire_container_->write(reinterpret_cast<const signed char*>(output.data()),
+                                                                      tsubakuro::common::wire::length_header(output.size()));
+
+                    tsubakuro::common::wire::server_wire_container::resultset_wire_container& wire = *cursor.resultset_wire_container_;
+//                    std::cout << __func__ << ":" << __LINE__ << std::endl;
+                    msgpack::pack(wire, dummy_string_);
+                    wire.set_eor();
         }
         break;
     case request::Request::RequestCase::kCommit:
@@ -293,81 +328,6 @@ void Worker::run()
         LOG(ERROR) << "????" << std::endl;
         break;
     }
-    
-#if 0
-        ogawayama::common::CommandMessage::Type type;
-        std::size_t ivalue;
-        std::string_view string;
-        try {
-            if (channel_->recv_req(type, ivalue, string) != ERROR_CODE::OK) {
-                std::cerr << __func__ << " " << __LINE__ << ": exiting" << std::endl;
-                return;
-            }
-            std::cout << __func__ << ":" << __LINE__ << " recieved " << ivalue << " " << ogawayama::common::type_name(type) << " \"" << string << "\"";
-        } catch (std::exception &ex) {
-            std::cerr << __func__ << " " << __LINE__ << ": exiting \"" << ex.what() << "\"" << std::endl;
-            return;
-        }
-
-        switch (type) {
-        case ogawayama::common::CommandMessage::Type::EXECUTE_STATEMENT:
-            execute_statement(string);
-            break;
-        case ogawayama::common::CommandMessage::Type::EXECUTE_QUERY:
-            if(execute_query(string, ivalue)) {
-                next(ivalue);
-            }
-            break;
-        case ogawayama::common::CommandMessage::Type::NEXT:
-            channel_->send_ack(ERROR_CODE::OK);
-            next(ivalue);
-            break;
-        case ogawayama::common::CommandMessage::Type::COMMIT:
-            if (!transaction_) {
-                channel_->send_ack(ERROR_CODE::NO_TRANSACTION);
-                break;
-            }
-            transaction_->commit();
-            channel_->send_ack(ERROR_CODE::OK);
-            clear_transaction();
-            break;
-        case ogawayama::common::CommandMessage::Type::ROLLBACK:
-            if (!transaction_) {
-                channel_->send_ack(ERROR_CODE::NO_TRANSACTION);
-            }
-            transaction_->abort();
-            channel_->send_ack(ERROR_CODE::OK);
-            clear_transaction();
-            break;
-        case ogawayama::common::CommandMessage::Type::PREPARE:
-            prepare(string, ivalue);
-            break;
-        case ogawayama::common::CommandMessage::Type::EXECUTE_PREPARED_STATEMENT:
-            execute_prepared_statement(ivalue);
-            break;
-        case ogawayama::common::CommandMessage::Type::EXECUTE_PREPARED_QUERY:
-            {
-                std::size_t rid = std::stoi(std::string(string));
-                if(execute_prepared_query(ivalue, rid)) {
-                    next(rid);
-                }
-            }
-            break;
-        case ogawayama::common::CommandMessage::Type::CREATE_TABLE:
-            deploy_metadata(ivalue);
-            break;
-        case ogawayama::common::CommandMessage::Type::DISCONNECT:
-            if (transaction_) {
-                transaction_->abort();
-            }
-            clear_all();
-            channel_->bye_and_notify();
-            return;
-        default:
-            std::cerr << "recieved an illegal command message" << std::endl;
-            return;
-        }
-#endif
 
     }
 }
@@ -422,7 +382,6 @@ void Worker::send_metadata(std::size_t rid)
             *meta.add_columns() = *column;
         break;
         default:
-        std::cout << __LINE__ << ":" << i << std::endl;
             std::cerr << "unsurpported data type: " << metadata->at(i).kind() << std::endl;
             break;
         }

@@ -16,6 +16,7 @@
 #pragma once
 
 #include "wire.h"
+#include <iostream>
 
 namespace tsubakuro::common::wire {
 
@@ -34,6 +35,9 @@ public:
             resultset_wire_ = envelope_->managed_shared_memory_->construct<unidirectional_simple_wire>(rsw_name_.c_str())(envelope_->managed_shared_memory_.get(), resultset_wire_size);
             bip_buffer_ = resultset_wire_->get_bip_address(envelope_->managed_shared_memory_.get());
         }
+        ~resultset_wire_container() {
+            envelope_->managed_shared_memory_->destroy<unidirectional_simple_wire>(rsw_name_.c_str());
+        }
         void write(const signed char* from, length_header&& header) {
             resultset_wire_->write(bip_buffer_, from, std::move(header));
         }
@@ -42,6 +46,12 @@ public:
         }
         void set_eor() {
             resultset_wire_->set_eor();
+        }
+        bool is_closed() {
+            return resultset_wire_->is_closed();
+        }
+        void initialize() {
+            resultset_wire_->initialize();
         }
     private:
         server_wire_container *envelope_;

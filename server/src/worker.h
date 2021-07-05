@@ -95,13 +95,25 @@ class Worker {
     std::vector<std::unique_ptr<jogasaki::api::prepared_statement>> prepared_statements_{};
     std::size_t prepared_statements_index_{};
 
-    std::packaged_task<void()> task_;
-    std::future<void> future_;
+//    std::packaged_task<void()> task_;
+//    std::future<void> future_;
     std::thread thread_{};
 
     tsubakuro::common::wire::server_wire_container* wire_;
     tsubakuro::common::wire::server_wire_container::wire_container& request_wire_container_;
     tsubakuro::common::wire::server_wire_container::wire_container& response_wire_container_;
+
+    std::string dummy_string_;
+    std::size_t search_resultset() {
+        for (std::size_t i = 0; i < cursors_.size() ; i++) {
+            auto* wire_container = cursors_.at(i).resultset_wire_container_.get();
+            if (wire_container->is_closed()) {
+                wire_container->initialize();
+                return i;
+            }
+        }
+        return cursors_.size();
+    }
 };
 
 template<>

@@ -75,9 +75,10 @@ int backend_main(int argc, char **argv) {
         try {
             std::unique_ptr<Worker> &worker = workers.at(index);
             worker = std::make_unique<Worker>(*db, index, wire);
-            worker->task_ = std::packaged_task<void()>([&]{worker->run();});
-            worker->future_ = worker->task_.get_future();
-            worker->thread_ = std::thread(std::move(worker->task_));
+            worker->thread_ = std::thread(&Worker::run, worker.get());
+//            worker->task_ = std::packaged_task<void()>([&]{worker->run();});
+//            worker->future_ = worker->task_.get_future();
+//            worker->thread_ = std::thread(std::move(worker->task_));
         } catch (std::exception &ex) {
             std::cerr << ex.what() << std::endl;
             rv = -1; goto finish;
