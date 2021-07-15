@@ -49,10 +49,11 @@ class Worker {
 
  public:
     Worker(jogasaki::api::database& db, std::size_t id, tsubakuro::common::wire::server_wire_container* wire) :
-        db_(db), id_(id), wire_(wire), request_wire_container_(wire->get_request_wire()), response_wire_container_(wire->get_response_wire()) {}
+        db_(db), id_(id), wire_(wire), request_wire_container_(wire->get_request_wire()) {}
     ~Worker() {
         clear_all();
         if(thread_.joinable()) thread_.join();
+        
     }
     void run();
     friend int backend_main(int, char **);
@@ -75,11 +76,13 @@ class Worker {
     void clear_all() {
         clear_transaction();
         prepared_statements_.clear();
+        delete wire_;
     }
     void reply(protocol::Response &r, tsubakuro::common::wire::message_header::index_type idx) {
-        std::string output;
-        if (!r.SerializeToString(&output)) { std::abort(); }
-        response_wire_container_.write(reinterpret_cast<const signed char*>(output.data()), tsubakuro::common::wire::message_header(idx, output.size()));
+        tsubakuro::common::wire::response_wrapper buf(wire_->get_response(idx));
+        std::ostream os(&buf);
+        if (!r.SerializeToOstream(&os)) { std::abort(); }
+        buf.flush();
     }
 
     template<typename T>
@@ -95,13 +98,12 @@ class Worker {
     std::vector<std::unique_ptr<jogasaki::api::prepared_statement>> prepared_statements_{};
     std::size_t prepared_statements_index_{};
 
-//    std::packaged_task<void()> task_;
-//    std::future<void> future_;
+    std::packaged_task<void()> task_;
+    std::future<void> future_;
     std::thread thread_{};
 
     tsubakuro::common::wire::server_wire_container* wire_;
     tsubakuro::common::wire::server_wire_container::wire_container& request_wire_container_;
-    tsubakuro::common::wire::server_wire_container::wire_container& response_wire_container_;
 
     std::string dummy_string_;
     std::size_t search_resultset() {

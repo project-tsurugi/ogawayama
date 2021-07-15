@@ -15,8 +15,9 @@
  */
 #pragma once
 
+#include <ostream>
+
 #include "wire.h"
-#include <iostream>
 
 namespace tsubakuro::common::wire {
 
@@ -24,9 +25,9 @@ class server_wire_container
 {
     static constexpr std::size_t shm_size = (1<<20);  // 1M bytes (tentative)
     static constexpr std::size_t resultset_wire_size = (1<<16);  // 64K bytes (tentative)
-    static constexpr std::size_t request_buffer_size = (1<<10);
-    static constexpr std::size_t response_buffer_size = (1<<16);
-    
+    static constexpr std::size_t request_buffer_size = (1<<12);  // 4K bytes (tentative)
+//    static constexpr std::size_t request_buffer_size = (1<<10);  // 1K bytes (tentative)
+
 public:
     class resultset_wire_container {
     public:
@@ -84,12 +85,11 @@ public:
             managed_shared_memory_ =
                 std::make_unique<boost::interprocess::managed_shared_memory>(boost::interprocess::create_only, name_.c_str(), shm_size);
             managed_shared_memory_->destroy<unidirectional_message_wire>(request_wire_name);
-            managed_shared_memory_->destroy<unidirectional_message_wire>(response_wire_name);
+            managed_shared_memory_->destroy<response_box>(response_box_name);
             
             auto req_wire = managed_shared_memory_->construct<unidirectional_message_wire>(request_wire_name)(managed_shared_memory_.get(), request_buffer_size);
-            auto res_wire = managed_shared_memory_->construct<unidirectional_message_wire>(response_wire_name)(managed_shared_memory_.get(), response_buffer_size);
             request_wire_ = wire_container(req_wire, req_wire->get_bip_address(managed_shared_memory_.get()));
-            response_wire_ = wire_container(res_wire, res_wire->get_bip_address(managed_shared_memory_.get()));
+            responses_ = managed_shared_memory_->construct<response_box>(response_box_name)(16, managed_shared_memory_.get());
         }
         catch(const boost::interprocess::interprocess_exception& ex) {
             std::abort();  // FIXME
@@ -109,18 +109,32 @@ public:
     }
 
     wire_container& get_request_wire() { return request_wire_; }
-    wire_container& get_response_wire() { return response_wire_; }
+    response_box::response& get_response(std::size_t idx) { return responses_->at(idx); }
 
     std::unique_ptr<resultset_wire_container> create_resultset_wire(std::string_view name_) {
         return std::make_unique<resultset_wire_container>(this, name_);
     }
-    
+
 private:
     std::string name_;
     std::unique_ptr<boost::interprocess::managed_shared_memory> managed_shared_memory_{};
     wire_container request_wire_;
-    wire_container response_wire_;
+    response_box* responses_;
 };
+
+class response_wrapper : public std::streambuf {
+public:
+    response_wrapper(tsubakuro::common::wire::response_box::response& response) : response_(response) {
+        setp( response_.get_buffer(),
+              response_.get_buffer() + tsubakuro::common::wire::response_box::response::max_response_message_length);
+    }
+    void flush() {
+        response_.flush(pptr() - pbase());
+    }
+private:
+    response_box::response& response_;
+};
+
 
 class connection_container
 {

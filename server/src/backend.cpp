@@ -17,6 +17,9 @@
 #include <string>
 #include <exception>
 #include <iostream>
+#include <chrono>
+#include <csignal>
+#include <setjmp.h>
 
 #include <gflags/gflags.h>
 #include <glog/logging.h>
@@ -39,6 +42,14 @@ DEFINE_int32(write_batch_size, 256, "Batch size for load");  //NOLINT
 
 static constexpr std::string_view KEY_LOCATION { "location" };  //NOLINT
 
+
+jmp_buf buf;
+
+void signal_handler(int signal)
+{
+    longjmp(buf, 1);
+}
+
 int backend_main(int argc, char **argv) {
     // database environment
     auto env = jogasaki::api::create_environment();
@@ -55,12 +66,20 @@ int backend_main(int argc, char **argv) {
     db->start();
     DBCloser dbcloser{db};
 
+    // worker objects
+    std::vector<std::unique_ptr<Worker>> workers;
+
+    // singal handler
+    std::signal(SIGINT, signal_handler);
+    if (setjmp(buf) != 0) {
+        workers.clear();
+        return 0;
+    }
+  
     // communication channel
     tsubakuro::common::wire::connection_container* container = new tsubakuro::common::wire::connection_container(FLAGS_dbname);
 
-    std::vector<std::unique_ptr<Worker>> workers;
-    int rv{0};
-    std::size_t index{0};
+    int return_value{0};
     while(true) {
         auto session_id = container->get_connection_queue().listen(true);
         std::string session_name = FLAGS_dbname;
@@ -68,26 +87,29 @@ int backend_main(int argc, char **argv) {
         session_name += std::to_string(session_id);
         tsubakuro::common::wire::server_wire_container* wire = new tsubakuro::common::wire::server_wire_container(session_name);
         container->get_connection_queue().accept(session_id);
-        
+        std::size_t index;
+        for (index = 0; index < workers.size() ; index++) {
+            if (auto rv = workers.at(index)->future_.wait_for(std::chrono::seconds(0)) ; rv == std::future_status::ready) {
+                break;
+            }
+        }
         if (workers.size() < (index + 1)) {
             workers.resize(index + 1);
         }
         try {
             std::unique_ptr<Worker> &worker = workers.at(index);
-            worker = std::make_unique<Worker>(*db, index, wire);
-            worker->thread_ = std::thread(&Worker::run, worker.get());
-//            worker->task_ = std::packaged_task<void()>([&]{worker->run();});
-//            worker->future_ = worker->task_.get_future();
-//            worker->thread_ = std::thread(std::move(worker->task_));
+            worker = std::make_unique<Worker>(*db, session_id, wire);
+            worker->task_ = std::packaged_task<void()>([&]{worker->run();});
+            worker->future_ = worker->task_.get_future();
+            worker->thread_ = std::thread(std::move(worker->task_));
         } catch (std::exception &ex) {
             std::cerr << ex.what() << std::endl;
-            rv = -1; goto finish;
+            return_value = -1; goto finish;
         }
-        index++;
     }
 
   finish:
-    return rv;
+    return return_value;
 }
 
 }  // ogawayama::server
