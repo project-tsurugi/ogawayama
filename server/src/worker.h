@@ -48,8 +48,8 @@ class Worker {
     };
 
  public:
-    Worker(jogasaki::api::database& db, std::size_t id, tsubakuro::common::wire::server_wire_container* wire) :
-        db_(db), id_(id), wire_(wire), request_wire_container_(wire->get_request_wire()), response_wire_container_(wire->get_response_wire()) {}
+    Worker(jogasaki::api::database& db, std::size_t id, std::unique_ptr<tsubakuro::common::wire::server_wire_container> wire) :
+        db_(db), id_(id), wire_(std::move(wire)), request_wire_container_(wire_->get_request_wire()) {}
     ~Worker() {
         clear_all();
         if(thread_.joinable()) thread_.join();
@@ -75,11 +75,13 @@ class Worker {
     void clear_all() {
         clear_transaction();
         prepared_statements_.clear();
+        wire_ = nullptr;
     }
     void reply(protocol::Response &r, tsubakuro::common::wire::message_header::index_type idx) {
-        std::string output;
-        if (!r.SerializeToString(&output)) { std::abort(); }
-        response_wire_container_.write(reinterpret_cast<const signed char*>(output.data()), tsubakuro::common::wire::message_header(idx, output.size()));
+        tsubakuro::common::wire::response_wrapper buf(wire_->get_response(idx));
+        std::ostream os(&buf);
+        if (!r.SerializeToOstream(&os)) { std::abort(); }
+        buf.flush();
     }
 
     template<typename T>
@@ -99,9 +101,20 @@ class Worker {
     std::future<void> future_;
     std::thread thread_{};
 
-    tsubakuro::common::wire::server_wire_container* wire_;
+    std::unique_ptr<tsubakuro::common::wire::server_wire_container> wire_;
     tsubakuro::common::wire::server_wire_container::wire_container& request_wire_container_;
-    tsubakuro::common::wire::server_wire_container::wire_container& response_wire_container_;
+
+    std::string dummy_string_;
+    std::size_t search_resultset() {
+        for (std::size_t i = 0; i < cursors_.size() ; i++) {
+            auto* wire_container = cursors_.at(i).resultset_wire_container_.get();
+            if (wire_container->is_closed()) {
+                wire_container->initialize();
+                return i;
+            }
+        }
+        return cursors_.size();
+    }
 };
 
 template<>
