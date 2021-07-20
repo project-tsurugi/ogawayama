@@ -43,13 +43,13 @@ void Worker::run()
     std::chrono::time_point<Clock> begin;
     std::size_t count = 0;
     std::size_t total = 0;
-    
+
     dummy_string_.resize(str_length);
     for(std::size_t i = 0; i < str_length; i++) {
 //        dummy_string_.at(i) = rand() % 255 + 1;
         dummy_string_.at(i) = rand() % 26 + 'a';
     }
-    
+
     while(true) {
     auto h = request_wire_container_.peep(true);
     begin = Clock::now();
@@ -85,7 +85,7 @@ void Worker::run()
             r.release_begin();
             b.release_transaction_handle();
         }
-        
+
         VLOG(1) << "begin" << std::endl;
         break;
     case request::Request::RequestCase::kPrepare:
@@ -321,7 +321,7 @@ void Worker::next(std::size_t rsid)
                                                        tsubakuro::common::wire::length_header(output.size()));
 
     tsubakuro::common::wire::server_wire_container::resultset_wire_container& wire = *cursor.resultset_wire_container_;
-    
+
     msgpack::pack(wire, dummy_string_);
     wire.set_eor();
 }

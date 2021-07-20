@@ -66,26 +66,33 @@ int backend_main(int argc, char **argv) {
     db->start();
     DBCloser dbcloser{db};
 
+    // communication channel
+    auto container = std::make_unique<tsubakuro::common::wire::connection_container>(FLAGS_dbname);
+
     // worker objects
     std::vector<std::unique_ptr<Worker>> workers;
 
     // singal handler
     std::signal(SIGINT, signal_handler);
     if (setjmp(buf) != 0) {
+        for (std::size_t index = 0; index < workers.size() ; index++) {
+            if (auto rv = workers.at(index)->future_.wait_for(std::chrono::seconds(0)) ; rv != std::future_status::ready) {
+                VLOG(1) << "exit: remain thread " << workers.at(index)->id_ << std::endl;
+            }
+        }
         workers.clear();
+        container = nullptr;;
         return 0;
     }
-  
-    // communication channel
-    tsubakuro::common::wire::connection_container* container = new tsubakuro::common::wire::connection_container(FLAGS_dbname);
 
     int return_value{0};
     while(true) {
         auto session_id = container->get_connection_queue().listen(true);
+        VLOG(1) << "connect request: " << session_id << std::endl;
         std::string session_name = FLAGS_dbname;
         session_name += "-";
         session_name += std::to_string(session_id);
-        tsubakuro::common::wire::server_wire_container* wire = new tsubakuro::common::wire::server_wire_container(session_name);
+        auto wire = std::make_unique<tsubakuro::common::wire::server_wire_container>(session_name);
         container->get_connection_queue().accept(session_id);
         std::size_t index;
         for (index = 0; index < workers.size() ; index++) {
@@ -98,7 +105,7 @@ int backend_main(int argc, char **argv) {
         }
         try {
             std::unique_ptr<Worker> &worker = workers.at(index);
-            worker = std::make_unique<Worker>(*db, session_id, wire);
+            worker = std::make_unique<Worker>(*db, session_id, std::move(wire));
             worker->task_ = std::packaged_task<void()>([&]{worker->run();});
             worker->future_ = worker->task_.get_future();
             worker->thread_ = std::thread(std::move(worker->task_));

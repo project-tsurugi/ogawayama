@@ -48,12 +48,11 @@ class Worker {
     };
 
  public:
-    Worker(jogasaki::api::database& db, std::size_t id, tsubakuro::common::wire::server_wire_container* wire) :
-        db_(db), id_(id), wire_(wire), request_wire_container_(wire->get_request_wire()) {}
+    Worker(jogasaki::api::database& db, std::size_t id, std::unique_ptr<tsubakuro::common::wire::server_wire_container> wire) :
+        db_(db), id_(id), wire_(std::move(wire)), request_wire_container_(wire_->get_request_wire()) {}
     ~Worker() {
         clear_all();
         if(thread_.joinable()) thread_.join();
-        
     }
     void run();
     friend int backend_main(int, char **);
@@ -76,7 +75,7 @@ class Worker {
     void clear_all() {
         clear_transaction();
         prepared_statements_.clear();
-        delete wire_;
+        wire_ = nullptr;
     }
     void reply(protocol::Response &r, tsubakuro::common::wire::message_header::index_type idx) {
         tsubakuro::common::wire::response_wrapper buf(wire_->get_response(idx));
@@ -102,7 +101,7 @@ class Worker {
     std::future<void> future_;
     std::thread thread_{};
 
-    tsubakuro::common::wire::server_wire_container* wire_;
+    std::unique_ptr<tsubakuro::common::wire::server_wire_container> wire_;
     tsubakuro::common::wire::server_wire_container::wire_container& request_wire_container_;
 
     std::string dummy_string_;
