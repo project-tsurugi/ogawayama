@@ -38,234 +38,100 @@ void Worker::run()
 
     while(true) {
 
-    auto h = request_wire_container_.peep(true);
-    std::size_t length = h.get_length();
-    std::string msg;
-    msg.resize(length);
-    request_wire_container_.read(reinterpret_cast<signed char*>(msg.data()), length);
-    if (!request.ParseFromString(msg)) { LOG(ERROR) << "parse error" << std::endl; }
-    else { VLOG(1) << "s:" << request.session_handle().handle() << "-" << "idx:" << h.get_idx() << std::endl; }
+        auto h = request_wire_container_.peep(true);
+        std::size_t length = h.get_length();
+        std::string msg;
+        msg.resize(length);
+        request_wire_container_.read(reinterpret_cast<signed char*>(msg.data()), length);
+        if (!request.ParseFromString(msg)) { LOG(ERROR) << "parse error" << std::endl; }
+        else { VLOG(1) << "s:" << request.session_handle().handle() << "-" << "idx:" << h.get_idx() << std::endl; }
 
-    switch (request.request_case()) {
-    case request::Request::RequestCase::kBegin:
-        if (!transaction_) {
-            transaction_ = db_.create_transaction();
-        } else {
-            LOG(ERROR) << "already begin a transaction" << std::endl;
-            error<protocol::Begin>("transaction has already begun", h.get_idx());
-        }
-        {
-            ::common::Transaction t;
-            protocol::Begin b;
-            protocol::Response r;
+        switch (request.request_case()) {
+        case request::Request::RequestCase::kBegin:
+            VLOG(1) << "begin" << std::endl;
+            {
+                if (!transaction_) {
+                    if (transaction_ = db_.create_transaction(); transaction_ != nullptr) {
+                        ::common::Transaction t;
+                        protocol::Begin b;
+                        protocol::Response r;
 
-            t.set_handle(++transaction_id_);
-            b.set_allocated_transaction_handle(&t);
-            r.set_allocated_begin(&b);
-            reply(r, h.get_idx());
-            r.release_begin();
-            b.release_transaction_handle();
-        }
-
-        VLOG(1) << "begin" << std::endl;
-        break;
-    case request::Request::RequestCase::kPrepare:
-        VLOG(1) << "prepare" << std::endl;
-        {
-            std::size_t sid = prepared_statements_index_;
-
-            auto pp = request.mutable_prepare();
-            auto hvs = pp->mutable_host_variables();
-            auto sql = pp->mutable_sql();
-            VLOG(1) << "idx:" << h.get_idx() << " : "
-                      << *sql
-                      << std::endl;
-            if (prepared_statements_.size() < (sid + 1)) {
-                prepared_statements_.resize(sid + 1);
-            }
-
-            for(std::size_t i = 0; i < hvs->variables_size() ;i++) {
-                auto hv = hvs->mutable_variables(i);
-                switch(hv->type()) {
-                case ::common::DataType::INT4:
-                    db_.register_variable(hv->name(), jogasaki::api::field_type_kind::int4);
-                    break;
-                case ::common::DataType::INT8:
-                    db_.register_variable(hv->name(), jogasaki::api::field_type_kind::int8);
-                    break;
-                case ::common::DataType::FLOAT4:
-                    db_.register_variable(hv->name(), jogasaki::api::field_type_kind::float4);
-                    break;
-                case ::common::DataType::FLOAT8:
-                    db_.register_variable(hv->name(), jogasaki::api::field_type_kind::float8);
-                    break;
-                case ::common::DataType::STRING:
-                    db_.register_variable(hv->name(), jogasaki::api::field_type_kind::character);
-                    break;
+                        t.set_handle(++transaction_id_);
+                        b.set_allocated_transaction_handle(&t);
+                        r.set_allocated_begin(&b);
+                        reply(r, h.get_idx());
+                        r.release_begin();
+                        b.release_transaction_handle();
+                    } else {
+                        error<protocol::Begin>("error in db_.create_transaction()", h.get_idx());
+                    }
+                } else {
+                    error<protocol::Begin>("transaction has already begun", h.get_idx());
                 }
             }
-            if(auto rc = db_.prepare(*sql, prepared_statements_.at(sid)); rc != jogasaki::status::ok) {
-                LOG(ERROR) << "error" << std::endl;
-                error<protocol::Prepare>("error", h.get_idx());
-            }
+            break;
+        case request::Request::RequestCase::kPrepare:
+            VLOG(1) << "prepare" << std::endl;
+            {
+                std::size_t sid = prepared_statements_index_;
 
-            ::common::PreparedStatement ps;
-            protocol::Prepare p;
-            protocol::Response r;
+                auto pp = request.mutable_prepare();
+                auto hvs = pp->mutable_host_variables();
+                auto sql = pp->mutable_sql();
+                VLOG(1) << "idx:" << h.get_idx() << " : "
+                        << *sql
+                        << std::endl;
+                if (prepared_statements_.size() < (sid + 1)) {
+                    prepared_statements_.resize(sid + 1);
+                }
 
-            ps.set_handle(sid);
-            *p.mutable_prepared_statement_handle() = ps;
-            r.set_allocated_prepare(&p);
-            reply(r, h.get_idx());
-            r.release_prepare();
-            p.release_prepared_statement_handle();
-
-            prepared_statements_index_ = sid + 1;
-        }
-        break;
-    case request::Request::RequestCase::kExecuteStatement:
-        VLOG(1) << "execute_statement" << std::endl;
-        {
-            auto eq = request.mutable_execute_statement();
-            VLOG(1) << "tx:" << eq->mutable_transaction_handle()->handle() << "-"
-                      << "idx:" << h.get_idx() << " : "
-                      << *(eq->mutable_sql())
-                      << std::endl;
-            execute_statement(*(eq->mutable_sql()));
-            protocol::Success s;
-            protocol::ResultOnly ok;
-            protocol::Response r;
-
-            ok.set_allocated_success(&s);
-            r.set_allocated_result_only(&ok);
-            reply(r, h.get_idx());
-            r.release_result_only();
-            ok.release_success();
-        }
-        break;
-    case request::Request::RequestCase::kExecuteQuery:
-        VLOG(1) << "execute_query" << std::endl;
-        {
-            auto eq = request.mutable_execute_query();
-            VLOG(1) << "tx:" << eq->mutable_transaction_handle()->handle() << "-"
-                      << "idx:" << h.get_idx() << " : "
-                      << *(eq->mutable_sql())
-                      << std::endl;
-
-            if (execute_query(*(eq->mutable_sql()), ++resultset_id_)) {
-                    protocol::ExecuteQuery e;
+                for(std::size_t i = 0; i < hvs->variables_size() ;i++) {
+                    auto hv = hvs->mutable_variables(i);
+                    switch(hv->type()) {
+                    case ::common::DataType::INT4:
+                        db_.register_variable(hv->name(), jogasaki::api::field_type_kind::int4);
+                        break;
+                    case ::common::DataType::INT8:
+                        db_.register_variable(hv->name(), jogasaki::api::field_type_kind::int8);
+                        break;
+                    case ::common::DataType::FLOAT4:
+                        db_.register_variable(hv->name(), jogasaki::api::field_type_kind::float4);
+                        break;
+                    case ::common::DataType::FLOAT8:
+                        db_.register_variable(hv->name(), jogasaki::api::field_type_kind::float8);
+                        break;
+                    case ::common::DataType::STRING:
+                        db_.register_variable(hv->name(), jogasaki::api::field_type_kind::character);
+                        break;
+                    }
+                }
+                if(auto rc = db_.prepare(*sql, prepared_statements_.at(sid)); rc == jogasaki::status::ok) {
+                    ::common::PreparedStatement ps;
+                    protocol::Prepare p;
                     protocol::Response r;
 
-                    e.set_name(cursors_.at(resultset_id_).wire_name_);
-                    r.set_allocated_execute_query(&e);
+                    ps.set_handle(sid);
+                    *p.mutable_prepared_statement_handle() = ps;
+                    r.set_allocated_prepare(&p);
                     reply(r, h.get_idx());
-                    r.release_execute_query();
-            } else {
-                error<protocol::ExecuteQuery>("execute_query fail", h.get_idx());
-                std::abort();
+                    r.release_prepare();
+                    p.release_prepared_statement_handle();
+
+                    prepared_statements_index_ = sid + 1;
+                } else {
+                    error<protocol::Prepare>("error in db_.prepare()" , h.get_idx());
+                }
             }
-            next(resultset_id_);
-        }
-        break;
-    case request::Request::RequestCase::kExecutePreparedStatement:
-        VLOG(1) << "execute_prepared_statement" << std::endl;
-        {
-            auto pq = request.mutable_execute_prepared_statement();
-            auto ph = pq->mutable_prepared_statement_handle();
-            auto sid = ph->handle();
-            VLOG(1) << "tx:" << pq->mutable_transaction_handle()->handle() << "-"
-                      << "idx:" << h.get_idx() << " : "
-                      << "sid:" << sid
-                      << std::endl;
-
-            auto params = jogasaki::api::create_parameter_set();
-            set_params(pq->mutable_parameters(), params);
-            execute_prepared_statement(sid, *params);
-
-            protocol::Success s;
-            protocol::ResultOnly ok;
-            protocol::Response r;
-
-            ok.set_allocated_success(&s);
-            r.set_allocated_result_only(&ok);
-            reply(r, h.get_idx());
-            r.release_result_only();
-            ok.release_success();
-        }
-        break;
-    case request::Request::RequestCase::kExecutePreparedQuery:
-        VLOG(1) << "execute_prepared_query" << std::endl;
-        {
-            auto pq = request.mutable_execute_prepared_query();
-            auto ph = pq->mutable_prepared_statement_handle();
-            auto sid = ph->handle();
-            VLOG(1) << "tx:" << pq->mutable_transaction_handle()->handle() << "-"
-                      << "idx:" << h.get_idx() << " : "
-                      << "sid:" << sid
-                      << std::endl;
-
-            auto params = jogasaki::api::create_parameter_set();
-            set_params(pq->mutable_parameters(), params);
-
-            if(execute_prepared_query(sid, *params, ++resultset_id_)) {
-                    protocol::ExecuteQuery e;
-                    protocol::Response r;
-
-                    e.set_name(cursors_.at(resultset_id_).wire_name_);
-                    r.set_allocated_execute_query(&e);
-                    reply(r, h.get_idx());
-                    r.release_execute_query();
-            } else {
-                error<protocol::ExecuteQuery>("execute_prepared_query fail", h.get_idx());
-                std::abort();
-            }
-            next(resultset_id_);
-        }
-        break;
-    case request::Request::RequestCase::kCommit:
-        VLOG(1) << "commit" << std::endl;
-        {
-            if (transaction_) {
-                transaction_->commit();
-                transaction_ = nullptr;
-            } else {
-                LOG(ERROR) << "transaction has not begun" << std::endl;
-            }
-
-            auto eq = request.mutable_commit();
-            VLOG(1) << "tx:" << eq->mutable_transaction_handle()->handle() << "-"
-                      << "idx:" << h.get_idx()
-                      << std::endl;
-
-            protocol::Success s;
-            protocol::ResultOnly ok;
-            protocol::Response r;
-
-            ok.set_allocated_success(&s);
-            r.set_allocated_result_only(&ok);
-            reply(r, h.get_idx());
-            r.release_result_only();
-            ok.release_success();
-        }
-        break;
-    case request::Request::RequestCase::kRollback:
-        VLOG(1) << "rollback" << std::endl;
-        break;
-    case request::Request::RequestCase::kDisposePreparedStatement:
-        VLOG(1) << "dispose_prepared_statement" << std::endl;
-        {
-            auto dp = request.mutable_dispose_prepared_statement();
-            auto ph = dp->mutable_prepared_statement_handle();
-            auto sid = ph->handle();
-
-            VLOG(1) << "idx:" << h.get_idx() << " : "
-                    << "ps:" << sid
-                    << std::endl;
-
-            if(prepared_statements_.size() > sid) {
-                if(prepared_statements_.at(sid)) {
-                    prepared_statements_.at(sid) = nullptr;
-
+            break;
+        case request::Request::RequestCase::kExecuteStatement:
+            VLOG(1) << "execute_statement" << std::endl;
+            {
+                auto eq = request.mutable_execute_statement();
+                VLOG(1) << "tx:" << eq->mutable_transaction_handle()->handle() << "-"
+                        << "idx:" << h.get_idx() << " : "
+                        << *(eq->mutable_sql())
+                        << std::endl;
+                if (auto err = execute_statement(*(eq->mutable_sql())); err == nullptr) {
                     protocol::Success s;
                     protocol::ResultOnly ok;
                     protocol::Response r;
@@ -276,50 +142,189 @@ void Worker::run()
                     r.release_result_only();
                     ok.release_success();
                 } else {
-                    error<protocol::ResultOnly>("cannot find prepared statement with the index given", h.get_idx());
+                    error<protocol::ResultOnly>(err, h.get_idx());
                 }
-            } else {
-                error<protocol::ResultOnly>("index is larger than the number of prepred statment registerd", h.get_idx());
             }
-        }
-        break;
-    case request::Request::RequestCase::kDisconnect:
-        VLOG(1) << "disconnect" << std::endl;
-        {
-            protocol::Success s;
-            protocol::ResultOnly ok;
-            protocol::Response r;
+            break;
+        case request::Request::RequestCase::kExecuteQuery:
+            VLOG(1) << "execute_query" << std::endl;
+            {
+                auto eq = request.mutable_execute_query();
+                VLOG(1) << "tx:" << eq->mutable_transaction_handle()->handle() << "-"
+                        << "idx:" << h.get_idx() << " : "
+                        << *(eq->mutable_sql())
+                        << std::endl;
 
-            ok.set_allocated_success(&s);
-            r.set_allocated_result_only(&ok);
-            reply(r, h.get_idx());
-            r.release_result_only();
-            ok.release_success();
+                if (auto err = execute_query(*(eq->mutable_sql()), ++resultset_id_); err == nullptr) {
+                    protocol::ExecuteQuery e;
+                    protocol::Response r;
+
+                    e.set_name(cursors_.at(resultset_id_).wire_name_);
+                    r.set_allocated_execute_query(&e);
+                    reply(r, h.get_idx());
+                    r.release_execute_query();
+
+                    next(resultset_id_);
+                } else {
+                    error<protocol::ExecuteQuery>(err, h.get_idx());
+                }
+            }
+            break;
+        case request::Request::RequestCase::kExecutePreparedStatement:
+            VLOG(1) << "execute_prepared_statement" << std::endl;
+            {
+                auto pq = request.mutable_execute_prepared_statement();
+                auto ph = pq->mutable_prepared_statement_handle();
+                auto sid = ph->handle();
+                VLOG(1) << "tx:" << pq->mutable_transaction_handle()->handle() << "-"
+                        << "idx:" << h.get_idx() << " : "
+                        << "sid:" << sid
+                        << std::endl;
+
+                auto params = jogasaki::api::create_parameter_set();
+                set_params(pq->mutable_parameters(), params);
+                if (auto err = execute_prepared_statement(sid, *params); err == nullptr) {
+                    protocol::Success s;
+                    protocol::ResultOnly ok;
+                    protocol::Response r;
+
+                    ok.set_allocated_success(&s);
+                    r.set_allocated_result_only(&ok);
+                    reply(r, h.get_idx());
+                    r.release_result_only();
+                    ok.release_success();
+                } else {
+                    error<protocol::ResultOnly>(err, h.get_idx());
+                }
+            }
+            break;
+        case request::Request::RequestCase::kExecutePreparedQuery:
+            VLOG(1) << "execute_prepared_query" << std::endl;
+            {
+                auto pq = request.mutable_execute_prepared_query();
+                auto ph = pq->mutable_prepared_statement_handle();
+                auto sid = ph->handle();
+                VLOG(1) << "tx:" << pq->mutable_transaction_handle()->handle() << "-"
+                        << "idx:" << h.get_idx() << " : "
+                        << "sid:" << sid
+                        << std::endl;
+
+                auto params = jogasaki::api::create_parameter_set();
+                set_params(pq->mutable_parameters(), params);
+
+                if(auto err = execute_prepared_query(sid, *params, ++resultset_id_); err == nullptr) {
+                    protocol::ExecuteQuery e;
+                    protocol::Response r;
+
+                    e.set_name(cursors_.at(resultset_id_).wire_name_);
+                    r.set_allocated_execute_query(&e);
+                    reply(r, h.get_idx());
+                    r.release_execute_query();
+
+                    next(resultset_id_);
+                } else {
+                    error<protocol::ExecuteQuery>(err, h.get_idx());
+                }
+            }
+            break;
+        case request::Request::RequestCase::kCommit:
+            VLOG(1) << "commit" << std::endl;
+            {
+                if (transaction_) {
+                    if(auto rc = transaction_->commit(); rc == jogasaki::status::ok) {
+                        auto eq = request.mutable_commit();
+                        VLOG(1) << "tx:" << eq->mutable_transaction_handle()->handle() << "-"
+                                << "idx:" << h.get_idx()
+                                << std::endl;
+
+                        protocol::Success s;
+                        protocol::ResultOnly ok;
+                        protocol::Response r;
+
+                        ok.set_allocated_success(&s);
+                        r.set_allocated_result_only(&ok);
+                        reply(r, h.get_idx());
+                        r.release_result_only();
+                        ok.release_success();
+
+                        transaction_ = nullptr;
+                    } else {
+                        error<protocol::ResultOnly>("error in transaction_->commit()", h.get_idx());
+                    }
+                } else {
+                    error<protocol::ResultOnly>("transaction has not begun", h.get_idx());
+                }
+            }
+            break;
+        case request::Request::RequestCase::kRollback:
+            VLOG(1) << "rollback" << std::endl;
+            break;
+        case request::Request::RequestCase::kDisposePreparedStatement:
+            VLOG(1) << "dispose_prepared_statement" << std::endl;
+            {
+                auto dp = request.mutable_dispose_prepared_statement();
+                auto ph = dp->mutable_prepared_statement_handle();
+                auto sid = ph->handle();
+
+                VLOG(1) << "idx:" << h.get_idx() << " : "
+                        << "ps:" << sid
+                        << std::endl;
+
+                if(prepared_statements_.size() > sid) {
+                    if(prepared_statements_.at(sid)) {
+                        prepared_statements_.at(sid) = nullptr;
+
+                        protocol::Success s;
+                        protocol::ResultOnly ok;
+                        protocol::Response r;
+
+                        ok.set_allocated_success(&s);
+                        r.set_allocated_result_only(&ok);
+                        reply(r, h.get_idx());
+                        r.release_result_only();
+                        ok.release_success();
+                    } else {
+                        error<protocol::ResultOnly>("cannot find prepared statement with the index given", h.get_idx());
+                    }
+                } else {
+                    error<protocol::ResultOnly>("index is larger than the number of prepred statment registerd", h.get_idx());
+                }
+            }
+            break;
+        case request::Request::RequestCase::kDisconnect:
+            VLOG(1) << "disconnect" << std::endl;
+            {
+                protocol::Success s;
+                protocol::ResultOnly ok;
+                protocol::Response r;
+
+                ok.set_allocated_success(&s);
+                r.set_allocated_result_only(&ok);
+                reply(r, h.get_idx());
+                r.release_result_only();
+                ok.release_success();
+            }
+            return;
+        case request::Request::RequestCase::REQUEST_NOT_SET:
+            VLOG(1) << "not used" << std::endl;
+            break;
+        default:
+            LOG(ERROR) << "????" << std::endl;
+            break;
         }
-        return;
-    case request::Request::RequestCase::REQUEST_NOT_SET:
-        VLOG(1) << "not used" << std::endl;
-        break;
-    default:
-        LOG(ERROR) << "????" << std::endl;
-        break;
-    }
     }
 }
 
-void Worker::execute_statement(std::string_view sql)
+const char* Worker::execute_statement(std::string_view sql)
 {
     std::unique_ptr<jogasaki::api::executable_statement> e{};
     if(auto rc = db_.create_executable(sql, e); rc != jogasaki::status::ok) {
-//        channel_->send_ack(ERROR_CODE::UNKNOWN);
-        return;
+        return "error in db_.create_executable()";
     }
     if(auto rc = transaction_->execute(*e); rc != jogasaki::status::ok) {
-//        channel_->send_ack(ERROR_CODE::UNKNOWN);
-        return;
+        return "error in transaction_->execute()";
     }
-//    channel_->send_ack(ERROR_CODE::OK);
-    return;
+    return nullptr;
 }
 
 void Worker::send_metadata(std::size_t rid)
@@ -369,7 +374,7 @@ void Worker::send_metadata(std::size_t rid)
                                             tsubakuro::common::wire::length_header(output.size()));
 }
 
-bool Worker::execute_query(std::string_view sql, std::size_t rid)
+const char* Worker::execute_query(std::string_view sql, std::size_t rid)
 {
     if (!transaction_) {
         transaction_ = db_.create_transaction();
@@ -385,20 +390,17 @@ bool Worker::execute_query(std::string_view sql, std::size_t rid)
 
     std::unique_ptr<jogasaki::api::executable_statement> e{};
     if(auto rc = db_.create_executable(sql, e); rc != jogasaki::status::ok) {
-//        channel_->send_ack(ERROR_CODE::UNKNOWN);
-        return false;
+        return "error in db_.create_executable()";
     }
     auto& rs = cursor.result_set_;
     if(auto rc = transaction_->execute(*e, rs); rc != jogasaki::status::ok || !rs) {
-//        channel_->send_ack(ERROR_CODE::UNKNOWN);
-        return false;
+        return "error in transaction_->execute()";
     }
 
     cursor.iterator_ = rs->iterator();
     send_metadata(rid);
 
-//    channel_->send_ack(ERROR_CODE::OK);
-    return true;
+    return nullptr;
 }
 
 void Worker::next(std::size_t rid)
@@ -438,19 +440,6 @@ void Worker::next(std::size_t rid)
     }
 }
 
-void Worker::prepare(std::string_view sql, std::size_t sid)
-{
-    if (prepared_statements_.size() < (sid + 1)) {
-        prepared_statements_.resize(sid + 1);
-    }
-
-    if(auto rc = db_.prepare(sql, prepared_statements_.at(sid)); rc != jogasaki::status::ok) {
-//        channel_->send_ack(ERROR_CODE::UNKNOWN);
-        return;
-    }
-//    channel_->send_ack(ERROR_CODE::OK);
-}
-
 void Worker::set_params(request::ParameterSet* ps, std::unique_ptr<jogasaki::api::parameter_set>& params)
 {
     for (std::size_t i = 0; i < ps->parameters_size() ;i++) {
@@ -479,7 +468,7 @@ void Worker::set_params(request::ParameterSet* ps, std::unique_ptr<jogasaki::api
     }
 }
 
-void Worker::execute_prepared_statement(std::size_t sid, jogasaki::api::parameter_set& params)
+const char* Worker::execute_prepared_statement(std::size_t sid, jogasaki::api::parameter_set& params)
 {
     if (!transaction_) {
         transaction_ = db_.create_transaction();
@@ -487,17 +476,15 @@ void Worker::execute_prepared_statement(std::size_t sid, jogasaki::api::paramete
 
     std::unique_ptr<jogasaki::api::executable_statement> e{};
     if(auto rc = db_.resolve(*prepared_statements_.at(sid), params, e); rc != jogasaki::status::ok) {
-//        channel_->send_ack(ERROR_CODE::UNKNOWN);
-        return;
+        return "error in db_.resolve()";
     }
     if(auto rc = transaction_->execute(*e); rc != jogasaki::status::ok) {
-//        channel_->send_ack(ERROR_CODE::UNKNOWN);
-        return;
+        return "error in transaction_->execute()";
     }
-//    channel_->send_ack(ERROR_CODE::OK);
+    return nullptr;
 }
 
-bool Worker::execute_prepared_query(std::size_t sid, jogasaki::api::parameter_set& params, std::size_t rid)
+const char* Worker::execute_prepared_query(std::size_t sid, jogasaki::api::parameter_set& params, std::size_t rid)
 {
     if (!transaction_) {
         transaction_ = db_.create_transaction();
@@ -513,20 +500,17 @@ bool Worker::execute_prepared_query(std::size_t sid, jogasaki::api::parameter_se
 
     std::unique_ptr<jogasaki::api::executable_statement> e{};
     if(auto rc = db_.resolve(*prepared_statements_.at(sid), params, e); rc != jogasaki::status::ok) {
-//        channel_->send_ack(ERROR_CODE::UNKNOWN);
-        return false;
+        return "error in db_.resolve()";
     }
 
     auto& rs = cursor.result_set_;
     if(auto rc = transaction_->execute(*e, rs); rc != jogasaki::status::ok || !rs) {
-//        channel_->send_ack(ERROR_CODE::UNKNOWN);
-        return false;
+        return "error in transaction_->execute()";
     }
 
     cursor.iterator_ = rs->iterator();
     send_metadata(rid);
-//    channel_->send_ack(ERROR_CODE::OK);
-    return true;
+    return nullptr;
 }
 
 void Worker::deploy_metadata(std::size_t table_id)

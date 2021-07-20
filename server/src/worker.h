@@ -58,12 +58,11 @@ class Worker {
     friend int backend_main(int, char **);
 
  private:
-    void execute_statement(std::string_view);
-    bool execute_query(std::string_view, std::size_t);
+    [[nodiscard]] const char* execute_statement(std::string_view);
+    [[nodiscard]] const char* execute_query(std::string_view, std::size_t);
     void next(std::size_t);
-    void prepare(std::string_view, std::size_t);
-    void execute_prepared_statement(std::size_t, jogasaki::api::parameter_set&);
-    bool execute_prepared_query(std::size_t, jogasaki::api::parameter_set&, std::size_t);
+    [[nodiscard]] const char* execute_prepared_statement(std::size_t, jogasaki::api::parameter_set&);
+    [[nodiscard]] const char* execute_prepared_query(std::size_t, jogasaki::api::parameter_set&, std::size_t);
     void deploy_metadata(std::size_t);
 
     void send_metadata(std::size_t);
