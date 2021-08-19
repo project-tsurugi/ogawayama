@@ -156,13 +156,20 @@ void Worker::run()
                         << std::endl;
 
                 if (auto err = execute_query(*(eq->mutable_sql()), ++resultset_id_); err == nullptr) {
+                    schema::RecordMeta meta;
+                    protocol::ResultSetInfo i;
                     protocol::ExecuteQuery e;
                     protocol::Response r;
 
-                    e.set_name(cursors_.at(resultset_id_).wire_name_);
+                    set_metadata(resultset_id_, meta);
+                    i.set_name(cursors_.at(resultset_id_).wire_name_);
+                    i.set_allocated_record_meta(&meta);
+                    e.set_allocated_result_set_info(&i);
                     r.set_allocated_execute_query(&e);
                     reply(r, h.get_idx());
                     r.release_execute_query();
+                    e.release_result_set_info();
+                    i.release_record_meta();
 
                     next(resultset_id_);
                 } else {
@@ -213,13 +220,20 @@ void Worker::run()
                 set_params(pq->mutable_parameters(), params);
 
                 if(auto err = execute_prepared_query(sid, *params, ++resultset_id_); err == nullptr) {
+                    schema::RecordMeta meta;
+                    protocol::ResultSetInfo i;
                     protocol::ExecuteQuery e;
                     protocol::Response r;
 
-                    e.set_name(cursors_.at(resultset_id_).wire_name_);
+                    set_metadata(resultset_id_, meta);
+                    i.set_name(cursors_.at(resultset_id_).wire_name_);
+                    i.set_allocated_record_meta(&meta);
+                    e.set_allocated_result_set_info(&i);
                     r.set_allocated_execute_query(&e);
                     reply(r, h.get_idx());
                     r.release_execute_query();
+                    e.release_result_set_info();
+                    i.release_record_meta();
 
                     next(resultset_id_);
                 } else {
@@ -327,11 +341,10 @@ const char* Worker::execute_statement(std::string_view sql)
     return nullptr;
 }
 
-void Worker::send_metadata(std::size_t rid)
+void Worker::set_metadata(std::size_t rid, schema::RecordMeta& meta)
 {
     auto metadata = cursors_.at(rid).result_set_->meta();
     std::size_t n = metadata->field_count();
-    schema::RecordMeta meta;
 
     for (std::size_t i = 0; i < n; i++) {
         auto* column = new schema::RecordMeta_Column;
@@ -367,11 +380,6 @@ void Worker::send_metadata(std::size_t rid)
             break;
         }
     }
-
-    std::string output;
-    if (!meta.SerializeToString(&output)) { std::abort(); }
-    cursors_.at(rid).resultset_wire_container_->write(reinterpret_cast<const signed char*>(output.data()),
-                                            tsubakuro::common::wire::length_header(output.size()));
 }
 
 const char* Worker::execute_query(std::string_view sql, std::size_t rid)
@@ -398,8 +406,6 @@ const char* Worker::execute_query(std::string_view sql, std::size_t rid)
     }
 
     cursor.iterator_ = rs->iterator();
-    send_metadata(rid);
-
     return nullptr;
 }
 
@@ -509,7 +515,6 @@ const char* Worker::execute_prepared_query(std::size_t sid, jogasaki::api::param
     }
 
     cursor.iterator_ = rs->iterator();
-    send_metadata(rid);
     return nullptr;
 }
 

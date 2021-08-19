@@ -65,7 +65,7 @@ class Worker {
     [[nodiscard]] const char* execute_prepared_query(std::size_t, jogasaki::api::parameter_set&, std::size_t);
     void deploy_metadata(std::size_t);
 
-    void send_metadata(std::size_t);
+    void set_metadata(std::size_t, schema::RecordMeta&);
     void set_params(request::ParameterSet*, std::unique_ptr<jogasaki::api::parameter_set>&);
     void clear_transaction() {
         cursors_.clear();
