@@ -76,7 +76,7 @@ class Worker {
         prepared_statements_.clear();
         wire_ = nullptr;
     }
-    void reply(protocol::Response &r, tsubakuro::common::wire::message_header::index_type idx) {
+    void reply(response::Response &r, tsubakuro::common::wire::message_header::index_type idx) {
         tsubakuro::common::wire::response_wrapper buf(wire_->get_response(idx));
         std::ostream os(&buf);
         if (!r.SerializeToOstream(&os)) { std::abort(); }
@@ -117,10 +117,10 @@ class Worker {
 };
 
 template<>
-inline void Worker::error<protocol::Begin>(std::string msg, tsubakuro::common::wire::message_header::index_type idx) {
-    protocol::Error e;
-    protocol::Begin p;
-    protocol::Response r;
+inline void Worker::error<response::Begin>(std::string msg, tsubakuro::common::wire::message_header::index_type idx) {
+    response::Error e;
+    response::Begin p;
+    response::Response r;
 
     e.set_detail(msg);
     p.set_allocated_error(&e);
@@ -130,10 +130,10 @@ inline void Worker::error<protocol::Begin>(std::string msg, tsubakuro::common::w
     p.release_error();
 }
 template<>
-inline void Worker::error<protocol::Prepare>(std::string msg, tsubakuro::common::wire::message_header::index_type idx) {
-    protocol::Error e;
-    protocol::Prepare p;
-    protocol::Response r;
+inline void Worker::error<response::Prepare>(std::string msg, tsubakuro::common::wire::message_header::index_type idx) {
+    response::Error e;
+    response::Prepare p;
+    response::Response r;
 
     e.set_detail(msg);
     p.set_allocated_error(&e);
@@ -143,10 +143,10 @@ inline void Worker::error<protocol::Prepare>(std::string msg, tsubakuro::common:
     p.release_error();
 }
 template<>
-inline void Worker::error<protocol::ResultOnly>(std::string msg, tsubakuro::common::wire::message_header::index_type idx) {
-    protocol::Error e;
-    protocol::ResultOnly p;
-    protocol::Response r;
+inline void Worker::error<response::ResultOnly>(std::string msg, tsubakuro::common::wire::message_header::index_type idx) {
+    response::Error e;
+    response::ResultOnly p;
+    response::Response r;
 
     e.set_detail(msg);
     p.set_allocated_error(&e);
@@ -156,10 +156,10 @@ inline void Worker::error<protocol::ResultOnly>(std::string msg, tsubakuro::comm
     p.release_error();
 }
 template<>
-inline void Worker::error<protocol::ExecuteQuery>(std::string msg, tsubakuro::common::wire::message_header::index_type idx) {
-    protocol::Error e;
-    protocol::ExecuteQuery p;
-    protocol::Response r;
+inline void Worker::error<response::ExecuteQuery>(std::string msg, tsubakuro::common::wire::message_header::index_type idx) {
+    response::Error e;
+    response::ExecuteQuery p;
+    response::Response r;
 
     e.set_detail(msg);
     p.set_allocated_error(&e);

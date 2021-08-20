@@ -53,8 +53,8 @@ void Worker::run()
                 if (!transaction_) {
                     if (transaction_ = db_.create_transaction(); transaction_ != nullptr) {
                         ::common::Transaction t;
-                        protocol::Begin b;
-                        protocol::Response r;
+                        response::Begin b;
+                        response::Response r;
 
                         t.set_handle(++transaction_id_);
                         b.set_allocated_transaction_handle(&t);
@@ -63,10 +63,10 @@ void Worker::run()
                         r.release_begin();
                         b.release_transaction_handle();
                     } else {
-                        error<protocol::Begin>("error in db_.create_transaction()", h.get_idx());
+                        error<response::Begin>("error in db_.create_transaction()", h.get_idx());
                     }
                 } else {
-                    error<protocol::Begin>("transaction has already begun", h.get_idx());
+                    error<response::Begin>("transaction has already begun", h.get_idx());
                 }
             }
             break;
@@ -107,8 +107,8 @@ void Worker::run()
                 }
                 if(auto rc = db_.prepare(*sql, prepared_statements_.at(sid)); rc == jogasaki::status::ok) {
                     ::common::PreparedStatement ps;
-                    protocol::Prepare p;
-                    protocol::Response r;
+                    response::Prepare p;
+                    response::Response r;
 
                     ps.set_handle(sid);
                     *p.mutable_prepared_statement_handle() = ps;
@@ -119,7 +119,7 @@ void Worker::run()
 
                     prepared_statements_index_ = sid + 1;
                 } else {
-                    error<protocol::Prepare>("error in db_.prepare()" , h.get_idx());
+                    error<response::Prepare>("error in db_.prepare()" , h.get_idx());
                 }
             }
             break;
@@ -132,9 +132,9 @@ void Worker::run()
                         << *(eq->mutable_sql())
                         << std::endl;
                 if (auto err = execute_statement(*(eq->mutable_sql())); err == nullptr) {
-                    protocol::Success s;
-                    protocol::ResultOnly ok;
-                    protocol::Response r;
+                    response::Success s;
+                    response::ResultOnly ok;
+                    response::Response r;
 
                     ok.set_allocated_success(&s);
                     r.set_allocated_result_only(&ok);
@@ -142,7 +142,7 @@ void Worker::run()
                     r.release_result_only();
                     ok.release_success();
                 } else {
-                    error<protocol::ResultOnly>(err, h.get_idx());
+                    error<response::ResultOnly>(err, h.get_idx());
                 }
             }
             break;
@@ -157,9 +157,9 @@ void Worker::run()
 
                 if (auto err = execute_query(*(eq->mutable_sql()), ++resultset_id_); err == nullptr) {
                     schema::RecordMeta meta;
-                    protocol::ResultSetInfo i;
-                    protocol::ExecuteQuery e;
-                    protocol::Response r;
+                    response::ResultSetInfo i;
+                    response::ExecuteQuery e;
+                    response::Response r;
 
                     set_metadata(resultset_id_, meta);
                     i.set_name(cursors_.at(resultset_id_).wire_name_);
@@ -173,7 +173,7 @@ void Worker::run()
 
                     next(resultset_id_);
                 } else {
-                    error<protocol::ExecuteQuery>(err, h.get_idx());
+                    error<response::ExecuteQuery>(err, h.get_idx());
                 }
             }
             break;
@@ -191,9 +191,9 @@ void Worker::run()
                 auto params = jogasaki::api::create_parameter_set();
                 set_params(pq->mutable_parameters(), params);
                 if (auto err = execute_prepared_statement(sid, *params); err == nullptr) {
-                    protocol::Success s;
-                    protocol::ResultOnly ok;
-                    protocol::Response r;
+                    response::Success s;
+                    response::ResultOnly ok;
+                    response::Response r;
 
                     ok.set_allocated_success(&s);
                     r.set_allocated_result_only(&ok);
@@ -201,7 +201,7 @@ void Worker::run()
                     r.release_result_only();
                     ok.release_success();
                 } else {
-                    error<protocol::ResultOnly>(err, h.get_idx());
+                    error<response::ResultOnly>(err, h.get_idx());
                 }
             }
             break;
@@ -221,9 +221,9 @@ void Worker::run()
 
                 if(auto err = execute_prepared_query(sid, *params, ++resultset_id_); err == nullptr) {
                     schema::RecordMeta meta;
-                    protocol::ResultSetInfo i;
-                    protocol::ExecuteQuery e;
-                    protocol::Response r;
+                    response::ResultSetInfo i;
+                    response::ExecuteQuery e;
+                    response::Response r;
 
                     set_metadata(resultset_id_, meta);
                     i.set_name(cursors_.at(resultset_id_).wire_name_);
@@ -237,7 +237,7 @@ void Worker::run()
 
                     next(resultset_id_);
                 } else {
-                    error<protocol::ExecuteQuery>(err, h.get_idx());
+                    error<response::ExecuteQuery>(err, h.get_idx());
                 }
             }
             break;
@@ -251,9 +251,9 @@ void Worker::run()
                                 << "idx:" << h.get_idx()
                                 << std::endl;
 
-                        protocol::Success s;
-                        protocol::ResultOnly ok;
-                        protocol::Response r;
+                        response::Success s;
+                        response::ResultOnly ok;
+                        response::Response r;
 
                         ok.set_allocated_success(&s);
                         r.set_allocated_result_only(&ok);
@@ -263,10 +263,10 @@ void Worker::run()
 
                         transaction_ = nullptr;
                     } else {
-                        error<protocol::ResultOnly>("error in transaction_->commit()", h.get_idx());
+                        error<response::ResultOnly>("error in transaction_->commit()", h.get_idx());
                     }
                 } else {
-                    error<protocol::ResultOnly>("transaction has not begun", h.get_idx());
+                    error<response::ResultOnly>("transaction has not begun", h.get_idx());
                 }
             }
             break;
@@ -288,9 +288,9 @@ void Worker::run()
                     if(prepared_statements_.at(sid)) {
                         prepared_statements_.at(sid) = nullptr;
 
-                        protocol::Success s;
-                        protocol::ResultOnly ok;
-                        protocol::Response r;
+                        response::Success s;
+                        response::ResultOnly ok;
+                        response::Response r;
 
                         ok.set_allocated_success(&s);
                         r.set_allocated_result_only(&ok);
@@ -298,19 +298,19 @@ void Worker::run()
                         r.release_result_only();
                         ok.release_success();
                     } else {
-                        error<protocol::ResultOnly>("cannot find prepared statement with the index given", h.get_idx());
+                        error<response::ResultOnly>("cannot find prepared statement with the index given", h.get_idx());
                     }
                 } else {
-                    error<protocol::ResultOnly>("index is larger than the number of prepred statment registerd", h.get_idx());
+                    error<response::ResultOnly>("index is larger than the number of prepred statment registerd", h.get_idx());
                 }
             }
             break;
         case request::Request::RequestCase::kDisconnect:
             VLOG(1) << "disconnect" << std::endl;
             {
-                protocol::Success s;
-                protocol::ResultOnly ok;
-                protocol::Response r;
+                response::Success s;
+                response::ResultOnly ok;
+                response::Response r;
 
                 ok.set_allocated_success(&s);
                 r.set_allocated_result_only(&ok);
