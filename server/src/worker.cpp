@@ -100,7 +100,7 @@ void Worker::run()
                     case ::common::DataType::FLOAT8:
                         db_.register_variable(hv->name(), jogasaki::api::field_type_kind::float8);
                         break;
-                    case ::common::DataType::STRING:
+                    case ::common::DataType::CHARACTER:
                         db_.register_variable(hv->name(), jogasaki::api::field_type_kind::character);
                         break;
                     }
@@ -370,7 +370,7 @@ void Worker::set_metadata(std::size_t rid, schema::RecordMeta& meta)
             *meta.add_columns() = *column;
         break;
         case jogasaki::api::field_type_kind::character:
-            column->set_type(::common::DataType::STRING);
+            column->set_type(::common::DataType::CHARACTER);
             column->set_nullable(metadata->nullable(i));
             *meta.add_columns() = *column;
         break;
@@ -451,20 +451,20 @@ void Worker::set_params(request::ParameterSet* ps, std::unique_ptr<jogasaki::api
     for (std::size_t i = 0; i < ps->parameters_size() ;i++) {
         auto p = ps->mutable_parameters(i);
         switch (p->value_case()) {
-        case request::ParameterSet::Parameter::ValueCase::kIValue:
-            params->set_int4(p->name(), p->l_value());
+        case request::ParameterSet::Parameter::ValueCase::kInt4Value:
+            params->set_int4(p->name(), p->int4_value());
             break;
-        case request::ParameterSet::Parameter::ValueCase::kLValue:
-            params->set_int8(p->name(), p->l_value());
+        case request::ParameterSet::Parameter::ValueCase::kInt8Value:
+            params->set_int8(p->name(), p->int8_value());
             break;
-        case request::ParameterSet::Parameter::ValueCase::kFValue:
-            params->set_float4(p->name(), p->l_value());
+        case request::ParameterSet::Parameter::ValueCase::kFloat4Value:
+            params->set_float4(p->name(), p->float4_value());
             break;
-        case request::ParameterSet::Parameter::ValueCase::kDValue:
-            params->set_float8(p->name(), p->l_value());
+        case request::ParameterSet::Parameter::ValueCase::kFloat8Value:
+            params->set_float8(p->name(), p->float8_value());
             break;
-        case request::ParameterSet::Parameter::ValueCase::kSValue:
-            params->set_character(p->name(), p->s_value());
+        case request::ParameterSet::Parameter::ValueCase::kCharacterValue:
+            params->set_character(p->name(), p->character_value());
             break;
         default:
             std::cerr << "type undefined" << std::endl;
