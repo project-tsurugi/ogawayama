@@ -27,8 +27,6 @@
 #include <jogasaki/configuration.h>
 
 #include "worker.h"
-#include "SignalHandler.h"
-#include "utils.h"
 
 #include "server.h"
 
@@ -45,7 +43,7 @@ static constexpr std::string_view KEY_LOCATION { "location" };  //NOLINT
 
 jmp_buf buf;
 
-void signal_handler(int signal)
+void signal_handler([[maybe_unused]]int signal)
 {
     longjmp(buf, 1);
 }
@@ -77,13 +75,16 @@ int backend_main(int argc, char **argv) {
     if (setjmp(buf) != 0) {
         for (std::size_t index = 0; index < workers.size() ; index++) {
             if (auto rv = workers.at(index)->future_.wait_for(std::chrono::seconds(0)) ; rv != std::future_status::ready) {
-                VLOG(1) << "exit: remain thread " << workers.at(index)->id_ << std::endl;
+                VLOG(1) << "exit: remain thread " << workers.at(index)->session_id_ << std::endl;
             }
         }
         workers.clear();
         container = nullptr;;
         return 0;
     }
+
+    // service
+    auto service = tateyama::api::endpoint::create_service(*db);
 
     int return_value{0};
     while(true) {
@@ -105,7 +106,7 @@ int backend_main(int argc, char **argv) {
         }
         try {
             std::unique_ptr<Worker> &worker = workers.at(index);
-            worker = std::make_unique<Worker>(*db, session_id, std::move(wire));
+            worker = std::make_unique<Worker>(*service, session_id, std::move(wire));
             worker->task_ = std::packaged_task<void()>([&]{worker->run();});
             worker->future_ = worker->task_.get_future();
             worker->thread_ = std::thread(std::move(worker->task_));
@@ -120,3 +121,8 @@ int backend_main(int argc, char **argv) {
 }
 
 }  // ogawayama::server
+
+
+int main(int argc, char **argv) {
+    return ogawayama::server::backend_main(argc, argv);
+}

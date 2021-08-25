@@ -35,6 +35,7 @@ set(GENERATED_PROTO_SRCS
 set_source_files_properties(
     ${GENERATED_PROTO_SRCS}
     PROPERTIES GENERATED TRUE
+    COMPILE_FLAGS -Wno-unused-parameter
 )
 
 add_executable(server
@@ -74,5 +75,7 @@ target_link_libraries(server
     PRIVATE msgpackc
     PRIVATE ${PROTOBUF_LIBRARY}
 )
+
+set_compile_options(server)
 
 install_custom(server ${export_name})

@@ -73,11 +73,11 @@ endif()
 
 add_library(api INTERFACE)
 
-target_include_directories(api
-    INTERFACE
-        $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/stub/include>
-        $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}/ogawayama>
-)
+# target_include_directories(api
+#     INTERFACE
+#         $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/stub/include>
+#         $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}/ogawayama>
+# )
       
 set(export_name "ogawayama")
 set(package_name "ogawayama")
