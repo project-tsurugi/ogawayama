@@ -1,4 +1,4 @@
-# Copyright 2019-2021 tsurugi project.
+# Copyright 2019-2021 tsurugi fin project.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -12,4 +12,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-add_subdirectory(googletest EXCLUDE_FROM_ALL)
+file(GLOB TEST_SOURCES
+    "*.cpp"
+)
+
+register_tests(
+    TARGET tateyama_test
+    DEPENDS
+      server-impl
+      glog::glog
+      rt
+    SOURCES ${TEST_SOURCES}
+)

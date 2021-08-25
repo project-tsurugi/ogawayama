@@ -36,3 +36,11 @@ target_link_libraries(server
 set_compile_options(server)
 
 install_custom(server ${export_name})
+
+
+#for tests
+add_library(server-impl INTERFACE)
+
+target_include_directories(server-impl
+    INTERFACE .
+)
