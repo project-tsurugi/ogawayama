@@ -1,4 +1,4 @@
-# Copyright 2019-2019 tsurugi project.
+# Copyright 2019-2021 tsurugi project.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -16,26 +16,23 @@ file(GLOB SOURCES
     "*.cpp"
 )
 
-add_executable(cli
+add_executable(server
     ${SOURCES}
 )
 
-set_target_properties(cli
+set_target_properties(server
     PROPERTIES
-        RUNTIME_OUTPUT_NAME "ogawayama-cli"
+        RUNTIME_OUTPUT_NAME "tateyama-server"
 )
 
-target_include_directories(cli
-    PRIVATE ../../common/include
-    PRIVATE ../../stub/include
-    PRIVATE ../../stub/src
-)
-
-target_link_libraries(cli
-    PRIVATE stub
-    PRIVATE manager-message-interface
+target_link_libraries(server
+    PRIVATE jogasaki-${SHARKSFIN_IMPLEMENTATION}-engine
     PRIVATE gflags::gflags
+    PRIVATE glog::glog
+    PRIVATE pthread
     PRIVATE rt
 )
 
-install_custom(cli ${export_name})
+set_compile_options(server)
+
+install_custom(server ${export_name})

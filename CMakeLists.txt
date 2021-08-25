@@ -30,7 +30,6 @@ option(ENABLE_UB_SANITIZER "enable undefined behavior sanitizer on debug build" 
 option(ENABLE_COVERAGE "enable coverage on debug build" OFF)
 option(BUILD_TESTS "Build test programs" ON)
 option(BUILD_SHARED_LIBS "build shared libraries instead of static" ON)
-option(BUILD_STUB_ONLY "build the stub only" OFF)
 
 if(NOT DEFINED SHARKSFIN_IMPLEMENTATION)
     set(
@@ -57,9 +56,6 @@ if (NOT BUILD_STUB_ONLY)
   find_package(jogasaki-${SHARKSFIN_IMPLEMENTATION} REQUIRED)
   find_package(shakujo REQUIRED)
 endif()
-
-find_package(Protobuf REQUIRED)
-find_package(msgpack REQUIRED)
 
 include(GNUInstallDirs)
 include(CMakePackageConfigHelpers)
@@ -111,9 +107,4 @@ install(
     EXPORT_LINK_INTERFACE_LIBRARIES
 )
 
-# add_subdirectory(stub)
-if(NOT BUILD_STUB_ONLY)
-    add_subdirectory(server)
-#     add_subdirectory(examples)
-#     add_subdirectory(third_party)
-endif()
+add_subdirectory(src)
