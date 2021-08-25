@@ -140,8 +140,6 @@ jobs:
           rm -f CMakeCache.txt
           cmake -DCMAKE_BUILD_TYPE=Debug -DSHARKSFIN_IMPLEMENTATION=shirakami -DCMAKE_EXPORT_COMPILE_COMMANDS=ON -DCMAKE_INSTALL_PREFIX=${GITHUB_WORKSPACE}/.local -DCMAKE_PREFIX_PATH=${GITHUB_WORKSPACE}/.local ..
           cmake --build . --target install --clean-first -- -j
-          cd ${GITHUB_WORKSPACE}/.local/include
-          ln -s tateyama jogasaki
 
       - id: CMake_Build
         name: CMake_Build
