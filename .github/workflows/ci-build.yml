@@ -125,11 +125,11 @@ jobs:
         name: Install_moodycamel_concurrentqueue
         run: |
           cd third_party/jogasaki/third_party/concurrentqueue
-          mkdir -p build
-          cd build
+          mkdir -p build_debug
+          cd build_debug
           rm -f CMakeCache.txt
           cmake -DCMAKE_BUILD_TYPE=Debug -DCMAKE_INSTALL_PREFIX=${GITHUB_WORKSPACE}/.local ..
-          cmake --build . --target install --clean-first
+          cmake --build . --target install --clean-first -- -j
 
       - id: Install_jogasaki
         name: Install_jogasaki
