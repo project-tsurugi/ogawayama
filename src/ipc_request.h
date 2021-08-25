@@ -42,7 +42,6 @@ private:
     server_wire_container& server_wire_;
     const std::size_t length_;
     const std::size_t read_point;
-    std::string payload_;  // in case of ring buffer wrap around
 };
 
 }  // tsubakuro::common::wire

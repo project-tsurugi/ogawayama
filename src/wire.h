@@ -202,7 +202,9 @@ public:
         if (index(poped_ + T::size) < index(poped_ + T::size + length)) {
             return static_cast<const void*>(read_point(base, T::size));
         }
-        return nullptr;  // ring buffer wrap around case
+        copy_of_payload = malloc(length);
+        read_from_buffer(static_cast<signed char*>(copy_of_payload), base, read_point(base, T::size), length);
+        return copy_of_payload;  // ring buffer wrap around case
     }
 
     /**
@@ -252,6 +254,10 @@ public:
     void dispose(std::size_t length) {
         poped_ += length;
         chunk_end_ = 0;
+        if (copy_of_payload != nullptr) {
+            free(copy_of_payload);
+            copy_of_payload = nullptr;
+        }
     }
 
     std::size_t read_point() { return poped_; }
@@ -305,6 +311,8 @@ protected:
     boost::interprocess::interprocess_mutex m_mutex_{};
     boost::interprocess::interprocess_condition c_empty_{};
     boost::interprocess::interprocess_condition c_full_{};
+
+    void *copy_of_payload{};  // in case of ring buffer wrap around
 };
 
 

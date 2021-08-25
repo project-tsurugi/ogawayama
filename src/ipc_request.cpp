@@ -25,12 +25,8 @@ ipc_request::get_server_wire_container() {
 std::string_view
 ipc_request::payload() const {
     auto wire = server_wire_.get_request_wire();
-    if (auto address = wire.payload(length_); address != nullptr) {
-        return std::string_view(static_cast<const char*>(address), length_);
-    }
-//    payload_.resize(length_);
-//    wire.read(payload_.data(), length_);
-    return payload_;
+    auto address = wire.payload(length_);
+    return std::string_view(static_cast<const char*>(address), length_);
 }
 
 void
