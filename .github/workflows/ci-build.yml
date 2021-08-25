@@ -4,7 +4,7 @@ on: [push, pull_request]
 
 jobs:
   Build:
-    name: Build with PosgreSQL
+    name: Build tateyama
     strategy:
       fail-fast: false
       matrix:
@@ -22,8 +22,6 @@ jobs:
     defaults:
       run:
         shell: bash
-    env:
-      PG_VERSION: 12.6
 
     steps:
       - id: Checkout
@@ -32,17 +30,6 @@ jobs:
         with:
           submodules: recursive
           token: ${{ secrets.GHA_PAT }}
-
-      - id: Setup_PostgreSQL
-        name: Setup_PostgreSQL
-        run: |
-          if [ ! -e ./postgresql-${PG_VERSION} ]; then
-            curl -sL https://ftp.postgresql.org/pub/source/v${PG_VERSION}/postgresql-${PG_VERSION}.tar.bz2 | tar -xj
-          fi
-          cd postgresql-${PG_VERSION}
-          ./configure --prefix=${GITHUB_WORKSPACE}/pgsql
-          make -j
-          make install
 
       - id: Install_shirakami
         name: Install_shirakami
@@ -144,21 +131,10 @@ jobs:
           cmake -DCMAKE_BUILD_TYPE=Debug -DSHARKSFIN_IMPLEMENTATION=shirakami -DCMAKE_EXPORT_COMPILE_COMMANDS=ON -DCMAKE_INSTALL_PREFIX=${GITHUB_WORKSPACE}/.local -DCMAKE_PREFIX_PATH=${GITHUB_WORKSPACE}/.local ..
           cmake --build . --target install --clean-first -- -j
 
-      - id: Install_manager
-        name: Install_manager
-        run: |
-          export PATH=$PATH:${GITHUB_WORKSPACE}/pgsql/bin
-          cd third_party/manager
-          mkdir -p build
-          cd build
-          rm -f CMakeCache.txt
-          cmake -DCMAKE_BUILD_TYPE=Debug -DFORCE_INSTALL_RPATH=ON -DCMAKE_INSTALL_PREFIX=${GITHUB_WORKSPACE}/.local ..
-          cmake --build . --target install --clean-first -- -j
-
       - id: CMake_Build
         name: CMake_Build
         run: |
-          export LD_LIBRARY_PATH=${GITHUB_WORKSPACE}/.local/lib:${GITHUB_WORKSPACE}/pgsql/lib
+          export LD_LIBRARY_PATH=${GITHUB_WORKSPACE}/.local/lib
           mkdir build
           cd build
           cmake -DCMAKE_BUILD_TYPE=Debug -DSHARKSFIN_IMPLEMENTATION=shirakami -DCMAKE_PREFIX_PATH=${GITHUB_WORKSPACE}/.local -DCMAKE_EXPORT_COMPILE_COMMANDS=ON ..
@@ -170,7 +146,7 @@ jobs:
         env:
           GTEST_OUTPUT: xml
         run: |
-          export LD_LIBRARY_PATH=${GITHUB_WORKSPACE}/.local/lib:${GITHUB_WORKSPACE}/pgsql/lib
+          export LD_LIBRARY_PATH=${GITHUB_WORKSPACE}/.local/lib
           cd build
           ctest --verbose
 
