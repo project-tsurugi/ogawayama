@@ -44,3 +44,7 @@ add_library(server-impl INTERFACE)
 target_include_directories(server-impl
     INTERFACE .
 )
+
+target_link_libraries(server-impl
+    INTERFACE jogasaki-${SHARKSFIN_IMPLEMENTATION}-engine
+)

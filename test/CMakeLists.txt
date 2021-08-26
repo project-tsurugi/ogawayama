@@ -13,7 +13,14 @@
 # limitations under the License.
 
 file(GLOB TEST_SOURCES
-    "*.cpp"
+  "*.cpp"
+  "${PROJECT_SOURCE_DIR}/src/ipc*.cpp"
+)
+
+set_source_files_properties(
+  ${TEST_SOURCES}
+  PROPERTIES GENERATED TRUE
+  COMPILE_FLAGS -Wno-unused-parameter
 )
 
 register_tests(

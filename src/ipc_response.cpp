@@ -50,6 +50,7 @@ tateyama::status ipc_response::acquire_channel(std::string_view name, tateyama::
     data_channel_ = std::make_unique<ipc_data_channel>(server_wire_.create_resultset_wires(name));
     if (data_channel_.get() != nullptr) {
         ch = data_channel_.get();
+        response_box_.flush();
         return tateyama::status::ok;
     }
     return tateyama::status::unknown;
@@ -88,6 +89,7 @@ tateyama::status ipc_writer::write(char const* data, std::size_t length) {
 }
 
 tateyama::status ipc_writer::commit() {
+    resultset_wire_->commit();
     return tateyama::status::ok;
 }
 

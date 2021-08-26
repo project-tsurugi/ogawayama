@@ -26,7 +26,7 @@ std::string_view
 ipc_request::payload() const {
     auto wire = server_wire_.get_request_wire();
     auto address = wire.payload(length_);
-    return std::string_view(static_cast<const char*>(address), length_);
+    return std::string_view(address, length_);
 }
 
 void
