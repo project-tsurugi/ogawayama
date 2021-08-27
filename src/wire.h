@@ -403,8 +403,33 @@ public:
     unidirectional_simple_wire& operator = (unidirectional_simple_wire&&) = delete;
     
     /**
-     * @brief push record into the queue.
+     * @brief push an unit of data into the wire.
      */
+    void write(const char* from, std::size_t length) {
+        write(static_cast<char*>(managed_shm_ptr_->get_address_from_handle(buffer_handle_)), from, length);
+    }
+    void commit() {
+        commit(static_cast<char*>(managed_shm_ptr_->get_address_from_handle(buffer_handle_)));
+    }
+
+    /**
+     * @brief provide the current chunk to MsgPack.
+     */
+    std::pair<char*, std::size_t> get_chunk(bool wait_flag) {
+        return get_chunk(static_cast<char*>(managed_shm_ptr_->get_address_from_handle(buffer_handle_)), wait_flag);
+    }
+    bool has_record() {
+        return n_records_ > 0;
+    }
+    void dispose() {
+        dispose(static_cast<const char*>(managed_shm_ptr_->get_address_from_handle(buffer_handle_)));
+    }
+    bool dispose(std::size_t length) {
+        return dispose(static_cast<const char*>(managed_shm_ptr_->get_address_from_handle(buffer_handle_)), length);
+    }
+    bool is_eor() { return eor_; }
+
+private:
     void write(char* base, const char* from, std::size_t length) {
         if (length > room()) { wait_to_write(length); }
         if (piled_ == 0) {
@@ -413,9 +438,6 @@ public:
         }
         write_in_buffer(base, point(base, pushed_ + length_header::size + piled_), from, length);
         piled_ += length;
-    }
-    void write(const char* from, std::size_t length) {
-        write(static_cast<char*>(managed_shm_ptr_->get_address_from_handle(buffer_handle_)), from, length);
     }
 
     void commit(char* base) {
@@ -432,13 +454,7 @@ public:
             r_condition_.notify_one();
         }
     }
-    void commit() {
-        commit(static_cast<char*>(managed_shm_ptr_->get_address_from_handle(buffer_handle_)));
-    }
-        
-    /**
-     * @brief provide the current chunk to MsgPack.
-     */
+
     std::pair<char*, std::size_t> get_chunk(char* base, bool wait_flag) {
         if (!has_record() && wait_flag) {
             boost::interprocess::scoped_lock lock(r_mutex_);
@@ -462,20 +478,21 @@ public:
         chunk_resume_ = chunk_start + seq_length;
         return std::pair<char*, std::size_t>(point(base, chunk_start), seq_length);
     }
-    std::pair<char*, std::size_t> get_chunk(bool wait_flag) {
-        return get_chunk(static_cast<char*>(managed_shm_ptr_->get_address_from_handle(buffer_handle_)), wait_flag);
-    }
-    bool has_record() { return n_records_ > 0; }
+
     void dispose(const char* base) {
         poped_ += (length_header::size + peep(base).get_length());
         n_records_--;
     }
-    void dispose() {
-        dispose(static_cast<const char*>(managed_shm_ptr_->get_address_from_handle(buffer_handle_)));
-    }
-    bool is_eor() { return eor_; }
 
-private:
+    bool dispose(const char* base, std::size_t length) {
+        if (length != peep(base).get_length()) {
+            return false;
+        }
+        poped_ += (length_header::size + length);
+        n_records_--;
+        return true;
+    }
+
     std::size_t room() const { return capacity_ - ((pushed_ + length_header::size + piled_) - poped_); }
     
     std::size_t n_records_{0};
