@@ -61,13 +61,13 @@ struct pointer_comp {
  */
 class ipc_writer : public tateyama::api::endpoint::writer {
 public:
-    ipc_writer(std::unique_ptr<resultset_wire> wire) : resultset_wire_(std::move(wire)) {}
+    ipc_writer(resultset_wire* wire) : resultset_wire_(wire) {}
 
     tateyama::status write(char const* data, std::size_t length);
     tateyama::status commit();
 
 private:
-    std::unique_ptr<resultset_wire> resultset_wire_;
+    resultset_wire* resultset_wire_;
 };
 
 /**

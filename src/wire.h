@@ -114,9 +114,15 @@ public:
      * @brief Construct a new object.
      * for result_set_wire
      */
-    simple_wire() {
-        capacity_ = 0;
+    simple_wire() : managed_shm_ptr_(nullptr), capacity_(0) {
         buffer_handle_ = 0;
+    }
+    simple_wire(boost::interprocess::managed_shared_memory* managed_shm_ptr)
+        : managed_shm_ptr_(managed_shm_ptr), capacity_(0) {
+        buffer_handle_ = 0;
+    }
+    void set_managed_shared_memory(boost::interprocess::managed_shared_memory* managed_shm_ptr) {
+        managed_shm_ptr_ = managed_shm_ptr;
     }
 
     void attach_buffer(boost::interprocess::managed_shared_memory::handle_t handle, std::size_t capacity) {
@@ -386,6 +392,7 @@ private:
 class unidirectional_simple_wire : public simple_wire<length_header> {
 public:
     unidirectional_simple_wire() : simple_wire<length_header>() {}
+    unidirectional_simple_wire(boost::interprocess::managed_shared_memory* managed_shm_ptr) : simple_wire<length_header>(managed_shm_ptr) {}
 
     /**
      * @brief Copy and move constructers are deleted.
@@ -491,6 +498,9 @@ public:
     
     unidirectional_simple_wires(boost::interprocess::managed_shared_memory* managed_shm_ptr, std::size_t count)
         : managed_shm_ptr_(managed_shm_ptr), unidirectional_simple_wires_(count, managed_shm_ptr->get_segment_manager()) {
+        for (auto&& wire: unidirectional_simple_wires_) {
+            wire.set_managed_shared_memory(managed_shm_ptr);
+        }
         reserved_ = static_cast<char*>(managed_shm_ptr->allocate_aligned(wire_size, Alignment));
     }
     ~unidirectional_simple_wires() {
@@ -529,9 +539,11 @@ public:
         return;
     }
     
-    shm_resultset_wire* at(std::size_t index) {
-        if (index < unidirectional_simple_wires_.size()) {
-            return &unidirectional_simple_wires_.at(index);
+    shm_resultset_wire* search() {
+        for (auto&& wire: unidirectional_simple_wires_) {
+            if(wire.has_record()) {
+                return &wire;
+            }
         }
         return nullptr;
     }

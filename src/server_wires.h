@@ -30,44 +30,6 @@ public:
     // resultset_wires_container
     class resultset_wires_container {
     public:
-
-        // resultset_wire_container
-        class resultset_wire_container {
-        public:
-            resultset_wire_container(resultset_wires_container* envelope, shm_resultset_wire* wire, bool need_release = false)
-                : envelope_(envelope), shm_resultset_wire_(wire), need_release_(need_release)  {
-                bip_buffer_ = shm_resultset_wire_->get_bip_address(envelope_->managed_shm_ptr_);
-            }
-            ~resultset_wire_container() {
-                if (need_release_) {
-                    envelope_->shm_resultset_wires_->release(shm_resultset_wire_);
-                }
-            }
-            void commit() {
-                shm_resultset_wire_->commit(bip_buffer_);
-            }
-            void write(char const* data, std::size_t length) {
-                shm_resultset_wire_->write(bip_buffer_, data, length);
-            }
-            bool has_record() {
-                return shm_resultset_wire_->has_record();
-            }
-            std::pair<char*, std::size_t> get_chunk(bool wait_flag = false) {
-                return shm_resultset_wire_->get_chunk(bip_buffer_, wait_flag);
-            }
-            void dispose() {
-                shm_resultset_wire_->dispose(bip_buffer_);
-            }
-            bool is_eor() {
-                return shm_resultset_wire_->is_eor();
-            }
-        private:
-            resultset_wires_container* envelope_;
-            shm_resultset_wire* shm_resultset_wire_;
-            char* bip_buffer_;
-            bool need_release_;
-        };
-
         //   for server
         resultset_wires_container(boost::interprocess::managed_shared_memory* managed_shm_ptr, std::string_view name, std::size_t count)
             : managed_shm_ptr_(managed_shm_ptr), rsw_name_(name) {
@@ -81,18 +43,10 @@ public:
             if (shm_resultset_wires_ == nullptr) {
                 throw std::runtime_error("cannot find the resultset wire");
             }
-            std::size_t i = 0;
-            while(true) {
-                auto* wire = shm_resultset_wires_->at(i++);
-                if (wire == nullptr) {
-                    break;
-                }
-                resultset_wires_.emplace_back(std::make_unique<resultset_wire_container>(this, wire));
-            }
         }
 
-        std::unique_ptr<resultset_wire_container> acquire() {
-            return std::make_unique<resultset_wire_container>(this, shm_resultset_wires_->acquire(), true);
+        shm_resultset_wire* acquire() {
+            return shm_resultset_wires_->acquire();
         }
 
         std::pair<char*, std::size_t> get_chunk(bool wait_flag = false) {
@@ -125,21 +79,15 @@ public:
         }
 
     private:
-        resultset_wire_container* search() {
-            for (auto&& wire: resultset_wires_) {
-                if(wire->has_record()) {
-                    return wire.get();
-                }
-            }
-            return nullptr;
+        shm_resultset_wire* search() {
+            return shm_resultset_wires_->search();
         }
 
         boost::interprocess::managed_shared_memory* managed_shm_ptr_;
         std::string rsw_name_;
         shm_resultset_wires* shm_resultset_wires_{};
         //   for client
-        std::vector<std::unique_ptr<resultset_wire_container>> resultset_wires_{};
-        resultset_wire_container* current_wire_{};
+        shm_resultset_wire* current_wire_{};
     };
     
     class wire_container {
@@ -213,7 +161,7 @@ private:
 };
 
 using resultset_wires = server_wire_container::resultset_wires_container;
-using resultset_wire = server_wire_container::resultset_wires_container::resultset_wire_container;
+using resultset_wire = shm_resultset_wire;
 
 class response_wrapper : public std::streambuf {
 public:
