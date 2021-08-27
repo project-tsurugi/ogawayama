@@ -31,8 +31,10 @@ class ResultSetTest : public ::testing::Test {
 public:
     static constexpr std::string_view request_test_message_ = "abcdefgh";
     static constexpr tsubakuro::common::wire::message_header::index_type index_ = 1;
-    static constexpr std::string_view r1_ = "row_1_data";
-    static constexpr std::string_view r2_ = "row_2_data";
+    static constexpr std::string_view r11_ = "row_11_data";
+    static constexpr std::string_view r12_ = "row_12_data";
+    static constexpr std::string_view r21_ = "row_21_data";
+    static constexpr std::string_view r22_ = "row_22_data";
 
     std::unique_ptr<tsubakuro::common::wire::server_wire_container> wire_;
     
@@ -53,9 +55,11 @@ public:
             tateyama::api::endpoint::writer* w;
             EXPECT_EQ(dc->acquire(w), tateyama::status::ok);            
 
-            w->write(r1_.data(), r1_.length());
+            w->write(r11_.data(), r11_.length());
+            w->write(r12_.data(), r12_.length());
             w->commit();
-            w->write(r2_.data(), r2_.length());
+            w->write(r21_.data(), r21_.length());
+            w->write(r22_.data(), r22_.length());
             w->commit();
             w->commit();
 
@@ -98,11 +102,15 @@ TEST_F(ResultSetTest, normal) {
         wire_->create_resultset_wires_for_client(std::string_view(r_msg.first, r_msg.second));
 
     auto chunk_1 = resultset_wires->get_chunk();
-    EXPECT_EQ(r1_, std::string_view(chunk_1.first, chunk_1.second));
+    std::string r1(r11_);
+    r1 += r12_;
+    EXPECT_EQ(r1, std::string_view(chunk_1.first, chunk_1.second));
     resultset_wires->dispose();
 
     auto chunk_2 = resultset_wires->get_chunk();
-    EXPECT_EQ(r2_, std::string_view(chunk_2.first, chunk_2.second));
+    std::string r2(r21_);
+    r2 += r22_;
+    EXPECT_EQ(r2, std::string_view(chunk_2.first, chunk_2.second));
     resultset_wires->dispose();
 
     auto chunk_3 = resultset_wires->get_chunk();
