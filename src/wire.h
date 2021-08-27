@@ -104,8 +104,9 @@ public:
     /**
      * @brief Construct a new object.
      */
-    simple_wire(boost::interprocess::managed_shared_memory* managed_shm_ptr, std::size_t capacity) : capacity_(capacity) {
-        auto buffer = static_cast<char*>(managed_shm_ptr->allocate_aligned(capacity_, Alignment));
+    simple_wire(boost::interprocess::managed_shared_memory* managed_shm_ptr, std::size_t capacity)
+        : managed_shm_ptr_(managed_shm_ptr), capacity_(capacity) {
+        auto buffer = static_cast<char*>(managed_shm_ptr_->allocate_aligned(capacity_, Alignment));
         buffer_handle_ = managed_shm_ptr->get_handle_from_address(buffer);
     }
 
@@ -153,6 +154,9 @@ public:
             c_empty_.notify_one();
         }
     }
+    void write(const char* from, T&& header) {
+        write(static_cast<char*>(managed_shm_ptr_->get_address_from_handle(buffer_handle_)), from, std::move(header));
+    }
 
     /**
      * @brief peep the current header.
@@ -183,6 +187,9 @@ public:
         T header(buf);
         return header;
     }
+    T peep(bool wait_flag = false) {
+        return peep(static_cast<char*>(managed_shm_ptr_->get_address_from_handle(buffer_handle_)), wait_flag);
+    }
 
     const char* payload(const char* base, std::size_t length) {
         if (index(poped_ + T::size) < index(poped_ + T::size + length)) {
@@ -192,18 +199,24 @@ public:
         read_from_buffer(copy_of_payload_, base, read_point(base, T::size), length);
         return copy_of_payload_;  // ring buffer wrap around case
     }
+    const char* payload(std::size_t length) {
+        return payload(static_cast<char*>(managed_shm_ptr_->get_address_from_handle(buffer_handle_)), length);
+    }
 
     /**
      * @brief pop the current message.
      */
-    void read(char* to, const char* base, std::size_t msg_len) {
-        read_from_buffer(to, base, read_point(base, T::size), msg_len);
-        poped_ += T::size + msg_len;
+    void read(char* to, const char* base, std::size_t length) {
+        read_from_buffer(to, base, read_point(base, T::size), length);
+        poped_ += T::size + length;
         std::atomic_thread_fence(std::memory_order_acq_rel);
         if (wait_for_write_) {
             boost::interprocess::scoped_lock lock(m_mutex_);
             c_full_.notify_one();
         }
+    }
+    void read(char* to, std::size_t length) {
+        read(to, static_cast<char*>(managed_shm_ptr_->get_address_from_handle(buffer_handle_)), length);
     }
 
     std::size_t data_length() { return (pushed_ - poped_); }
@@ -221,21 +234,24 @@ public:
      * @brief dispose of data that has completed read and is no longer needed
      *  used by endpoint IF
      */
-    void dispose(const char* buffer, const std::size_t rp) {
+    void dispose(const char* base, const std::size_t rp) {
         if (poped_ == rp) {
-            poped_ += peep(buffer).get_length();
+            poped_ += peep(base).get_length();
             if (copy_of_payload_ != nullptr) {
                 free(copy_of_payload_);
                 copy_of_payload_ = nullptr;
             }
         }
     }
+    void dispose(const std::size_t rp) {
+        dispose(static_cast<char*>(managed_shm_ptr_->get_address_from_handle(buffer_handle_)), rp);
+    }
 
 protected:
     std::size_t index(std::size_t n) const { return n %  capacity_; }
-    const char* read_point(const char* buffer) const { return buffer + index(poped_); }
-    const char* read_point(const char* buffer, std::size_t offset) const { return buffer + index(poped_ + offset); }
-    char* point(char* buffer, std::size_t i) { return buffer + index(i); }
+    const char* read_point(const char* base) const { return base + index(poped_); }
+    const char* read_point(const char* base, std::size_t offset) const { return base + index(poped_ + offset); }
+    char* point(char* base, std::size_t i) { return base + index(i); }
     void wait_to_write(std::size_t length) {
         boost::interprocess::scoped_lock lock(m_mutex_);
         wait_for_write_ = true;
@@ -262,6 +278,7 @@ protected:
         }
     }
 
+    boost::interprocess::managed_shared_memory* managed_shm_ptr_;
     boost::interprocess::managed_shared_memory::handle_t buffer_handle_{};
     std::size_t capacity_;
 
@@ -390,6 +407,9 @@ public:
         write_in_buffer(base, point(base, pushed_ + length_header::size + piled_), from, length);
         piled_ += length;
     }
+    void write(const char* from, std::size_t length) {
+        write(static_cast<char*>(managed_shm_ptr_->get_address_from_handle(buffer_handle_)), from, length);
+    }
 
     void commit(char* base) {
         if (piled_ == 0) {
@@ -404,6 +424,9 @@ public:
             boost::interprocess::scoped_lock lock(r_mutex_);
             r_condition_.notify_one();
         }
+    }
+    void commit() {
+        commit(static_cast<char*>(managed_shm_ptr_->get_address_from_handle(buffer_handle_)));
     }
         
     /**
@@ -432,11 +455,16 @@ public:
         chunk_resume_ = chunk_start + seq_length;
         return std::pair<char*, std::size_t>(point(base, chunk_start), seq_length);
     }
-
+    std::pair<char*, std::size_t> get_chunk(bool wait_flag) {
+        return get_chunk(static_cast<char*>(managed_shm_ptr_->get_address_from_handle(buffer_handle_)), wait_flag);
+    }
     bool has_record() { return n_records_ > 0; }
     void dispose(const char* base) {
         poped_ += (length_header::size + peep(base).get_length());
         n_records_--;
+    }
+    void dispose() {
+        dispose(static_cast<const char*>(managed_shm_ptr_->get_address_from_handle(buffer_handle_)));
     }
     bool is_eor() { return eor_; }
 
