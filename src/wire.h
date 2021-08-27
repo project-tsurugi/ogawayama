@@ -517,10 +517,11 @@ public:
 
     shm_resultset_wire* acquire() {
         if (count_using_ == 0) {
+            count_using_ = next_index_ = 1;
             unidirectional_simple_wires_.at(0).attach_buffer(managed_shm_ptr_->get_handle_from_address(reserved_), wire_size);
             reserved_ = nullptr;
             only_one_buffer_ = true;
-            return &unidirectional_simple_wires_.at(0);            
+            return &unidirectional_simple_wires_.at(0);
         }
 
         char* buffer;
