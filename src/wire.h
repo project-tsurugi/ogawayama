@@ -516,6 +516,13 @@ public:
     }
 
     shm_resultset_wire* acquire() {
+        if (count_using_ == 0) {
+            unidirectional_simple_wires_.at(0).attach_buffer(managed_shm_ptr_->get_handle_from_address(reserved_), wire_size);
+            reserved_ = nullptr;
+            only_one_buffer_ = true;
+            return &unidirectional_simple_wires_.at(0);            
+        }
+
         char* buffer;
         if (reserved_ != nullptr) {
             buffer = reserved_;
@@ -525,6 +532,7 @@ public:
         }
         auto index = search_free_wire();
         unidirectional_simple_wires_.at(index).attach_buffer(managed_shm_ptr_->get_handle_from_address(buffer), wire_size);
+        only_one_buffer_ = false;
         return &unidirectional_simple_wires_.at(index);
     }
     void release(shm_resultset_wire* wire) {
@@ -540,6 +548,9 @@ public:
     }
     
     shm_resultset_wire* search() {
+        if (only_one_buffer_) {
+            return &unidirectional_simple_wires_.at(0);
+        }
         for (auto&& wire: unidirectional_simple_wires_) {
             if(wire.has_record()) {
                 return &wire;
@@ -569,6 +580,7 @@ private:
     char* reserved_{};
     std::size_t count_using_{};
     std::size_t next_index_{};
+    bool only_one_buffer_{};
 };
 
 using shm_resultset_wires = unidirectional_simple_wires;
