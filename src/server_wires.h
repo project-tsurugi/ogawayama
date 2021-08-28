@@ -58,9 +58,9 @@ public:
             }
             std::abort();  //  FIXME
         }
-        void dispose() {
+        void dispose(std::size_t length) {
             if (current_wire_ != nullptr) {
-                current_wire_->dispose();
+                current_wire_->dispose(length);
                 current_wire_ = nullptr;
                 return;
             }
@@ -123,7 +123,7 @@ public:
             managed_shared_memory_->destroy<response_box>(response_box_name);
             
             auto req_wire = managed_shared_memory_->construct<unidirectional_message_wire>(request_wire_name)(managed_shared_memory_.get(), request_buffer_size);
-            request_wire_ = wire_container(req_wire, req_wire->get_bip_address(managed_shared_memory_.get()));
+            request_wire_ = wire_container(req_wire, req_wire->get_bip_address());
             responses_ = managed_shared_memory_->construct<response_box>(response_box_name)(16, managed_shared_memory_.get());
         }
         catch(const boost::interprocess::interprocess_exception& ex) {
@@ -162,20 +162,6 @@ private:
 
 using resultset_wires = server_wire_container::resultset_wires_container;
 using resultset_wire = shm_resultset_wire;
-
-class response_wrapper : public std::streambuf {
-public:
-    response_wrapper(tsubakuro::common::wire::response_box::response& response) : response_(response) {
-        setp(response_.get_buffer(),
-             response_.get_buffer() + tsubakuro::common::wire::response_box::response::max_response_message_length);
-    }
-    void flush() {
-        response_.flush(pptr() - pbase());
-    }
-private:
-    response_box::response& response_;
-};
-
 
 class connection_container
 {

@@ -105,13 +105,13 @@ TEST_F(ResultSetTest, normal) {
     std::string r1(r11_);
     r1 += r12_;
     EXPECT_EQ(r1, std::string_view(chunk_1.first, chunk_1.second));
-    resultset_wires->dispose();
+    resultset_wires->dispose(r1.length());
 
     auto chunk_2 = resultset_wires->get_chunk();
     std::string r2(r21_);
     r2 += r22_;
     EXPECT_EQ(r2, std::string_view(chunk_2.first, chunk_2.second));
-    resultset_wires->dispose();
+    resultset_wires->dispose(r2.length());
 
     auto chunk_3 = resultset_wires->get_chunk();
     EXPECT_EQ(chunk_3.second, 0);
