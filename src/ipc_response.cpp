@@ -82,6 +82,11 @@ tateyama::status ipc_response::release_channel(tateyama::api::endpoint::data_cha
     return tateyama::status::unknown;
 }
 
+tateyama::status ipc_response::close_session() {
+    session_closed_ = true;
+    return tateyama::status::unknown;
+}
+
 // class ipc_data_channel
 tateyama::status ipc_data_channel::acquire(tateyama::api::endpoint::writer*& wrt) {
     VLOG(1) << __func__ << std::endl;

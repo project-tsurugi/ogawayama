@@ -107,6 +107,9 @@ public:
     tateyama::status body(std::string_view body);
     tateyama::status acquire_channel(std::string_view name, tateyama::api::endpoint::data_channel*& ch);
     tateyama::status release_channel(tateyama::api::endpoint::data_channel& ch);
+    tateyama::status close_session();
+
+    bool is_session_closed() { return session_closed_; }
 
 private:
     ipc_request& ipc_request_;
@@ -118,6 +121,7 @@ private:
 
     std::unique_ptr<ipc_data_channel> data_channel_{};
     bool acquire_channel_or_complete_{};
+    bool session_closed_{};
 };
 
 }  // tsubakuro::common::wire

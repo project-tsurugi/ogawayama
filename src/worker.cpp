@@ -32,6 +32,7 @@ void Worker::run()
         auto response = std::make_shared<tsubakuro::common::wire::ipc_response>(*request, h.get_idx());
         service_(static_cast<std::shared_ptr<tateyama::api::endpoint::request const>>(request),
                  static_cast<std::shared_ptr<tateyama::api::endpoint::response>>(response));
+        if (response->is_session_closed()) { break; }
     }
 }
 
