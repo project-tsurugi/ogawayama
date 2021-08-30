@@ -45,6 +45,7 @@ jmp_buf buf;
 
 void signal_handler([[maybe_unused]]int signal)
 {
+    VLOG(1) << "signal " << signal << " received" << std::endl;
     longjmp(buf, 1);
 }
 
@@ -63,6 +64,7 @@ int backend_main(int argc, char **argv) {
     auto db = jogasaki::api::create_database(cfg);
     db->start();
     DBCloser dbcloser{db};
+    VLOG(1) << "database started" << std::endl;
 
     // communication channel
     auto container = std::make_unique<tsubakuro::common::wire::connection_container>(FLAGS_dbname);
@@ -75,7 +77,7 @@ int backend_main(int argc, char **argv) {
     if (setjmp(buf) != 0) {
         for (std::size_t index = 0; index < workers.size() ; index++) {
             if (auto rv = workers.at(index)->future_.wait_for(std::chrono::seconds(0)) ; rv != std::future_status::ready) {
-                VLOG(1) << "exit: remain thread " << workers.at(index)->session_id_ << std::endl;
+                VLOG(1) << "exit: remaining thread " << workers.at(index)->session_id_ << std::endl;
             }
         }
         workers.clear();
@@ -85,6 +87,7 @@ int backend_main(int argc, char **argv) {
 
     // service
     auto service = tateyama::api::endpoint::create_service(*db);
+    VLOG(1) << "endpoint service created" << std::endl;
 
     int return_value{0};
     while(true) {
@@ -94,6 +97,7 @@ int backend_main(int argc, char **argv) {
         session_name += "-";
         session_name += std::to_string(session_id);
         auto wire = std::make_unique<tsubakuro::common::wire::server_wire_container>(session_name);
+        VLOG(1) << "created session wire: " << session_name << std::endl;
         container->get_connection_queue().accept(session_id);
         std::size_t index;
         for (index = 0; index < workers.size() ; index++) {
