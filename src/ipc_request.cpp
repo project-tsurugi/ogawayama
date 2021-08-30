@@ -13,6 +13,8 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+#include <glog/logging.h>
+
 #include "ipc_request.h"
 
 namespace tsubakuro::common::wire {
@@ -24,13 +26,17 @@ ipc_request::get_server_wire_container() {
 
 std::string_view
 ipc_request::payload() const {
-    auto wire = server_wire_.get_request_wire();
+    VLOG(1) << __func__ << std::endl;
+
+     auto wire = server_wire_.get_request_wire();
     auto address = wire.payload(length_);
     return std::string_view(address, length_);
 }
 
 void
 ipc_request::dispose() {
+    VLOG(1) << __func__ << std::endl;
+
     server_wire_.get_request_wire().dispose(read_point);
 }
 

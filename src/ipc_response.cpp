@@ -16,6 +16,8 @@
 #include <exception>
 #include <string>
 
+#include <glog/logging.h>
+
 #include "ipc_response.h"
 
 namespace tsubakuro::common::wire {
@@ -23,6 +25,8 @@ namespace tsubakuro::common::wire {
 
 // class ipc_response
 tateyama::status ipc_response::body(std::string_view body) {
+    VLOG(1) << __func__ << std::endl;
+
     if(body.length() > response_box::response::max_response_message_length) {
         return tateyama::status::unknown;
     }
@@ -31,6 +35,8 @@ tateyama::status ipc_response::body(std::string_view body) {
 }
 
 tateyama::status ipc_response::complete() {
+    VLOG(1) << __func__ << std::endl;
+
     ipc_request_.dispose();
     if (response_code_ == tateyama::api::endpoint::response_code::success) {
         response_box_.flush();
@@ -39,6 +45,8 @@ tateyama::status ipc_response::complete() {
 }
 
 void ipc_response::code(tateyama::api::endpoint::response_code code) {
+    VLOG(1) << __func__ << std::endl;
+
     response_code_ = code;
 }
 
