@@ -117,6 +117,7 @@ private:
     std::string message_{};
 
     std::unique_ptr<ipc_data_channel> data_channel_{};
+    bool acquire_channel_or_complete_{};
 };
 
 }  // tsubakuro::common::wire

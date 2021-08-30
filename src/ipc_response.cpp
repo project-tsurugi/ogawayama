@@ -38,9 +38,11 @@ tateyama::status ipc_response::complete() {
     VLOG(1) << __func__ << std::endl;
 
     ipc_request_.dispose();
-    if (response_code_ == tateyama::api::endpoint::response_code::success) {
+    if (response_code_ == tateyama::api::endpoint::response_code::success || acquire_channel_or_complete_) {
         response_box_.flush();
+        return tateyama::status::ok;
     }
+    acquire_channel_or_complete_ = true;
     return tateyama::status::ok;
 }
 
@@ -62,7 +64,11 @@ tateyama::status ipc_response::acquire_channel(std::string_view name, tateyama::
     data_channel_ = std::make_unique<ipc_data_channel>(server_wire_.create_resultset_wires(name));
     if (data_channel_.get() != nullptr) {
         ch = data_channel_.get();
-        response_box_.flush();
+        if (acquire_channel_or_complete_) {
+            response_box_.flush();
+        } else {
+            acquire_channel_or_complete_ = true;
+        }
         return tateyama::status::ok;
     }
     return tateyama::status::unknown;
@@ -91,6 +97,7 @@ tateyama::status ipc_data_channel::acquire(tateyama::api::endpoint::writer*& wrt
 tateyama::status ipc_data_channel::release(tateyama::api::endpoint::writer& wrt) {
     VLOG(1) << __func__ << std::endl;
 
+    wrt.commit();
     if (auto itr = data_writers_.find(static_cast<ipc_writer*>(&wrt)); itr != data_writers_.end()) {
         data_writers_.erase(itr);
         return tateyama::status::ok;
