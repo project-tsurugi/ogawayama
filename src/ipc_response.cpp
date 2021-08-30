@@ -51,10 +51,14 @@ void ipc_response::code(tateyama::api::endpoint::response_code code) {
 }
 
 void ipc_response::message(std::string_view msg) {
+    VLOG(1) << __func__ << std::endl;
+
     message_ = msg;
 }
 
 tateyama::status ipc_response::acquire_channel(std::string_view name, tateyama::api::endpoint::data_channel*& ch) {
+    VLOG(1) << __func__ << std::endl;
+
     data_channel_ = std::make_unique<ipc_data_channel>(server_wire_.create_resultset_wires(name));
     if (data_channel_.get() != nullptr) {
         ch = data_channel_.get();
@@ -74,6 +78,8 @@ tateyama::status ipc_response::release_channel(tateyama::api::endpoint::data_cha
 
 // class ipc_data_channel
 tateyama::status ipc_data_channel::acquire(tateyama::api::endpoint::writer*& wrt) {
+    VLOG(1) << __func__ << std::endl;
+
     if (auto ipc_wrt = std::make_unique<ipc_writer>(data_channel_->acquire()); ipc_wrt.get() != nullptr) {
         wrt = ipc_wrt.get();
         data_writers_.emplace(std::move(ipc_wrt));
@@ -83,6 +89,8 @@ tateyama::status ipc_data_channel::acquire(tateyama::api::endpoint::writer*& wrt
 }
 
 tateyama::status ipc_data_channel::release(tateyama::api::endpoint::writer& wrt) {
+    VLOG(1) << __func__ << std::endl;
+
     if (auto itr = data_writers_.find(static_cast<ipc_writer*>(&wrt)); itr != data_writers_.end()) {
         data_writers_.erase(itr);
         return tateyama::status::ok;
@@ -92,11 +100,15 @@ tateyama::status ipc_data_channel::release(tateyama::api::endpoint::writer& wrt)
 
 // class writer
 tateyama::status ipc_writer::write(char const* data, std::size_t length) {
+    VLOG(1) << __func__ << std::endl;
+
     resultset_wire_->write(data, length);
     return tateyama::status::ok;
 }
 
 tateyama::status ipc_writer::commit() {
+    VLOG(1) << __func__ << std::endl;
+
     resultset_wire_->commit();
     return tateyama::status::ok;
 }
