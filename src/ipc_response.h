@@ -81,6 +81,8 @@ public:
 
     tateyama::status acquire(tateyama::api::endpoint::writer*& wrt);
     tateyama::status release(tateyama::api::endpoint::writer& wrt);
+    bool is_closed() { return data_channel_->is_closed(); }
+    std::unique_ptr<resultset_wires> get_resultset_wires() { return std::move(data_channel_); }
 
 private:
     std::unique_ptr<resultset_wires> data_channel_;
@@ -93,10 +95,11 @@ private:
  */
 class ipc_response : public tateyama::api::endpoint::response {
 public:
-    ipc_response(ipc_request& request, std::size_t index) :
+    ipc_response(ipc_request& request, std::size_t index, tsubakuro::common::wire::garbage_collector& collector) :
         ipc_request_(request),
         server_wire_(ipc_request_.get_server_wire_container()),
-        response_box_(server_wire_.get_response(index)) {
+        response_box_(server_wire_.get_response(index)),
+        garbage_collector_(collector) {
     }
 
     ipc_response() = delete;
@@ -115,6 +118,7 @@ private:
     ipc_request& ipc_request_;
     server_wire_container& server_wire_;
     response_box::response& response_box_;
+    tsubakuro::common::wire::garbage_collector& garbage_collector_;
 
     tateyama::api::endpoint::response_code response_code_{};
     std::string message_{};

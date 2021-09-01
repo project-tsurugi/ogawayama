@@ -34,7 +34,7 @@ namespace ogawayama::server {
 class Worker {
  public:
     Worker(tateyama::api::endpoint::service& service, std::size_t session_id, std::unique_ptr<tsubakuro::common::wire::server_wire_container> wire)
-        : service_(service), wire_(std::move(wire)), request_wire_container_(wire_->get_request_wire()), session_id_(session_id) {}
+        : service_(service), wire_(std::move(wire)), request_wire_container_(wire_->get_request_wire()), session_id_(session_id), garbage_collector_() {}
     ~Worker() {
         if(thread_.joinable()) thread_.join();
     }
@@ -46,6 +46,7 @@ class Worker {
     std::unique_ptr<tsubakuro::common::wire::server_wire_container> wire_;
     tsubakuro::common::wire::server_wire_container::wire_container& request_wire_container_;
     std::size_t session_id_;
+    tsubakuro::common::wire::garbage_collector garbage_collector_;
 
     // for future
     std::packaged_task<void()> task_;

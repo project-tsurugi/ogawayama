@@ -44,6 +44,9 @@ public:
                 throw std::runtime_error("cannot find the resultset wire");
             }
         }
+        ~resultset_wires_container() {
+            managed_shm_ptr_->destroy<shm_resultset_wires>(rsw_name_.c_str());
+        }
 
         shm_resultset_wire* acquire() {
             return shm_resultset_wires_->acquire();
@@ -76,6 +79,9 @@ public:
                 return rv;
             }
             std::abort();  //  FIXME
+        }
+        bool is_closed() {
+            return shm_resultset_wires_->is_closed();
         }
 
     private:
@@ -162,6 +168,27 @@ private:
 
 using resultset_wires = server_wire_container::resultset_wires_container;
 using resultset_wire = shm_resultset_wire;
+
+class garbage_collector
+{
+public:
+    garbage_collector() {}
+
+    void put(std::unique_ptr<resultset_wires> wires) {
+        resultset_wires_ = std::move(wires);
+    }
+    void do_collect() {
+        if (resultset_wires_) {
+            if (resultset_wires_->is_closed()) {
+                resultset_wires_ = nullptr;
+            }
+        }
+    }
+
+private:
+    std::unique_ptr<resultset_wires> resultset_wires_;
+};
+
 
 class connection_container
 {

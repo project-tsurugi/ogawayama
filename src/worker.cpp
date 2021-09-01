@@ -27,9 +27,10 @@ namespace ogawayama::server {
 void Worker::run()
 {
     while(true) {
+        garbage_collector_.do_collect();
         auto h = request_wire_container_.peep(true);
         auto request = std::make_shared<tsubakuro::common::wire::ipc_request>(*wire_, h);
-        auto response = std::make_shared<tsubakuro::common::wire::ipc_response>(*request, h.get_idx());
+        auto response = std::make_shared<tsubakuro::common::wire::ipc_response>(*request, h.get_idx(), garbage_collector_);
         service_(static_cast<std::shared_ptr<tateyama::api::endpoint::request const>>(request),
                  static_cast<std::shared_ptr<tateyama::api::endpoint::response>>(response));
         if (response->is_session_closed()) { break; }
