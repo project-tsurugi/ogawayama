@@ -75,6 +75,8 @@ tateyama::status ipc_response::acquire_channel(std::string_view name, tateyama::
 }
 
 tateyama::status ipc_response::release_channel(tateyama::api::endpoint::data_channel& ch) {
+    VLOG(1) << __func__ << std::endl;
+
     if (data_channel_.get() == static_cast<ipc_data_channel*>(&ch)) {
         data_channel_ = nullptr;
         return tateyama::status::ok;
@@ -83,6 +85,8 @@ tateyama::status ipc_response::release_channel(tateyama::api::endpoint::data_cha
 }
 
 tateyama::status ipc_response::close_session() {
+    VLOG(1) << __func__ << std::endl;
+
     session_closed_ = true;
     return tateyama::status::unknown;
 }
