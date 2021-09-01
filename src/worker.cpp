@@ -13,13 +13,6 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-
-//#include <vector>
-//#include <boost/foreach.hpp>
-
-//#include <gflags/gflags.h>
-//#include <glog/logging.h>
-
 #include "worker.h"
 
 namespace ogawayama::server {
@@ -27,7 +20,7 @@ namespace ogawayama::server {
 void Worker::run()
 {
     while(true) {
-        garbage_collector_.do_collect();
+        garbage_collector_.dump();
         auto h = request_wire_container_.peep(true);
         auto request = std::make_shared<tsubakuro::common::wire::ipc_request>(*wire_, h);
         auto response = std::make_shared<tsubakuro::common::wire::ipc_response>(*request, h.get_idx(), garbage_collector_);

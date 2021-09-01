@@ -15,6 +15,8 @@
  */
 #pragma once
 
+#include <set>
+
 #include "wire.h"
 
 namespace tsubakuro::common::wire {
@@ -175,18 +177,21 @@ public:
     garbage_collector() {}
 
     void put(std::unique_ptr<resultset_wires> wires) {
-        resultset_wires_ = std::move(wires);
+        resultset_wires_set_.emplace(std::move(wires));
     }
-    void do_collect() {
-        if (resultset_wires_) {
-            if (resultset_wires_->is_closed()) {
-                resultset_wires_ = nullptr;
+    void dump() {
+        std::set<std::unique_ptr<resultset_wires>>::iterator it = resultset_wires_set_.begin();
+        while (it != resultset_wires_set_.end()) {
+            if ((*it)->is_closed()) {
+                resultset_wires_set_.erase(it++);
+            } else {
+                it++;
             }
         }
     }
 
 private:
-    std::unique_ptr<resultset_wires> resultset_wires_;
+    std::set<std::unique_ptr<resultset_wires>> resultset_wires_set_;
 };
 
 
