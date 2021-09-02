@@ -17,6 +17,8 @@
 
 #include <set>
 
+#include <glog/logging.h>
+
 #include "wire.h"
 
 namespace tsubakuro::common::wire {
@@ -51,7 +53,13 @@ public:
         }
 
         shm_resultset_wire* acquire() {
-            return shm_resultset_wires_->acquire();
+            try {
+                return shm_resultset_wires_->acquire();
+            }
+            catch(const boost::interprocess::interprocess_exception& ex) {
+                LOG(FATAL) << "running out of boost managed shared memory" << std::endl;
+                pthread_exit(nullptr);  // FIXME
+            }
         }
 
         std::pair<char*, std::size_t> get_chunk(bool wait_flag = false) {
@@ -118,8 +126,8 @@ public:
         void dispose(const std::size_t rp) { wire_->dispose(bip_buffer_, rp); }
 
     private:
-        unidirectional_message_wire* wire_{};
-        char* bip_buffer_{};
+        unidirectional_message_wire* wire_;
+        char* bip_buffer_;
     };
 
     server_wire_container(std::string_view name) : name_(name) {
@@ -135,7 +143,8 @@ public:
             responses_ = managed_shared_memory_->construct<response_box>(response_box_name)(16, managed_shared_memory_.get());
         }
         catch(const boost::interprocess::interprocess_exception& ex) {
-            std::abort();  // FIXME
+            LOG(FATAL) << "running out of boost managed shared memory" << std::endl;
+            pthread_exit(nullptr);  // FIXME
         }
     }
 
@@ -155,7 +164,13 @@ public:
     response_box::response& get_response(std::size_t idx) { return responses_->at(idx); }
 
     std::unique_ptr<resultset_wires_container> create_resultset_wires(std::string_view name, std::size_t count = writer_count) {
-        return std::make_unique<resultset_wires_container>(managed_shared_memory_.get(), name, count);
+        try {
+            return std::make_unique<resultset_wires_container>(managed_shared_memory_.get(), name, count);
+        }
+        catch(const boost::interprocess::interprocess_exception& ex) {
+            LOG(FATAL) << "running out of boost managed shared memory" << std::endl;
+            pthread_exit(nullptr);  // FIXME
+        }
     }
     std::unique_ptr<resultset_wires_container> create_resultset_wires_for_client(std::string_view name) {
         return std::make_unique<resultset_wires_container>(managed_shared_memory_.get(), name);
