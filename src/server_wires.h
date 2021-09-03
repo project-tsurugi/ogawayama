@@ -25,7 +25,7 @@ namespace tsubakuro::common::wire {
 
 class server_wire_container
 {
-    static constexpr std::size_t shm_size = (1<<20);  // 1M bytes (tentative)
+    static constexpr std::size_t shm_size = (1<<27);  // 128M bytes (tentative)
     static constexpr std::size_t request_buffer_size = (1<<12);   //  4K bytes (tentative)
     static constexpr std::size_t resultset_vector_size = (1<<12); //  4K bytes (tentative)
     static constexpr std::size_t writer_count = 8;
