@@ -34,6 +34,7 @@ namespace ogawayama::server {
 
 DEFINE_string(dbname, "tsubakuro", "database name");  // NOLINT
 DEFINE_string(location, "./db", "database location on file system");  // NOLINT
+DEFINE_uint32(threads, 5, "thread pool size");  //NOLINT
 DEFINE_bool(remove_shm, false, "remove the shared memory prior to the execution");  // NOLINT
 DEFINE_int32(read_batch_size,  256, "Batch size for dump");  //NOLINT
 DEFINE_int32(write_batch_size, 256, "Batch size for load");  //NOLINT
@@ -61,6 +62,7 @@ int backend_main(int argc, char **argv) {
     // database
     auto cfg = std::make_shared<jogasaki::configuration>();
     cfg->prepare_benchmark_tables(true);
+    cfg->thread_pool_size(FLAGS_threads);
     auto db = jogasaki::api::create_database(cfg);
     db->start();
     DBCloser dbcloser{db};
