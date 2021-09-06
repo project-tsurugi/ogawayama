@@ -84,6 +84,7 @@ int backend_main(int argc, char **argv) {
             }
         }
         workers.clear();
+        db->stop();
         return 0;
     }
 
@@ -98,7 +99,7 @@ int backend_main(int argc, char **argv) {
             VLOG(1) << "terminate request" << std::endl;
             workers.clear();
             connection_queue.confirm_terminated();
-            return return_value;
+            break;
         }
         VLOG(1) << "connect request: " << session_id << std::endl;
         std::string session_name = FLAGS_dbname;
@@ -125,11 +126,12 @@ int backend_main(int argc, char **argv) {
         } catch (std::exception &ex) {
             std::cerr << ex.what() << std::endl;
             return_value = -1;
+            workers.clear();
             break;
         }
     }
 
-    workers.clear();
+    db->stop();
     return return_value;
 }
 
