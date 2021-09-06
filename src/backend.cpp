@@ -68,8 +68,9 @@ int backend_main(int argc, char **argv) {
     DBCloser dbcloser{db};
     VLOG(1) << "database started" << std::endl;
 
-    // communication channel
+    // connection channel
     auto container = std::make_unique<tsubakuro::common::wire::connection_container>(FLAGS_dbname);
+    auto& connection_queue = container->get_connection_queue();
 
     // worker objects
     std::vector<std::unique_ptr<Worker>> workers;
@@ -93,14 +94,18 @@ int backend_main(int argc, char **argv) {
 
     int return_value{0};
     while(true) {
-        auto session_id = container->get_connection_queue().listen(true);
+        auto session_id = connection_queue.listen(true);
+        if (connection_queue.is_terminated()) {
+            VLOG(1) << "terminate request" << std::endl;
+            break;
+        }
         VLOG(1) << "connect request: " << session_id << std::endl;
         std::string session_name = FLAGS_dbname;
         session_name += "-";
         session_name += std::to_string(session_id);
         auto wire = std::make_unique<tsubakuro::common::wire::server_wire_container>(session_name);
         VLOG(1) << "created session wire: " << session_name << std::endl;
-        container->get_connection_queue().accept(session_id);
+        connection_queue.accept(session_id);
         std::size_t index;
         for (index = 0; index < workers.size() ; index++) {
             if (auto rv = workers.at(index)->future_.wait_for(std::chrono::seconds(0)) ; rv == std::future_status::ready) {
@@ -118,11 +123,13 @@ int backend_main(int argc, char **argv) {
             worker->thread_ = std::thread(std::move(worker->task_));
         } catch (std::exception &ex) {
             std::cerr << ex.what() << std::endl;
-            return_value = -1; goto finish;
+            return_value = -1;
+            break;
         }
     }
 
-  finish:
+    workers.clear();
+    container = nullptr;;
     return return_value;
 }
 

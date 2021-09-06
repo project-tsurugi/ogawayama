@@ -107,6 +107,7 @@ install(
 )
 
 add_subdirectory(src)
+add_subdirectory(utilities)
 add_subdirectory(third_party)
 if(BUILD_TESTS)
 add_subdirectory(test)
