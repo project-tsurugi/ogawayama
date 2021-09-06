@@ -95,11 +95,13 @@ private:
  */
 class ipc_response : public tateyama::api::endpoint::response {
 public:
-    ipc_response(ipc_request& request, std::size_t index, tsubakuro::common::wire::garbage_collector& collector) :
+    ipc_response(ipc_request& request, std::size_t index) :
         ipc_request_(request),
         server_wire_(ipc_request_.get_server_wire_container()),
         response_box_(server_wire_.get_response(index)),
-        garbage_collector_(collector) {
+        garbage_collector_(server_wire_.get_garbage_collector()) {
+        // do dump here
+        garbage_collector_.dump();
     }
 
     ipc_response() = delete;

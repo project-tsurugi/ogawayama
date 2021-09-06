@@ -36,20 +36,22 @@ public:
     public:
         //   for server
         resultset_wires_container(boost::interprocess::managed_shared_memory* managed_shm_ptr, std::string_view name, std::size_t count)
-            : managed_shm_ptr_(managed_shm_ptr), rsw_name_(name) {
+            : managed_shm_ptr_(managed_shm_ptr), rsw_name_(name), server_(true) {
             managed_shm_ptr_->destroy<shm_resultset_wires>(rsw_name_.c_str());
             shm_resultset_wires_ = managed_shm_ptr_->construct<shm_resultset_wires>(rsw_name_.c_str())(managed_shm_ptr_, count);
         }
-        //   for client
+        //   for client (test purpose)
         resultset_wires_container(boost::interprocess::managed_shared_memory* managed_shm_ptr, std::string_view name)
-            : managed_shm_ptr_(managed_shm_ptr), rsw_name_(name) {
+            : managed_shm_ptr_(managed_shm_ptr), rsw_name_(name), server_(false) {
             shm_resultset_wires_ = managed_shm_ptr_->find<shm_resultset_wires>(rsw_name_.c_str()).first;
             if (shm_resultset_wires_ == nullptr) {
                 throw std::runtime_error("cannot find the resultset wire");
             }
         }
         ~resultset_wires_container() {
-            managed_shm_ptr_->destroy<shm_resultset_wires>(rsw_name_.c_str());
+            if (server_) {
+                managed_shm_ptr_->destroy<shm_resultset_wires>(rsw_name_.c_str());
+            }
         }
 
         shm_resultset_wire* acquire() {
@@ -104,8 +106,36 @@ public:
         shm_resultset_wires* shm_resultset_wires_{};
         //   for client
         shm_resultset_wire* current_wire_{};
+        bool server_;
     };
     
+    class garbage_collector
+    {
+    public:
+        garbage_collector() {}
+        ~garbage_collector() {
+            resultset_wires_set_.clear();
+        }
+
+        void put(std::unique_ptr<resultset_wires_container> wires) {
+            resultset_wires_set_.emplace(std::move(wires));
+        }
+        void dump() {
+            std::set<std::unique_ptr<resultset_wires_container>>::iterator it = resultset_wires_set_.begin();
+            while (it != resultset_wires_set_.end()) {
+                if ((*it)->is_closed()) {
+                    resultset_wires_set_.erase(it++);
+                } else {
+                    it++;
+                }
+            }
+        }
+
+    private:
+        std::set<std::unique_ptr<resultset_wires_container>> resultset_wires_set_{};
+    };
+
+
     class wire_container {
     public:
         wire_container() = default;
@@ -130,7 +160,7 @@ public:
         char* bip_buffer_;
     };
 
-    server_wire_container(std::string_view name) : name_(name) {
+    server_wire_container(std::string_view name) : name_(name), garbage_collector_(std::make_unique<garbage_collector>()) {
         boost::interprocess::shared_memory_object::remove(name_.c_str());
         try {
             managed_shared_memory_ =
@@ -172,40 +202,21 @@ public:
     std::unique_ptr<resultset_wires_container> create_resultset_wires_for_client(std::string_view name) {
         return std::make_unique<resultset_wires_container>(managed_shared_memory_.get(), name);
     }
+    garbage_collector& get_garbage_collector() {
+        return *garbage_collector_;
+    }
 
 private:
     std::string name_;
     std::unique_ptr<boost::interprocess::managed_shared_memory> managed_shared_memory_{};
     wire_container request_wire_;
     response_box* responses_;
+    std::unique_ptr<garbage_collector> garbage_collector_;
 };
 
 using resultset_wires = server_wire_container::resultset_wires_container;
 using resultset_wire = shm_resultset_wire;
-
-class garbage_collector
-{
-public:
-    garbage_collector() {}
-
-    void put(std::unique_ptr<resultset_wires> wires) {
-        resultset_wires_set_.emplace(std::move(wires));
-    }
-    void dump() {
-        std::set<std::unique_ptr<resultset_wires>>::iterator it = resultset_wires_set_.begin();
-        while (it != resultset_wires_set_.end()) {
-            if ((*it)->is_closed()) {
-                resultset_wires_set_.erase(it++);
-            } else {
-                it++;
-            }
-        }
-    }
-
-private:
-    std::set<std::unique_ptr<resultset_wires>> resultset_wires_set_;
-};
-
+using garbage_collector = server_wire_container::garbage_collector;
 
 class connection_container
 {

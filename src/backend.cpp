@@ -74,6 +74,7 @@ int backend_main(int argc, char **argv) {
 
     // worker objects
     std::vector<std::unique_ptr<Worker>> workers;
+    workers.reserve(FLAGS_threads);
 
     // singal handler
     std::signal(SIGINT, signal_handler);

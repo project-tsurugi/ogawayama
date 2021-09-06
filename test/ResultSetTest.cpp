@@ -77,7 +77,6 @@ public:
 
 TEST_F(ResultSetTest, normal) {
     auto& request_wire = wire_->get_request_wire();
-    tsubakuro::common::wire::garbage_collector gc{};
     
     request_wire.write(request_test_message_.data(),
                        tsubakuro::common::wire::message_header(index_, request_test_message_.length()));
@@ -91,7 +90,7 @@ TEST_F(ResultSetTest, normal) {
     EXPECT_EQ(message, request_test_message_);
 
     auto request = std::make_shared<tsubakuro::common::wire::ipc_request>(*wire_, h);
-    auto response = std::make_shared<tsubakuro::common::wire::ipc_response>(*request, h.get_idx(), gc);
+    auto response = std::make_shared<tsubakuro::common::wire::ipc_response>(*request, h.get_idx());
 
     test_service sv;
     sv(static_cast<std::shared_ptr<tateyama::api::endpoint::request const>>(request),
