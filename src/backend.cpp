@@ -84,7 +84,6 @@ int backend_main(int argc, char **argv) {
             }
         }
         workers.clear();
-        container = nullptr;;
         return 0;
     }
 
@@ -97,7 +96,9 @@ int backend_main(int argc, char **argv) {
         auto session_id = connection_queue.listen(true);
         if (connection_queue.is_terminated()) {
             VLOG(1) << "terminate request" << std::endl;
-            break;
+            workers.clear();
+            connection_queue.confirm_terminated();
+            return return_value;
         }
         VLOG(1) << "connect request: " << session_id << std::endl;
         std::string session_name = FLAGS_dbname;
@@ -129,7 +130,6 @@ int backend_main(int argc, char **argv) {
     }
 
     workers.clear();
-    container = nullptr;;
     return return_value;
 }
 
