@@ -205,6 +205,8 @@ public:
     garbage_collector& get_garbage_collector() {
         return *garbage_collector_;
     }
+    void close_session() { session_closed_ = true; }
+    bool is_session_closed() { return session_closed_; }
 
 private:
     std::string name_;
@@ -212,6 +214,7 @@ private:
     wire_container request_wire_;
     response_box* responses_;
     std::unique_ptr<garbage_collector> garbage_collector_;
+    bool session_closed_{false};
 };
 
 using resultset_wires = server_wire_container::resultset_wires_container;

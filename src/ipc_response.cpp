@@ -90,8 +90,8 @@ tateyama::status ipc_response::release_channel(tateyama::api::endpoint::data_cha
 tateyama::status ipc_response::close_session() {
     VLOG(1) << __func__ << std::endl;
 
-    session_closed_ = true;
-    return tateyama::status::unknown;
+    server_wire_.close_session();
+    return tateyama::status::ok;
 }
 
 // class ipc_data_channel
