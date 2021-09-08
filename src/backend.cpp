@@ -70,7 +70,6 @@ int backend_main(int argc, char **argv) {
 
     // connection channel
     auto container = std::make_unique<tsubakuro::common::wire::connection_container>(FLAGS_dbname);
-    auto& connection_queue = container->get_connection_queue();
 
     // worker objects
     std::vector<std::unique_ptr<Worker>> workers;
@@ -94,6 +93,7 @@ int backend_main(int argc, char **argv) {
     VLOG(1) << "endpoint service created" << std::endl;
 
     int return_value{0};
+    auto& connection_queue = container->get_connection_queue();
     while(true) {
         auto session_id = connection_queue.listen(true);
         if (connection_queue.is_terminated()) {
