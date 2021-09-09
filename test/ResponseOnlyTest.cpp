@@ -20,7 +20,7 @@ namespace ogawayama::testing {
 class ResponseOnlyTest : public ::testing::Test {
     virtual void SetUp() {
         rv_ = system("if [ -f /dev/shm/tateyama-test ]; then rm -f /dev/shm/tateyama-test; fi ");
-        wire_ = std::make_unique<tsubakuro::common::wire::server_wire_container>("tateyama-test");
+        wire_ = std::make_unique<tsubakuro::common::wire::server_wire_container_impl>("tateyama-test");
     }
     virtual void TearDown() {
         rv_ = system("if [ -f /dev/shm/tateyama-test ]; then rm -f /dev/shm/tateyama-test; fi ");
@@ -33,7 +33,7 @@ public:
     static constexpr std::string_view response_test_message_ = "opqrstuvwxyz";
     static constexpr tsubakuro::common::wire::message_header::index_type index_ = 1;
 
-    std::unique_ptr<tsubakuro::common::wire::server_wire_container> wire_;
+    std::unique_ptr<tsubakuro::common::wire::server_wire_container_impl> wire_;
     
     class test_service {
     public:
@@ -53,17 +53,17 @@ public:
 };
 
 TEST_F(ResponseOnlyTest, normal) {
-    auto& request_wire = wire_->get_request_wire();
+    auto* request_wire = static_cast<tsubakuro::common::wire::server_wire_container_impl::wire_container_impl*>(wire_->get_request_wire());
     
-    request_wire.write(request_test_message_.data(),
+    request_wire->write(request_test_message_.data(),
                        tsubakuro::common::wire::message_header(index_, request_test_message_.length()));
 
-    auto h = request_wire.peep(true);
+    auto h = request_wire->peep(true);
     EXPECT_EQ(index_, h.get_idx());
     auto length = h.get_length();
     std::string message;
     message.resize(length);
-    memcpy(message.data(), request_wire.payload(length), length);
+    memcpy(message.data(), request_wire->payload(length), length);
     EXPECT_EQ(message, request_test_message_);
 
     auto request = std::make_shared<tsubakuro::common::wire::ipc_request>(*wire_, h);

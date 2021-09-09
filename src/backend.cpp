@@ -106,7 +106,7 @@ int backend_main(int argc, char **argv) {
         std::string session_name = FLAGS_dbname;
         session_name += "-";
         session_name += std::to_string(session_id);
-        auto wire = std::make_unique<tsubakuro::common::wire::server_wire_container>(session_name);
+        auto wire = std::make_unique<tsubakuro::common::wire::server_wire_container_impl>(session_name);
         VLOG(1) << "created session wire: " << session_name << std::endl;
         connection_queue.accept(session_id);
         std::size_t index;

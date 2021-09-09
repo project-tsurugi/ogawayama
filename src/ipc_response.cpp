@@ -79,7 +79,7 @@ tateyama::status ipc_response::release_channel(tateyama::api::endpoint::data_cha
 
     if (data_channel_.get() == static_cast<ipc_data_channel*>(&ch)) {
         if (!data_channel_->is_closed()) {
-            garbage_collector_.put(data_channel_->get_resultset_wires());
+            garbage_collector_->put(data_channel_->get_resultset_wires());
         }
         data_channel_ = nullptr;
         return tateyama::status::ok;

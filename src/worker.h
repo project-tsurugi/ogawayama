@@ -27,14 +27,17 @@
 
 #include "ipc_request.h"
 #include "ipc_response.h"
-#include "server_wires.h"
+#include "server_wires_impl.h"
 
 namespace ogawayama::server {
 
 class Worker {
  public:
-    Worker(tateyama::api::endpoint::service& service, std::size_t session_id, std::unique_ptr<tsubakuro::common::wire::server_wire_container> wire)
-        : service_(service), wire_(std::move(wire)), request_wire_container_(wire_->get_request_wire()), session_id_(session_id) {}
+    Worker(tateyama::api::endpoint::service& service, std::size_t session_id, std::unique_ptr<tsubakuro::common::wire::server_wire_container_impl> wire)
+        : service_(service), wire_(std::move(wire)),
+          request_wire_container_(static_cast<tsubakuro::common::wire::server_wire_container_impl::wire_container_impl*>(wire_->get_request_wire())),
+          session_id_(session_id) {
+    }
     ~Worker() {
         if(thread_.joinable()) thread_.join();
     }
@@ -43,8 +46,8 @@ class Worker {
 
  private:
     tateyama::api::endpoint::service& service_;
-    std::unique_ptr<tsubakuro::common::wire::server_wire_container> wire_;
-    tsubakuro::common::wire::server_wire_container::wire_container& request_wire_container_;
+    std::unique_ptr<tsubakuro::common::wire::server_wire_container_impl> wire_;
+    tsubakuro::common::wire::server_wire_container_impl::wire_container_impl* request_wire_container_;
     std::size_t session_id_;
 
     // for future

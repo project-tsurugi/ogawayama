@@ -28,8 +28,7 @@ std::string_view
 ipc_request::payload() const {
     VLOG(1) << __func__ << std::endl;
 
-     auto wire = server_wire_.get_request_wire();
-    auto address = wire.payload(length_);
+    auto address = server_wire_.get_request_wire()->payload(length_);
     return std::string_view(address, length_);
 }
 
@@ -37,7 +36,7 @@ void
 ipc_request::dispose() {
     VLOG(1) << __func__ << std::endl;
 
-    server_wire_.get_request_wire().dispose(read_point);
+    server_wire_.get_request_wire()->dispose(read_point);
 }
 
 }  // tsubakuro::common::wire

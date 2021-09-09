@@ -101,7 +101,7 @@ public:
         response_box_(server_wire_.get_response(index)),
         garbage_collector_(server_wire_.get_garbage_collector()) {
         // do dump here
-        garbage_collector_.dump();
+        garbage_collector_->dump();
     }
 
     ipc_response() = delete;
@@ -118,7 +118,7 @@ private:
     ipc_request& ipc_request_;
     server_wire_container& server_wire_;
     response_box::response& response_box_;
-    tsubakuro::common::wire::garbage_collector& garbage_collector_;
+    tsubakuro::common::wire::garbage_collector* garbage_collector_;
 
     tateyama::api::endpoint::response_code response_code_{};
     std::string message_{};

@@ -29,7 +29,7 @@ namespace tsubakuro::common::wire {
 class ipc_request : public tateyama::api::endpoint::request {
 public:
     ipc_request(server_wire_container& server_wire, message_header& header)
-        : server_wire_(server_wire), length_(header.get_length()), read_point(server_wire_.get_request_wire().read_point()) {
+        : server_wire_(server_wire), length_(header.get_length()), read_point(server_wire_.get_request_wire()->read_point()) {
     }
 
     ipc_request() = delete;
