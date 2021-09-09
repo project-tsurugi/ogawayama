@@ -75,17 +75,17 @@ private:
  */
 class ipc_data_channel : public tateyama::api::endpoint::data_channel {
 public:
-    ipc_data_channel(std::unique_ptr<resultset_wires> data_channel)
+    ipc_data_channel(server_wire_container::unq_p_resultset_wires_conteiner data_channel)
         : data_channel_(std::move(data_channel)) {
     }
 
     tateyama::status acquire(tateyama::api::endpoint::writer*& wrt);
     tateyama::status release(tateyama::api::endpoint::writer& wrt);
     bool is_closed() { return data_channel_->is_closed(); }
-    std::unique_ptr<resultset_wires> get_resultset_wires() { return std::move(data_channel_); }
+    server_wire_container::unq_p_resultset_wires_conteiner get_resultset_wires() { return std::move(data_channel_); }
 
 private:
-    std::unique_ptr<resultset_wires> data_channel_;
+    server_wire_container::unq_p_resultset_wires_conteiner data_channel_;
 
     std::set<std::unique_ptr<ipc_writer>, pointer_comp<ipc_writer>> data_writers_{};
 };

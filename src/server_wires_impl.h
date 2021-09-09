@@ -110,7 +110,10 @@ public:
         shm_resultset_wire* current_wire_{};
         bool server_;
     };
-    
+    static void resultset_deleter_impl(resultset_wires_container* resultset) {
+        delete static_cast<resultset_wires_container_impl*>(resultset);
+    }
+
     class garbage_collector_impl : public garbage_collector
     {
     public:
@@ -119,11 +122,11 @@ public:
             resultset_wires_set_.clear();
         }
 
-        void put(std::unique_ptr<resultset_wires_container> wires) {
+        void put(unq_p_resultset_wires_conteiner wires) {
             resultset_wires_set_.emplace(std::move(wires));
         }
         void dump() {
-            std::set<std::unique_ptr<resultset_wires_container>>::iterator it = resultset_wires_set_.begin();
+            std::set<unq_p_resultset_wires_conteiner>::iterator it = resultset_wires_set_.begin();
             while (it != resultset_wires_set_.end()) {
                 if ((*it)->is_closed()) {
                     resultset_wires_set_.erase(it++);
@@ -134,7 +137,7 @@ public:
         }
 
     private:
-        std::set<std::unique_ptr<resultset_wires_container>> resultset_wires_set_{};
+        std::set<unq_p_resultset_wires_conteiner> resultset_wires_set_{};
     };
 
 
@@ -192,16 +195,17 @@ public:
     wire_container* get_request_wire() { return &request_wire_; }
     response_box::response& get_response(std::size_t idx) { return responses_->at(idx); }
 
-    std::unique_ptr<resultset_wires_container> create_resultset_wires(std::string_view name, std::size_t count) {
+    unq_p_resultset_wires_conteiner create_resultset_wires(std::string_view name, std::size_t count) {
         try {
-            return std::make_unique<resultset_wires_container_impl>(managed_shared_memory_.get(), name, count);
+            return std::unique_ptr<resultset_wires_container_impl, resultset_deleter_type>{
+                new resultset_wires_container_impl{managed_shared_memory_.get(), name, count}, resultset_deleter_impl };
         }
         catch(const boost::interprocess::interprocess_exception& ex) {
             LOG(FATAL) << "running out of boost managed shared memory" << std::endl;
             pthread_exit(nullptr);  // FIXME
         }
     }
-    std::unique_ptr<resultset_wires_container> create_resultset_wires(std::string_view name) {
+    unq_p_resultset_wires_conteiner create_resultset_wires(std::string_view name) {
         return create_resultset_wires(name, writer_count);
     }
     garbage_collector* get_garbage_collector() {
