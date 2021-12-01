@@ -35,13 +35,11 @@ class Worker {
     public:
         void clear() {
             result_set_ = nullptr;
-//            iterator_ = nullptr;
-            prepared_ = nullptr;
+//            prepared_ = nullptr;
         }
         std::unique_ptr<ogawayama::common::RowQueue> row_queue_{};
         std::unique_ptr<jogasaki::api::result_set> result_set_{};
-//        std::unique_ptr<jogasaki::api::result_set_iterator> iterator_{};
-        std::unique_ptr<jogasaki::api::prepared_statement> prepared_{};
+        jogasaki::api::statement_handle prepared_{};
     };
 
  public:
@@ -69,9 +67,9 @@ class Worker {
     std::unique_ptr<ogawayama::common::ChannelStream> channel_;
     std::unique_ptr<ogawayama::common::ParameterSet> parameters_;
 
-    std::unique_ptr<jogasaki::api::transaction> transaction_;
+    jogasaki::api::transaction_handle transaction_handle_{};
     std::vector<Cursor> cursors_;
-    std::vector<std::unique_ptr<jogasaki::api::prepared_statement>> prepared_statements_{};
+    std::vector<jogasaki::api::statement_handle> prepared_statements_{};
 
     std::packaged_task<void()> task_;
     std::future<void> future_;
@@ -83,7 +81,7 @@ class Worker {
     void set_params(std::unique_ptr<jogasaki::api::parameter_set>&);
     void clear_transaction() {
         cursors_.clear();
-        transaction_ = nullptr;
+//        transaction_ = nullptr;
     }
     void clear_all() {
         clear_transaction();

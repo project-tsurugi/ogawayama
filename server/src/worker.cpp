@@ -72,19 +72,19 @@ void Worker::run()
             next(ivalue);
             break;
         case ogawayama::common::CommandMessage::Type::COMMIT:
-            if (!transaction_) {
+            if (!transaction_handle_) {
                 channel_->send_ack(ERROR_CODE::NO_TRANSACTION);
                 break;
             }
-            transaction_->commit();
+            transaction_handle_.commit();
             channel_->send_ack(ERROR_CODE::OK);
             clear_transaction();
             break;
         case ogawayama::common::CommandMessage::Type::ROLLBACK:
-            if (!transaction_) {
+            if (!transaction_handle_) {
                 channel_->send_ack(ERROR_CODE::NO_TRANSACTION);
             }
-            transaction_->abort();
+            transaction_handle_.abort();
             channel_->send_ack(ERROR_CODE::OK);
             clear_transaction();
             break;
@@ -106,8 +106,8 @@ void Worker::run()
             deploy_metadata(ivalue);
             break;
         case ogawayama::common::CommandMessage::Type::DISCONNECT:
-            if (transaction_) {
-                transaction_->abort();
+            if (transaction_handle_) {
+                transaction_handle_.abort();
             }
             clear_all();
             channel_->bye_and_notify();
@@ -121,8 +121,11 @@ void Worker::run()
 
 void Worker::execute_statement(std::string_view sql)
 {
-    if (!transaction_) {
-        transaction_ = db_.create_transaction();
+    if (!transaction_handle_) {
+        if(auto rc = db_.create_transaction(transaction_handle_); rc != jogasaki::status::ok) {
+            // FIXME log error and exit
+            return;
+        }
     }
 
     std::unique_ptr<jogasaki::api::executable_statement> e{};
@@ -130,7 +133,7 @@ void Worker::execute_statement(std::string_view sql)
         channel_->send_ack(ERROR_CODE::UNKNOWN);
         return;
     }
-    if(auto rc = transaction_->execute(*e); rc != jogasaki::status::ok) {
+    if(auto rc = transaction_handle_.execute(*e); rc != jogasaki::status::ok) {
         channel_->send_ack(ERROR_CODE::UNKNOWN);
         return;
     }
@@ -168,8 +171,11 @@ void Worker::send_metadata(std::size_t rid)
 
 bool Worker::execute_query(std::string_view sql, std::size_t rid)
 {
-    if (!transaction_) {
-        transaction_ = db_.create_transaction();
+    if (!transaction_handle_) {
+        if(auto rc = db_.create_transaction(transaction_handle_); rc != jogasaki::status::ok) {
+            // FIXME log error and exit
+            return false;
+        }
     }
     if (cursors_.size() < (rid + 1)) {
         cursors_.resize(rid + 1);
@@ -187,7 +193,7 @@ bool Worker::execute_query(std::string_view sql, std::size_t rid)
         return false;
     }
     auto& rs =  cursor.result_set_;
-    if(auto rc = transaction_->execute(*e, rs); rc != jogasaki::status::ok || !rs) {
+    if(auto rc = transaction_handle_.execute(*e, rs); rc != jogasaki::status::ok || !rs) {
         channel_->send_ack(ERROR_CODE::UNKNOWN);
         return false;
     }
@@ -290,18 +296,21 @@ void Worker::execute_prepared_statement(std::size_t sid)
         return;
     }
 
-    if (!transaction_) {
-        transaction_ = db_.create_transaction();
+    if (!transaction_handle_) {
+        if(auto rc = db_.create_transaction(transaction_handle_); rc != jogasaki::status::ok) {
+            // FIXME log error and exit
+            return;
+        }
     }
     auto params = jogasaki::api::create_parameter_set();
     set_params(params);
 
     std::unique_ptr<jogasaki::api::executable_statement> e{};
-    if(auto rc = db_.resolve(*cursors_.at(sid).prepared_, *params, e); rc != jogasaki::status::ok) {
+    if(auto rc = db_.resolve(cursors_.at(sid).prepared_, std::shared_ptr{std::move(params)}, e); rc != jogasaki::status::ok) {
         channel_->send_ack(ERROR_CODE::UNKNOWN);
         return;
     }
-    if(auto rc = transaction_->execute(*e); rc != jogasaki::status::ok) {
+    if(auto rc = transaction_handle_.execute(*e); rc != jogasaki::status::ok) {
         channel_->send_ack(ERROR_CODE::UNKNOWN);
         return;
     }
@@ -315,8 +324,11 @@ bool Worker::execute_prepared_query(std::size_t sid, std::size_t rid)
         return false;
     }
 
-    if (!transaction_) {
-        transaction_ = db_.create_transaction();
+    if (!transaction_handle_) {
+        if(auto rc = db_.create_transaction(transaction_handle_); rc != jogasaki::status::ok) {
+            // FIXME log error and exit
+            return false;
+        }
     }
     if (cursors_.size() < (rid + 1)) {
         cursors_.resize(rid + 1);
@@ -332,12 +344,12 @@ bool Worker::execute_prepared_query(std::size_t sid, std::size_t rid)
     set_params(params);
 
     std::unique_ptr<jogasaki::api::executable_statement> e{};
-    if(auto rc = db_.resolve(*cursors_.at(sid).prepared_, *params, e); rc != jogasaki::status::ok) {
+    if(auto rc = db_.resolve(cursors_.at(sid).prepared_, std::shared_ptr{std::move(params)}, e); rc != jogasaki::status::ok) {
         channel_->send_ack(ERROR_CODE::UNKNOWN);
         return false;
     }
     auto& rs =  cursor.result_set_;
-    if(auto rc = transaction_->execute(*e, rs); rc != jogasaki::status::ok || !rs) {
+    if(auto rc = transaction_handle_.execute(*e, rs); rc != jogasaki::status::ok || !rs) {
         channel_->send_ack(ERROR_CODE::UNKNOWN);
         return false;
     }
