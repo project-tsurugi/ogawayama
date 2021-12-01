@@ -29,6 +29,9 @@ class ApiTest : public ::testing::Test {
         if (system("cp ../../../stub/test/schema/tables.json $HOME/.local/tsurugi/metadata") != 0) {
             std::cerr << "cannot copy tables.json" << std::endl;
         }
+        if (system("cp ../../../stub/test/schema/datatypes.json $HOME/.local/tsurugi/metadata") != 0) {
+            std::cerr << "cannot copy datatypes.json" << std::endl;
+        }
         if ((pid = fork()) == 0) {  // child process, execute only at build/stub/test directory.
             auto retv = execlp("../../server/src/ogawayama-server", "ogawayama-server", "-remove_shm", nullptr);
             if (retv != 0) perror("error in ogawayama-server ");
