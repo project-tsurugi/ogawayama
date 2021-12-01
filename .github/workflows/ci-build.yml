@@ -134,6 +134,26 @@ jobs:
           cmake -DCMAKE_BUILD_TYPE=Debug -DBUILD_TESTS=OFF -DBUILD_DOCUMENTS=OFF -DBUILD_EXAMPLES=OFF -DCMAKE_INSTALL_PREFIX=${GITHUB_WORKSPACE}/.local ..
           cmake --build . --target install --clean-first -- -j
 
+      - id: Install_moodycamel_concurrentqueue
+        name: Install_moodycamel_concurrentqueue
+        run: |
+          cd third_party/jogasaki/third_party/concurrentqueue
+          mkdir -p build_debug
+          cd build_debug
+          rm -f CMakeCache.txt
+          cmake -DCMAKE_BUILD_TYPE=Debug -DCMAKE_INSTALL_PREFIX=${GITHUB_WORKSPACE}/.local ..
+          cmake --build . --target install --clean-first
+
+      - id: Install_tateyama
+        name: Install_tateyama
+        run: |
+          cd third_party/jogasaki/third_party/tateyama
+          mkdir -p build
+          cd build
+          rm -f CMakeCache.txt
+          cmake -DCMAKE_BUILD_TYPE=Debug -DSHARKSFIN_IMPLEMENTATION=shirakami -DBUILD_TESTS=OFF -DBUILD_DOCUMENTS=OFF -DFORCE_INSTALL_RPATH=ON -DCMAKE_INSTALL_PREFIX=${GITHUB_WORKSPACE}/.local -DCMAKE_PREFIX_PATH="${{ matrix.additional_prefix_path }};${GITHUB_WORKSPACE}/.local" ..
+          cmake --build . --target install --clean-first -- -j
+
       - id: Install_jogasaki
         name: Install_jogasaki
         run: |
@@ -141,7 +161,7 @@ jobs:
           mkdir -p build
           cd build
           rm -f CMakeCache.txt
-          cmake -DCMAKE_BUILD_TYPE=Debug -DSHARKSFIN_IMPLEMENTATION=memory -DCMAKE_EXPORT_COMPILE_COMMANDS=ON -DCMAKE_INSTALL_PREFIX=${GITHUB_WORKSPACE}/.local -DCMAKE_PREFIX_PATH=${GITHUB_WORKSPACE}/.local ..
+          cmake -DCMAKE_BUILD_TYPE=Debug -DSHARKSFIN_IMPLEMENTATION=shirakami -DCMAKE_EXPORT_COMPILE_COMMANDS=ON -DCMAKE_INSTALL_PREFIX=${GITHUB_WORKSPACE}/.local -DCMAKE_PREFIX_PATH=${GITHUB_WORKSPACE}/.local ..
           cmake --build . --target install --clean-first -- -j
 
       - id: Install_manager
@@ -161,7 +181,7 @@ jobs:
           export LD_LIBRARY_PATH=${GITHUB_WORKSPACE}/.local/lib:${GITHUB_WORKSPACE}/pgsql/lib
           mkdir build
           cd build
-          cmake -DCMAKE_BUILD_TYPE=Debug -DSHARKSFIN_IMPLEMENTATION=memory -DCMAKE_PREFIX_PATH=${GITHUB_WORKSPACE}/.local -DCMAKE_EXPORT_COMPILE_COMMANDS=ON ..
+          cmake -DCMAKE_BUILD_TYPE=Debug -DSHARKSFIN_IMPLEMENTATION=shirakami -DCMAKE_PREFIX_PATH=${GITHUB_WORKSPACE}/.local -DCMAKE_EXPORT_COMPILE_COMMANDS=ON ..
           cmake --build . --target all --clean-first -- -j
 
       - id: CTest
