@@ -21,10 +21,12 @@
 #include <gflags/gflags.h>
 #include <glog/logging.h>
 
-#include "provider.h"
+#include <tateyama/api/registry.h>
+
+#include <ogawayama/bridge/provider.h>
 #include "worker.h"
 
-namespace ogawayama::server {
+namespace ogawayama::bridge {
 
 struct fe_endpoint_context {
     std::unordered_map<std::string, std::string> options_{};
@@ -34,7 +36,7 @@ struct fe_endpoint_context {
  * @brief fe endpoint provider
  * @details
  */
-class fe_provider : public ogawayama::api::frontend::provider {
+class fe_provider : public ogawayama::bridge::api::provider {
 private:
     class listener {
     public:
@@ -42,7 +44,7 @@ private:
             // communication channel
             try {
                 shared_memory_ = std::make_unique<ogawayama::common::SharedMemory>(name, ogawayama::common::param::SheredMemoryType::SHARED_MEMORY_SERVER_CHANNEL, true, false /* FLAGS_remove_shm */);
-                server_ch_ = std::make_unique<ogawayama::common::ChannelStream>(ogawayama::common::param::server, shared_memory_.get(), true, false);
+                bridge_ch_ = std::make_unique<ogawayama::common::ChannelStream>(ogawayama::common::param::server, shared_memory_.get(), true, false);
             } catch (const std::exception& ex) {
                 LOG(ERROR) << ex.what() << std::endl;
             }
@@ -58,7 +60,7 @@ private:
                 std::size_t index;
                 std::string_view string;
                 try {
-                    auto rv = server_ch_->recv_req(type, index, string);
+                    auto rv = bridge_ch_->recv_req(type, index, string);
                     if (rv != ERROR_CODE::OK) {
                         if (rv != ERROR_CODE::TIMEOUT) {
                             LOG(ERROR) << __func__ << " " << __LINE__ <<  " " << ogawayama::stub::error_name(rv) << std::endl;
@@ -88,17 +90,17 @@ private:
                     }
                     break;
                 case ogawayama::common::CommandMessage::Type::TERMINATE:
-                    server_ch_->notify();
-                    server_ch_->lock();
-                    server_ch_->unlock();
+                    bridge_ch_->notify();
+                    bridge_ch_->lock();
+                    bridge_ch_->unlock();
                     goto finish;
                 default:
                     LOG(ERROR) << "unsurpported message" << std::endl;
                     rv = -1;
-                    server_ch_->notify();
+                    bridge_ch_->notify();
                     goto finish;
                 }
-                server_ch_->notify();
+                bridge_ch_->notify();
             }
 
           finish:
@@ -106,40 +108,40 @@ private:
         }
 
         void terminate() {
-            server_ch_->lock();
-            server_ch_->send_req(ogawayama::common::CommandMessage::Type::TERMINATE);
-            server_ch_->wait();
-            server_ch_->unlock();
+            bridge_ch_->lock();
+            bridge_ch_->send_req(ogawayama::common::CommandMessage::Type::TERMINATE);
+            bridge_ch_->wait();
+            bridge_ch_->unlock();
         }
 
     private:
         jogasaki::api::database& db_;
         std::string base_name_;
         std::unique_ptr<ogawayama::common::SharedMemory> shared_memory_;
-        std::unique_ptr<ogawayama::common::ChannelStream> server_ch_;
+        std::unique_ptr<ogawayama::common::ChannelStream> bridge_ch_;
         std::vector<std::unique_ptr<Worker>> workers_;
     };
 
     public:
-    void initialize(jogasaki::api::database& db, void* context) override {
+    tateyama::status initialize(jogasaki::api::database& db, void* context) override {
         auto& ctx = *reinterpret_cast<fe_endpoint_context*>(context);  //NOLINT
         auto& options = ctx.options_;
 
         // create listener object
         listener_ = std::make_unique<listener>(db, std::stol(options["threads"]), options["dbname"]);
 
-        return;
+        return tateyama::status::ok;
     }
 
-    void start() override {
+    tateyama::status start() override {
         listener_thread_ = std::thread(std::ref(*listener_));
-        return;
+        return tateyama::status::ok;
     }
 
-    void shutdown() override {
+    tateyama::status shutdown() override {
         listener_->terminate();
         listener_thread_.join();
-        return;
+        return tateyama::status::ok;
     }
 
     static std::shared_ptr<fe_provider> create() {
@@ -151,4 +153,4 @@ private:
     std::thread listener_thread_;
 };  
 
-}  // ogawayama::server
+}  // ogawayama::bridge

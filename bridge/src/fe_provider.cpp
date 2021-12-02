@@ -1,5 +1,5 @@
 /*
- * Copyright 2019-2019 tsurugi project.
+ * Copyright 2019-2021 tsurugi project.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -13,12 +13,11 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#pragma once
+#include "fe_provider.h"
 
-#include "ogawayama/common/channel_stream.h"
-#include "ogawayama/stub/api.h"
-#include "stubImpl.h"
-#include "transactionImpl.h"
-
-void send_dump_requests(ogawayama::common::ChannelStream *);
-void send_load_requests(ogawayama::common::ChannelStream *);
+/**
+ * @brief add ipc endpoint to the component registry
+ * @note This should be done in .cpp file. In the header file,
+ * the initialization of inline variable is sometimes omitted by optimization.
+ */
+register_component(endpoint, ogawayama::bridge::api::provider, fe_endpoint, ogawayama::bridge::fe_provider::create);  //NOLINT

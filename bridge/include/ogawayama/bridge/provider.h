@@ -16,8 +16,9 @@
 #pragma once
 
 #include <jogasaki/api.h>
+#include <tateyama/status.h>
 
-namespace ogawayama::api::frontend {
+namespace ogawayama::bridge::api {
 
 /**
  * @brief ogawayama endpoint provider interface
@@ -48,17 +49,17 @@ public:
      * implementations can exchange necessary information. The knowledge on its content must be shared between
      * caller and endpoint.
      */
-    virtual void initialize(jogasaki::api::database& db, void* context) = 0;
+    virtual tateyama::status initialize(jogasaki::api::database& db, void* context) = 0;
 
     /**
      * @brief start endpoint
      */
-    virtual void start() = 0;
+    virtual tateyama::status start() = 0;
 
     /**
      * @brief shutdown endpoint
      */
-    virtual void shutdown() = 0;
+    virtual tateyama::status shutdown() = 0;
 };
 
 }

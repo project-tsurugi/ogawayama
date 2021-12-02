@@ -1,5 +1,5 @@
 /*
- * Copyright 2019-2019 tsurugi project.
+ * Copyright 2019-2021 tsurugi project.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -18,17 +18,17 @@
 #include <future>
 #include <thread>
 
-#include "jogasaki/api.h"
-#include "ogawayama/stub/api.h"
-#include "ogawayama/common/channel_stream.h"
-#include "ogawayama/common/row_queue.h"
-#include "ogawayama/common/parameter_set.h"
-#include "manager/metadata/tables.h"
-#include "manager/metadata/metadata.h"
-#include "manager/metadata/error_code.h"
-#include "manager/metadata/datatypes.h"
+#include <jogasaki/api.h>
+#include <ogawayama/stub/api.h>
+#include <ogawayama/common/channel_stream.h>
+#include <ogawayama/common/row_queue.h>
+#include <ogawayama/common/parameter_set.h>
+#include <manager/metadata/tables.h>
+#include <manager/metadata/metadata.h>
+#include <manager/metadata/error_code.h>
+#include <manager/metadata/datatypes.h>
 
-namespace ogawayama::server {
+namespace ogawayama::bridge {
 
 class fe_provider;
 
@@ -92,4 +92,4 @@ class Worker {
     }
 };
 
-}  // ogawayama::server
+}  // ogawayama::bridge

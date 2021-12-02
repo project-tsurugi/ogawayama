@@ -12,30 +12,4 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-file(GLOB SOURCES
-    "*.cpp"
-)
-
-add_executable(cli
-    ${SOURCES}
-)
-
-set_target_properties(cli
-    PROPERTIES
-        RUNTIME_OUTPUT_NAME "ogawayama-cli"
-)
-
-target_include_directories(cli
-    PRIVATE ../../common/include
-    PRIVATE ../../stub/include
-    PRIVATE ../../stub/src
-)
-
-target_link_libraries(cli
-    PRIVATE stub
-    PRIVATE manager-message-interface
-    PRIVATE gflags::gflags
-    PRIVATE rt
-)
-
-install_custom(cli ${export_name})
+add_subdirectory(src)

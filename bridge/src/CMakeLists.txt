@@ -25,22 +25,24 @@ file(GLOB SOURCES
     "*.cpp"
 )
 
-add_library(server
+add_library(bridge
     ${SOURCES}
 )
 
-set_target_properties(server PROPERTIES
-    OUTPUT_NAME "ogawayama-server"
+set_target_properties(bridge PROPERTIES
+    OUTPUT_NAME "ogawayama-bridge"
 )
 
-target_include_directories(server
-    PRIVATE ../../stub/include
+target_include_directories(bridge
     PRIVATE ../../common/include
     PRIVATE ${PG_INCLUDEDIR}
 )
 
-target_link_libraries(server
+target_link_libraries(bridge
+    PUBLIC api
+    PUBLIC bridge-api
     PRIVATE jogasaki-${SHARKSFIN_IMPLEMENTATION}-engine
+    PRIVATE tateyama-${SHARKSFIN_IMPLEMENTATION}-engine
     PRIVATE takatori
     PRIVATE yugawara
     PRIVATE fpdecimal
@@ -55,4 +57,4 @@ target_link_libraries(server
     PRIVATE rt
 )
 
-install_custom(server ${export_name})
+install_custom(bridge ${export_name})

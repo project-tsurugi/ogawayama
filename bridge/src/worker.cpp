@@ -27,7 +27,7 @@
 
 #include "worker.h"
 
-namespace ogawayama::server {
+namespace ogawayama::bridge {
 
 DECLARE_string(dbname);
 
@@ -540,4 +540,4 @@ void Worker::deploy_metadata(std::size_t table_id)
     }
 }
 
-}  // ogawayama::server
+}  // ogawayama::bridge
