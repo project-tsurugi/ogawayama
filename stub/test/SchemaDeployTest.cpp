@@ -47,7 +47,7 @@ class ApiTest : public ::testing::Test {
     }
 };
 
-TEST_F(ApiTest, basic_flow) {
+TEST_F(ApiTest, DISABLED_basic_flow) {
     StubPtr stub;
     ConnectionPtr connection;
     TransactionPtr transaction;
@@ -101,7 +101,7 @@ TEST_F(ApiTest, basic_flow) {
     EXPECT_EQ(ERROR_CODE::OK, transaction->commit());
 }
 
-TEST_F(ApiTest, register_twice) {
+TEST_F(ApiTest, DISABLED_register_twice) {
     StubPtr stub;
     ConnectionPtr connection;
     TransactionPtr transaction;
@@ -117,7 +117,7 @@ TEST_F(ApiTest, register_twice) {
     EXPECT_EQ(ERROR_CODE::INVALID_PARAMETER, transaction->get_impl()->create_table(1));
 }
 
-TEST_F(ApiTest, nullable_pkey) {
+TEST_F(ApiTest, DISABLED_nullable_pkey) {
     StubPtr stub;
     ConnectionPtr connection;
     TransactionPtr transaction;

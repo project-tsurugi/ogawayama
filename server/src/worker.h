@@ -30,6 +30,8 @@
 
 namespace ogawayama::server {
 
+class fe_provider;
+
 class Worker {
     class Cursor {
     public:
@@ -49,7 +51,7 @@ class Worker {
         if(thread_.joinable()) thread_.join();
     }
     void run();
-    friend int backend_main(int, char **);
+    friend class fe_provider;
 
  private:
     void execute_statement(std::string_view);

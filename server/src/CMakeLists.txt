@@ -14,7 +14,7 @@
 
 if(NOT DEFINED SHARKSFIN_IMPLEMENTATION)
     set(
-        SHARKSFIN_IMPLEMENTATION "memory"
+        SHARKSFIN_IMPLEMENTATION "shirakami"
         CACHE STRING
         "sharksfin target name to link"
         FORCE
@@ -25,13 +25,12 @@ file(GLOB SOURCES
     "*.cpp"
 )
 
-add_executable(server
+add_library(server
     ${SOURCES}
 )
 
-set_target_properties(server
-    PROPERTIES
-        RUNTIME_OUTPUT_NAME "ogawayama-server"
+set_target_properties(server PROPERTIES
+    OUTPUT_NAME "ogawayama-server"
 )
 
 target_include_directories(server

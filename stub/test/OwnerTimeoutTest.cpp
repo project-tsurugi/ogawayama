@@ -47,13 +47,13 @@ protected:
     std::unique_ptr<ogawayama::common::RowQueue> row_queue_;
 };
 
-TEST_F(OwnerTimeoutTest, channel) {
+TEST_F(OwnerTimeoutTest, DISABLED_channel) {
     ERROR_CODE reply = server_channel_->recv_ack();
 
     EXPECT_EQ(ERROR_CODE::SERVER_FAILURE, reply);
 }
 
-TEST_F(OwnerTimeoutTest, row_queue) {
+TEST_F(OwnerTimeoutTest, DISABLED_row_queue) {
     ERROR_CODE reply = row_queue_->next();
 
     EXPECT_EQ(ERROR_CODE::SERVER_FAILURE, reply);

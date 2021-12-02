@@ -43,7 +43,7 @@ protected:
     std::unique_ptr<ogawayama::common::SharedMemory> shared_memory_;
 };
 
-TEST_F(ClientTimeoutTest, channel) {
+TEST_F(ClientTimeoutTest, DISABLED_channel) {
     auto server_channel = std::make_unique<ogawayama::common::ChannelStream>(ogawayama::common::param::server, shared_memory_.get());
 
     ERROR_CODE reply = server_channel->recv_ack();
@@ -51,7 +51,7 @@ TEST_F(ClientTimeoutTest, channel) {
     EXPECT_EQ(ERROR_CODE::SERVER_FAILURE, reply);
 }
 
-TEST_F(ClientTimeoutTest, row_queue) {
+TEST_F(ClientTimeoutTest, DISABLED_row_queue) {
     auto row_queue = std::make_unique<ogawayama::common::RowQueue>(shared_memory_->shm_name(ogawayama::common::param::resultset, 12, 3).c_str(), shared_memory_.get());
 
     ERROR_CODE reply = row_queue->next();
