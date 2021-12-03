@@ -40,7 +40,9 @@ class fe_provider : public ogawayama::bridge::api::provider {
 private:
     class listener {
     public:
-        listener(jogasaki::api::database& db, std::size_t size, std::string& name) : db_(db), base_name_(name) {
+        listener() = delete;
+
+        listener(jogasaki::api::database* db, std::size_t size, std::string& name) : db_(db), base_name_(name) {
             // communication channel
             try {
                 shared_memory_ = std::make_unique<ogawayama::common::SharedMemory>(name, ogawayama::common::param::SheredMemoryType::SHARED_MEMORY_SERVER_CHANNEL, true, false /* FLAGS_remove_shm */);
@@ -80,7 +82,7 @@ private:
                     }
                     try {
                         std::unique_ptr<Worker> &worker = workers_.at(index);
-                        worker = std::make_unique<Worker>(db_, index);
+                        worker = std::make_unique<Worker>(*db_, index);
                         worker->task_ = std::packaged_task<void()>([&]{worker->run();});
                         worker->future_ = worker->task_.get_future();
                         worker->thread_ = std::thread(std::move(worker->task_));
@@ -115,7 +117,7 @@ private:
         }
 
     private:
-        jogasaki::api::database& db_;
+        jogasaki::api::database* db_;
         std::string base_name_;
         std::unique_ptr<ogawayama::common::SharedMemory> shared_memory_;
         std::unique_ptr<ogawayama::common::ChannelStream> bridge_ch_;
@@ -123,7 +125,7 @@ private:
     };
 
     public:
-    tateyama::status initialize(jogasaki::api::database& db, void* context) override {
+    tateyama::status initialize(jogasaki::api::database* db, void* context) override {
         auto& ctx = *reinterpret_cast<fe_endpoint_context*>(context);  //NOLINT
         auto& options = ctx.options_;
 

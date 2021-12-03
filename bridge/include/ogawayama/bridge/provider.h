@@ -49,7 +49,7 @@ public:
      * implementations can exchange necessary information. The knowledge on its content must be shared between
      * caller and endpoint.
      */
-    virtual tateyama::status initialize(jogasaki::api::database& db, void* context) = 0;
+    virtual tateyama::status initialize(jogasaki::api::database* db, void* context) = 0;
 
     /**
      * @brief start endpoint
