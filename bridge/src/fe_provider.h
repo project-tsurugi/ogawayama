@@ -42,7 +42,7 @@ private:
     public:
         listener() = delete;
 
-        listener(jogasaki::api::database* db, std::size_t size, std::string& name) : db_(db), base_name_(name + "-o") {
+        listener(jogasaki::api::database* db, std::size_t size, std::string& name) : db_(db), base_name_(name + "_o") {
             // communication channel
             try {
                 shared_memory_ = std::make_unique<ogawayama::common::SharedMemory>(name, ogawayama::common::param::SheredMemoryType::SHARED_MEMORY_SERVER_CHANNEL, true, false /* FLAGS_remove_shm */);

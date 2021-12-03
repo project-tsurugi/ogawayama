@@ -41,7 +41,7 @@ target_include_directories(bridge
 target_link_libraries(bridge
     PUBLIC api
     PUBLIC bridge-api
-    PRIVATE jogasaki-${SHARKSFIN_IMPLEMENTATION}-engine
+    PRIVATE jogasaki-${SHARKSFIN_IMPLEMENTATION}-api
     PRIVATE tateyama-${SHARKSFIN_IMPLEMENTATION}-engine
     PRIVATE takatori
     PRIVATE yugawara
