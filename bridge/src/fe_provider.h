@@ -42,10 +42,10 @@ private:
     public:
         listener() = delete;
 
-        listener(jogasaki::api::database* db, std::size_t size, std::string& name) : db_(db), base_name_(name + "_o") {
+        listener(jogasaki::api::database* db, std::size_t size, std::string& name) : db_(db), name_(name) {
             // communication channel
             try {
-                shared_memory_ = std::make_unique<ogawayama::common::SharedMemory>(name, ogawayama::common::param::SheredMemoryType::SHARED_MEMORY_SERVER_CHANNEL, true, false /* FLAGS_remove_shm */);
+                shared_memory_ = std::make_unique<ogawayama::common::SharedMemory>(name + "_o", ogawayama::common::param::SheredMemoryType::SHARED_MEMORY_SERVER_CHANNEL, true, true /* FLAGS_remove_shm */);
                 bridge_ch_ = std::make_unique<ogawayama::common::ChannelStream>(ogawayama::common::param::server, shared_memory_.get(), true, false);
             } catch (const std::exception& ex) {
                 LOG(ERROR) << ex.what() << std::endl;
@@ -82,7 +82,7 @@ private:
                     }
                     try {
                         std::unique_ptr<Worker> &worker = workers_.at(index);
-                        worker = std::make_unique<Worker>(*db_, index);
+                        worker = std::make_unique<Worker>(*db_, name_, index);
                         worker->task_ = std::packaged_task<void()>([&]{worker->run();});
                         worker->future_ = worker->task_.get_future();
                         worker->thread_ = std::thread(std::move(worker->task_));
@@ -118,7 +118,7 @@ private:
 
     private:
         jogasaki::api::database* db_;
-        std::string base_name_;
+        std::string name_;
         std::unique_ptr<ogawayama::common::SharedMemory> shared_memory_;
         std::unique_ptr<ogawayama::common::ChannelStream> bridge_ch_;
         std::vector<std::unique_ptr<Worker>> workers_;

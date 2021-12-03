@@ -62,4 +62,6 @@ public:
     virtual tateyama::status shutdown() = 0;
 };
 
+extern void prepare();
+
 }

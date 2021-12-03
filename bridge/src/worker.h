@@ -45,7 +45,7 @@ class Worker {
     };
 
  public:
-    Worker(jogasaki::api::database&, std::size_t);
+    Worker(jogasaki::api::database&, std::string&, std::size_t);
     ~Worker() {
         clear_all();
         if(thread_.joinable()) thread_.join();
@@ -64,6 +64,7 @@ class Worker {
 
     jogasaki::api::database& db_;
     std::size_t id_;
+    std::string& dbname_;
 
     std::unique_ptr<ogawayama::common::SharedMemory> shm4_connection_;
     std::unique_ptr<ogawayama::common::ChannelStream> channel_;

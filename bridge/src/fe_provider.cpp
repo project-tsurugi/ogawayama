@@ -15,9 +15,15 @@
  */
 #include "fe_provider.h"
 
+namespace ogawayama::bridge::api {
+
+static bool bridge_ogawayama_entry;
+
 /**
- * @brief add ipc endpoint to the component registry
- * @note This should be done in .cpp file. In the header file,
- * the initialization of inline variable is sometimes omitted by optimization.
+ * @brief add frontend bridge to the component registry
  */
-register_component(endpoint, ogawayama::bridge::api::provider, fe_endpoint, ogawayama::bridge::fe_provider::create);  //NOLINT
+void prepare() {
+    bridge_ogawayama_entry = ::tateyama::api::registry<ogawayama::bridge::api::provider>::add("ogawayama", ogawayama::bridge::fe_provider::create);  // NOLINT
+}
+
+}  // ogawayama::bridge::api

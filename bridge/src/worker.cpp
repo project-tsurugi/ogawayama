@@ -31,9 +31,9 @@ namespace ogawayama::bridge {
 
 DECLARE_string(dbname);
 
-Worker::Worker(jogasaki::api::database& db, std::size_t id) : db_(db), id_(id)
+Worker::Worker(jogasaki::api::database& db, std::string& dbname, std::size_t id) : db_(db), id_(id), dbname_(dbname)
 {
-    std::string name = FLAGS_dbname + std::to_string(id);
+    std::string name = dbname_ + "_o-" + std::to_string(id);
     shm4_connection_ = std::make_unique<ogawayama::common::SharedMemory>(name, ogawayama::common::param::SheredMemoryType::SHARED_MEMORY_CONNECTION);
     channel_ = std::make_unique<ogawayama::common::ChannelStream>(ogawayama::common::param::channel, shm4_connection_.get());
     parameters_ = std::make_unique<ogawayama::common::ParameterSet>(ogawayama::common::param::prepared, shm4_connection_.get());
@@ -363,13 +363,13 @@ void Worker::deploy_metadata(std::size_t table_id)
 {
     manager::metadata::ErrorCode error;
 
-    auto datatypes = std::make_unique<manager::metadata::DataTypes>(FLAGS_dbname);
+    auto datatypes = std::make_unique<manager::metadata::DataTypes>(dbname_);
     error = datatypes->Metadata::load();
     if (error != manager::metadata::ErrorCode::OK) {
         channel_->send_ack(ERROR_CODE::FILE_IO_ERROR);
         return;
     }
-    auto tables = std::make_unique<manager::metadata::Tables>(FLAGS_dbname);
+    auto tables = std::make_unique<manager::metadata::Tables>(dbname_);
     error = tables->Metadata::load();
     if (error != manager::metadata::ErrorCode::OK) {
         channel_->send_ack(ERROR_CODE::FILE_IO_ERROR);
