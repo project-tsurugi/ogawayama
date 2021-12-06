@@ -14,11 +14,54 @@
  * limitations under the License.
  */
 
-#include "ogawayama/stub/api.h"
+#include <gtest/gtest.h>
+#include <glog/logging.h>
 
-#include "gtest/gtest.h"
+#include <unordered_map>
+#include <jogasaki/api.h>
+#include <ogawayama/stub/api.h>
+#include "fe_provider.h"
 
 #include "stubImpl.h"
 #include "connectionImpl.h"
 #include "transactionImpl.h"
 #include "result_setImpl.h"
+
+const char* const shm_name = "ogawayama_test";
+
+namespace ogawayama::bridge {
+
+struct ipc_endpoint_context {
+    std::unordered_map<std::string, std::string> options_{};
+};
+
+class envelope {
+public:
+    envelope() {
+        // database
+        auto cfg = std::make_shared<jogasaki::configuration>();
+        cfg->thread_pool_size(1);  // FLAGS_threads
+
+        db_ = jogasaki::api::create_database(cfg);
+        db_->start();
+
+        ipc_endpoint_context init_context;
+        init_context.options_ = std::unordered_map<std::string, std::string>{
+            {"dbname", shm_name},
+            {"threads", std::to_string(1)},
+        };
+
+        bridge_ = std::move(ogawayama::bridge::fe_provider::create());
+        bridge_->initialize(db_.get(), std::addressof(init_context));
+        bridge_->start();
+    }
+    ~envelope() {
+        bridge_->shutdown();
+        db_->stop();
+    }
+private:
+    std::unique_ptr<jogasaki::api::database> db_;
+    std::shared_ptr<fe_provider> bridge_;
+};
+
+}

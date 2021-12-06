@@ -26,7 +26,6 @@ DEFINE_string(dbname, ogawayama::common::param::SHARED_MEMORY_NAME, "database na
 DEFINE_string(statement, "", "SQL statement");  // NOLINT
 DEFINE_string(query, "", "SQL query");  // NOLINT
 DEFINE_int32(schema, -1, "object id for recieve_message()");  // NOLINT
-DEFINE_bool(remove_shm, false, "remove the shared memory prior to the execution");  // NOLINT
 
 void prt_err(int line)
 {
@@ -42,13 +41,9 @@ int main(int argc, char **argv) {
     gflags::SetUsageMessage("a cli tool for ogawayama database server");
     gflags::ParseCommandLineFlags(&argc, &argv, true);
 
-    if (FLAGS_remove_shm) {
-        boost::interprocess::shared_memory_object::remove((FLAGS_dbname + "_o").c_str());
-    }
-
     StubPtr stub;
     if (FLAGS_statement != "" || FLAGS_query != "" || FLAGS_schema >= 0) {
-        ERROR_CODE err = make_stub(stub, (FLAGS_dbname + "_o").c_str());
+        ERROR_CODE err = make_stub(stub, (FLAGS_dbname).c_str());
         if (err != ERROR_CODE::OK) { prt_err(__LINE__, err); return 1; }
     }
 

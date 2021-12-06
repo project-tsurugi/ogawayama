@@ -20,9 +20,8 @@ namespace ogawayama::stub {
 
 Connection::Impl::Impl(Connection *connection, std::size_t pgprocno) : envelope_(connection), pgprocno_(pgprocno)
 {
-    std::string name = envelope_->get_manager()->get_impl()->get_name();
-    name += std::to_string(pgprocno);
-
+    std::string name{envelope_->get_manager()->get_impl()->get_shm_name()};
+    name += "-" + std::to_string(pgprocno);
     shm4_connection_ = std::make_unique<ogawayama::common::SharedMemory>(name, ogawayama::common::param::SheredMemoryType::SHARED_MEMORY_CONNECTION, true, true);
     channel_ = std::make_unique<ogawayama::common::ChannelStream>(ogawayama::common::param::channel, shm4_connection_.get(), true);
     parameters_ = std::make_unique<ogawayama::common::ParameterSet>(ogawayama::common::param::prepared, shm4_connection_.get(), true);

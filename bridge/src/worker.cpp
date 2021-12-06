@@ -29,11 +29,10 @@
 
 namespace ogawayama::bridge {
 
-DECLARE_string(dbname);
-
-Worker::Worker(jogasaki::api::database& db, std::string& dbname, std::size_t id) : db_(db), id_(id), dbname_(dbname)
+Worker::Worker(jogasaki::api::database& db, std::string& dbname, std::string_view shm_name, std::size_t id) : db_(db), id_(id), dbname_(dbname)
 {
-    std::string name = dbname_ + "_o-" + std::to_string(id);
+    std::string name{shm_name};
+    name += "-" + std::to_string(id);
     shm4_connection_ = std::make_unique<ogawayama::common::SharedMemory>(name, ogawayama::common::param::SheredMemoryType::SHARED_MEMORY_CONNECTION);
     channel_ = std::make_unique<ogawayama::common::ChannelStream>(ogawayama::common::param::channel, shm4_connection_.get());
     parameters_ = std::make_unique<ogawayama::common::ParameterSet>(ogawayama::common::param::prepared, shm4_connection_.get());

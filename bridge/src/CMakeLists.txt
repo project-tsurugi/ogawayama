@@ -35,7 +35,6 @@ set_target_properties(bridge PROPERTIES
 
 target_include_directories(bridge
     PRIVATE ../../common/include
-    PRIVATE ${PG_INCLUDEDIR}
 )
 
 target_link_libraries(bridge
@@ -58,3 +57,11 @@ target_link_libraries(bridge
 )
 
 install_custom(bridge ${export_name})
+
+#for tests
+add_library(bridge-impl INTERFACE)
+
+target_include_directories(bridge-impl
+    INTERFACE ../include
+    INTERFACE .
+)

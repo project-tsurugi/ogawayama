@@ -26,9 +26,7 @@ Stub::Impl::Impl(Stub *stub, std::string_view database_name) : envelope_(stub)
     //    TODO: implements error handling
     //    if(length > ogawayama::common::param::MAX_DB_NAME_LENGTH) {
     //    }
-    name_ = database_name;
-    name_ += "_o";
-    shared_memory_ = std::make_unique<ogawayama::common::SharedMemory>(name_, ogawayama::common::param::SheredMemoryType::SHARED_MEMORY_SERVER_CHANNEL);
+    shared_memory_ = std::make_unique<ogawayama::common::SharedMemory>(database_name, ogawayama::common::param::SheredMemoryType::SHARED_MEMORY_SERVER_CHANNEL);
     server_ = std::make_unique<ogawayama::common::ChannelStream>(ogawayama::common::param::server, shared_memory_.get());
 }
 

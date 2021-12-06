@@ -45,7 +45,7 @@ private:
         listener(jogasaki::api::database* db, std::size_t size, std::string& name) : db_(db), name_(name) {
             // communication channel
             try {
-                shared_memory_ = std::make_unique<ogawayama::common::SharedMemory>(name + "_o", ogawayama::common::param::SheredMemoryType::SHARED_MEMORY_SERVER_CHANNEL, true, true /* FLAGS_remove_shm */);
+                shared_memory_ = std::make_unique<ogawayama::common::SharedMemory>(name, ogawayama::common::param::SheredMemoryType::SHARED_MEMORY_SERVER_CHANNEL, true, true /* FLAGS_remove_shm */);
                 bridge_ch_ = std::make_unique<ogawayama::common::ChannelStream>(ogawayama::common::param::server, shared_memory_.get(), true, false);
             } catch (const std::exception& ex) {
                 LOG(ERROR) << ex.what() << std::endl;
@@ -56,7 +56,6 @@ private:
         }
 
         void operator()() {
-            int rv = 0;
             while(true) {
                 ogawayama::common::CommandMessage::Type type;
                 std::size_t index;
@@ -71,7 +70,6 @@ private:
                     }
                 } catch (std::exception &ex) {
                     LOG(ERROR) << __func__ << " " << __LINE__ << ": exiting \"" << ex.what() << "\"" << std::endl;
-                    rv = -1;
                     goto finish;
                 }
 
@@ -82,13 +80,13 @@ private:
                     }
                     try {
                         std::unique_ptr<Worker> &worker = workers_.at(index);
-                        worker = std::make_unique<Worker>(*db_, name_, index);
+                        worker = std::make_unique<Worker>(*db_, name_, shared_memory_->get_name(), index);
                         worker->task_ = std::packaged_task<void()>([&]{worker->run();});
                         worker->future_ = worker->task_.get_future();
                         worker->thread_ = std::thread(std::move(worker->task_));
                     } catch (std::exception &ex) {
                         LOG(ERROR) << ex.what() << std::endl;
-                        rv = -1; goto finish;
+                        goto finish;
                     }
                     break;
                 case ogawayama::common::CommandMessage::Type::TERMINATE:
@@ -98,7 +96,6 @@ private:
                     goto finish;
                 default:
                     LOG(ERROR) << "unsurpported message" << std::endl;
-                    rv = -1;
                     bridge_ch_->notify();
                     goto finish;
                 }

@@ -19,10 +19,8 @@
 
 namespace ogawayama::testing {
 
-class ApiTest : public ::testing::Test {
+class SchemaDeployTest : public ::testing::Test {
     virtual void SetUp() {
-        int pid;
-
         if (system("mkdir -p $HOME/.local/tsurugi/metadata") != 0) {
             std::cerr << "cannot mkdir" << std::endl;
         }
@@ -32,29 +30,25 @@ class ApiTest : public ::testing::Test {
         if (system("cp ../../../stub/test/schema/datatypes.json $HOME/.local/tsurugi/metadata") != 0) {
             std::cerr << "cannot copy datatypes.json" << std::endl;
         }
-        if ((pid = fork()) == 0) {  // child process, execute only at build/stub/test directory.
-            auto retv = execlp("../../server/src/ogawayama-server", "ogawayama-server", "-remove_shm", nullptr);
-            if (retv != 0) perror("error in ogawayama-server ");
-            _exit(0);
-        }
-        sleep(1);
-    }
+        envelope_ = std::make_unique<ogawayama::bridge::envelope>();
+   }
 
     virtual void TearDown() {
         StubPtr stub;
-        EXPECT_EQ(ERROR_CODE::OK, make_stub(stub));
-        stub->get_impl()->send_terminate();
+        EXPECT_EQ(ERROR_CODE::OK, make_stub(stub, shm_name));
     }
+private:
+    std::unique_ptr<ogawayama::bridge::envelope> envelope_{};
 };
 
-TEST_F(ApiTest, DISABLED_basic_flow) {
+TEST_F(SchemaDeployTest, basic_flow) {
     StubPtr stub;
     ConnectionPtr connection;
     TransactionPtr transaction;
     ResultSetPtr result_set;
     MetadataPtr metadata;
 
-    EXPECT_EQ(ERROR_CODE::OK, make_stub(stub));
+    EXPECT_EQ(ERROR_CODE::OK, make_stub(stub, shm_name));
 
     EXPECT_EQ(ERROR_CODE::OK, stub->get_connection(connection, 12));
 
@@ -101,12 +95,12 @@ TEST_F(ApiTest, DISABLED_basic_flow) {
     EXPECT_EQ(ERROR_CODE::OK, transaction->commit());
 }
 
-TEST_F(ApiTest, DISABLED_register_twice) {
+TEST_F(SchemaDeployTest, register_twice) {
     StubPtr stub;
     ConnectionPtr connection;
     TransactionPtr transaction;
 
-    EXPECT_EQ(ERROR_CODE::OK, make_stub(stub));
+    EXPECT_EQ(ERROR_CODE::OK, make_stub(stub, shm_name));
 
     EXPECT_EQ(ERROR_CODE::OK, stub->get_connection(connection, 12));
 
@@ -117,12 +111,12 @@ TEST_F(ApiTest, DISABLED_register_twice) {
     EXPECT_EQ(ERROR_CODE::INVALID_PARAMETER, transaction->get_impl()->create_table(1));
 }
 
-TEST_F(ApiTest, DISABLED_nullable_pkey) {
+TEST_F(SchemaDeployTest, nullable_pkey) {
     StubPtr stub;
     ConnectionPtr connection;
     TransactionPtr transaction;
 
-    EXPECT_EQ(ERROR_CODE::OK, make_stub(stub));
+    EXPECT_EQ(ERROR_CODE::OK, make_stub(stub, shm_name));
 
     EXPECT_EQ(ERROR_CODE::OK, stub->get_connection(connection, 12));
 

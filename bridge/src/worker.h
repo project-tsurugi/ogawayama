@@ -37,7 +37,6 @@ class Worker {
     public:
         void clear() {
             result_set_ = nullptr;
-//            prepared_ = nullptr;
         }
         std::unique_ptr<ogawayama::common::RowQueue> row_queue_{};
         std::unique_ptr<jogasaki::api::result_set> result_set_{};
@@ -45,7 +44,7 @@ class Worker {
     };
 
  public:
-    Worker(jogasaki::api::database&, std::string&, std::size_t);
+    Worker(jogasaki::api::database&, std::string&, std::string_view, std::size_t);
     ~Worker() {
         clear_all();
         if(thread_.joinable()) thread_.join();
@@ -84,7 +83,6 @@ class Worker {
     void set_params(std::unique_ptr<jogasaki::api::parameter_set>&);
     void clear_transaction() {
         cursors_.clear();
-//        transaction_ = nullptr;
     }
     void clear_all() {
         clear_transaction();
