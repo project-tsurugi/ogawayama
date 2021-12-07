@@ -23,10 +23,17 @@ RUN apt update -y && apt install -y git build-essential cmake ninja-build libboo
 ## How to build
 
 ```sh
+git clone git@github.com:project-tsurugi/jogasaki.git third_party/temp_jogasaki
+cd third_party/temp_jogasaki
+mkdir build
+cd build
+cmake -DINSTALL_API_ONLY=ON ..
+cmake --build . --target install
+cd ../../..
 mkdir build
 cd build
 cmake -G Ninja -DCMAKE_BUILD_TYPE=Debug ..
-ninja
+cmake --build . --target install
 ```
 
 available options:
