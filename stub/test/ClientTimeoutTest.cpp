@@ -23,27 +23,27 @@ class ClientTimeoutTest : public ::testing::Test {
         if (fork() == 0) { // Frontend, soon exit.
             sleep(1);
             {
-                auto shared_memory = std::make_unique<ogawayama::common::SharedMemory>("ogawayama", ogawayama::common::param::SheredMemoryType::SHARED_MEMORY_SERVER_CHANNEL);
+                auto shared_memory = std::make_unique<ogawayama::common::SharedMemory>(shm_name, ogawayama::common::param::SheredMemoryType::SHARED_MEMORY_SERVER_CHANNEL);
                 auto server_channel = std::make_unique<ogawayama::common::ChannelStream>(ogawayama::common::param::server, shared_memory.get(), true);
                 auto row_queue = std::make_unique<ogawayama::common::RowQueue>(shared_memory->shm_name(ogawayama::common::param::resultset, 12, 3).c_str(), shared_memory.get(), true);
                 sleep(2);
             }
             exit(0);
         } else { // Backend, continue to timeout test.
-            shared_memory_ = std::make_unique<ogawayama::common::SharedMemory>("ogawayama", ogawayama::common::param::SheredMemoryType::SHARED_MEMORY_SERVER_CHANNEL, true);
+            shared_memory_ = std::make_unique<ogawayama::common::SharedMemory>(shm_name, ogawayama::common::param::SheredMemoryType::SHARED_MEMORY_SERVER_CHANNEL, true);
             sleep(2);
         }
     }
 
     virtual void TearDown() {
-        boost::interprocess::shared_memory_object::remove("ogawayama");
+        boost::interprocess::shared_memory_object::remove(shm_name);
     }
 
 protected:
     std::unique_ptr<ogawayama::common::SharedMemory> shared_memory_;
 };
 
-TEST_F(ClientTimeoutTest, DISABLED_channel) {
+TEST_F(ClientTimeoutTest, channel) {
     auto server_channel = std::make_unique<ogawayama::common::ChannelStream>(ogawayama::common::param::server, shared_memory_.get());
 
     ERROR_CODE reply = server_channel->recv_ack();
@@ -51,7 +51,7 @@ TEST_F(ClientTimeoutTest, DISABLED_channel) {
     EXPECT_EQ(ERROR_CODE::SERVER_FAILURE, reply);
 }
 
-TEST_F(ClientTimeoutTest, DISABLED_row_queue) {
+TEST_F(ClientTimeoutTest, row_queue) {
     auto row_queue = std::make_unique<ogawayama::common::RowQueue>(shared_memory_->shm_name(ogawayama::common::param::resultset, 12, 3).c_str(), shared_memory_.get());
 
     ERROR_CODE reply = row_queue->next();

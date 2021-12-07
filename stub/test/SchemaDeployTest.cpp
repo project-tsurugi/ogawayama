@@ -32,11 +32,6 @@ class SchemaDeployTest : public ::testing::Test {
         }
         envelope_ = std::make_unique<ogawayama::bridge::envelope>();
    }
-
-    virtual void TearDown() {
-        StubPtr stub;
-        EXPECT_EQ(ERROR_CODE::OK, make_stub(stub, shm_name));
-    }
 private:
     std::unique_ptr<ogawayama::bridge::envelope> envelope_{};
 };

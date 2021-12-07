@@ -21,7 +21,7 @@ namespace ogawayama::testing {
 class OwnerTimeoutTest : public ::testing::Test {
     virtual void SetUp() {
         if (fork() == 0) { // Backend, soon exit.
-            auto shared_memory = std::make_unique<ogawayama::common::SharedMemory>("ogawayama", ogawayama::common::param::SheredMemoryType::SHARED_MEMORY_SERVER_CHANNEL, true);
+            auto shared_memory = std::make_unique<ogawayama::common::SharedMemory>(shm_name, ogawayama::common::param::SheredMemoryType::SHARED_MEMORY_SERVER_CHANNEL, true);
             sleep(2);
             {
                 auto server_channel = std::make_unique<ogawayama::common::ChannelStream>(ogawayama::common::param::server, shared_memory.get());
@@ -31,14 +31,14 @@ class OwnerTimeoutTest : public ::testing::Test {
             exit(0);
         } else { // Frontend, continue to timeout test.
             sleep(1);
-            shared_memory_ = std::make_unique<ogawayama::common::SharedMemory>("ogawayama", ogawayama::common::param::SheredMemoryType::SHARED_MEMORY_SERVER_CHANNEL);
+            shared_memory_ = std::make_unique<ogawayama::common::SharedMemory>(shm_name, ogawayama::common::param::SheredMemoryType::SHARED_MEMORY_SERVER_CHANNEL);
             server_channel_ = std::make_unique<ogawayama::common::ChannelStream>(ogawayama::common::param::server, shared_memory_.get(), true);
             row_queue_ = std::make_unique<ogawayama::common::RowQueue>(shared_memory_->shm_name(ogawayama::common::param::resultset, 12, 3).c_str(), shared_memory_.get(), true);
         }
     }
 
     virtual void TearDown() {
-        boost::interprocess::shared_memory_object::remove("ogawayama");
+        boost::interprocess::shared_memory_object::remove(shm_name);
     }
 
 protected:
@@ -47,13 +47,13 @@ protected:
     std::unique_ptr<ogawayama::common::RowQueue> row_queue_;
 };
 
-TEST_F(OwnerTimeoutTest, DISABLED_channel) {
+TEST_F(OwnerTimeoutTest, channel) {
     ERROR_CODE reply = server_channel_->recv_ack();
 
     EXPECT_EQ(ERROR_CODE::SERVER_FAILURE, reply);
 }
 
-TEST_F(OwnerTimeoutTest, DISABLED_row_queue) {
+TEST_F(OwnerTimeoutTest, row_queue) {
     ERROR_CODE reply = row_queue_->next();
 
     EXPECT_EQ(ERROR_CODE::SERVER_FAILURE, reply);
