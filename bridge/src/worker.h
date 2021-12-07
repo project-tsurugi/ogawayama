@@ -37,9 +37,11 @@ class Worker {
     public:
         void clear() {
             result_set_ = nullptr;
+            result_set_iterator_ = nullptr;
         }
         std::unique_ptr<ogawayama::common::RowQueue> row_queue_{};
         std::unique_ptr<jogasaki::api::result_set> result_set_{};
+        std::unique_ptr<jogasaki::api::result_set_iterator> result_set_iterator_{};
         jogasaki::api::statement_handle prepared_{};
     };
 

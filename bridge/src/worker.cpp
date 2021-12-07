@@ -1,5 +1,5 @@
 /*
- * Copyright 2019-2019 tsurugi project.
+ * Copyright 2019-2021 tsurugi project.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -196,7 +196,8 @@ bool Worker::execute_query(std::string_view sql, std::size_t rid)
         channel_->send_ack(ERROR_CODE::UNKNOWN);
         return false;
     }
-    
+    cursor.result_set_iterator_ = rs->iterator();
+
     send_metadata(rid);
     channel_->send_ack(ERROR_CODE::OK);
     return true;
@@ -206,7 +207,12 @@ void Worker::next(std::size_t rid)
 {
     auto& cursor = cursors_.at(rid);
     auto& rq = cursor.row_queue_;
-    auto iterator = cursor.result_set_->iterator();
+    auto& iterator = cursor.result_set_iterator_;
+
+    if (!iterator) {
+        return;  // already EOR
+    }
+
     std::size_t limit = rq->get_requested();
     for(std::size_t i = 0; i < limit; i++) {
         auto record = iterator->next();
@@ -352,6 +358,7 @@ bool Worker::execute_prepared_query(std::size_t sid, std::size_t rid)
         channel_->send_ack(ERROR_CODE::UNKNOWN);
         return false;
     }
+    cursor.result_set_iterator_ = rs->iterator();
 
     send_metadata(rid);
     channel_->send_ack(ERROR_CODE::OK);
