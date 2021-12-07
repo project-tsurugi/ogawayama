@@ -35,7 +35,7 @@ option(BUILD_BRIDGE_ONLY "build the bridge only" OFF)
 
 if(NOT DEFINED SHARKSFIN_IMPLEMENTATION)
     set(
-            SHARKSFIN_IMPLEMENTATION "memory"
+            SHARKSFIN_IMPLEMENTATION "shirakami"
             CACHE STRING
             "sharksfin target name to link"
             FORCE

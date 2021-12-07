@@ -12,15 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-if(NOT DEFINED SHARKSFIN_IMPLEMENTATION)
-    set(
-        SHARKSFIN_IMPLEMENTATION "shirakami"
-        CACHE STRING
-        "sharksfin target name to link"
-        FORCE
-    )
-endif()
-
 file(GLOB SOURCES
     "*.cpp"
 )
