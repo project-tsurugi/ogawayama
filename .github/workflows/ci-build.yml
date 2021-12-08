@@ -4,7 +4,7 @@ on: [push, pull_request]
 
 jobs:
   Build:
-    name: Build with PosgreSQL
+    name: Build
     strategy:
       fail-fast: false
       matrix:
@@ -173,14 +173,14 @@ jobs:
           cmake -DCMAKE_BUILD_TYPE=Debug -DSHARKSFIN_IMPLEMENTATION=shirakami -DINSTALL_API_ONLY=ON -DCMAKE_INSTALL_PREFIX=${GITHUB_WORKSPACE}/.local -DCMAKE_PREFIX_PATH=${GITHUB_WORKSPACE}/.local ..
           cmake --build . --target install --clean-first -- -j
 
-      - id: CMake_Build_without_TESTS
-        name: CMake_Build_without_TESTS
+      - id: CMake_Build_without_TESTS_EXAMPLES
+        name: CMake_Build_without_TESTS_EXAMPLES
         run: |
           export LD_LIBRARY_PATH=${GITHUB_WORKSPACE}/.local/lib
           rm -rf build
           mkdir -p build
           cd build
-          cmake -DCMAKE_BUILD_TYPE=Debug -DSHARKSFIN_IMPLEMENTATION=shirakami -DBUILD_TESTS=OFF -DCMAKE_PREFIX_PATH=${GITHUB_WORKSPACE}/.local -DCMAKE_EXPORT_COMPILE_COMMANDS=ON ..
+          cmake -DCMAKE_BUILD_TYPE=Debug -DSHARKSFIN_IMPLEMENTATION=shirakami -DBUILD_TESTS=OFF -DBUILD_EXAMPLES=OFF -DCMAKE_PREFIX_PATH=${GITHUB_WORKSPACE}/.local -DCMAKE_EXPORT_COMPILE_COMMANDS=ON ..
           cmake --build . --target install --clean-first -- -j
 
       - id: Install_jogasaki
