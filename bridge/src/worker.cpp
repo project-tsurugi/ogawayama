@@ -209,8 +209,8 @@ void Worker::next(std::size_t rid)
     auto& rq = cursor.row_queue_;
     auto& iterator = cursor.result_set_iterator_;
 
-    if (!iterator) {
-        return;  // already EOR
+    if (!iterator || rq->is_closed()) {
+        return;
     }
 
     std::size_t limit = rq->get_requested();
@@ -243,6 +243,7 @@ void Worker::next(std::size_t rid)
         } else {
             rq->push_writing_row();
             cursor.clear();
+            rq->set_eor();
             break;
         }
     }
