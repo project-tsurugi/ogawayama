@@ -17,8 +17,10 @@
 #include <vector>
 #include <boost/foreach.hpp>
 
-#include "gflags/gflags.h"
-#include "glog/logging.h"
+#include <gflags/gflags.h>
+#include <glog/logging.h>
+
+#include <ogawayama/logging.h>
 
 #include <takatori/type/int.h>
 #include <takatori/type/float.h>
@@ -47,13 +49,13 @@ void Worker::run()
         std::size_t ivalue;
         std::string_view string;
         try {
-            if (channel_->recv_req(type, ivalue, string) != ERROR_CODE::OK) {
-                std::cerr << __func__ << " " << __LINE__ << ": exiting" << std::endl;
+            if (auto rc = channel_->recv_req(type, ivalue, string); rc != ERROR_CODE::OK) {
+                LOG(WARNING) << "error (" << error_name(rc) << ") occured in command receive, exiting";
                 return;
             }
-            VLOG(1) << __func__ << ":" << __LINE__ << " recieved " << ivalue << " " << ogawayama::common::type_name(type) << " \"" << string << "\"";
+            VLOG(log_debug) << __func__ << ":" << __LINE__ << " recieved " << ivalue << " " << ogawayama::common::type_name(type) << " \"" << string << "\"";
         } catch (std::exception &ex) {
-            std::cerr << __func__ << " " << __LINE__ << ": exiting \"" << ex.what() << "\"" << std::endl;
+            LOG(WARNING) << "exception in command receive, exiting";
             return;
         }
 
@@ -112,7 +114,7 @@ void Worker::run()
             channel_->bye_and_notify();
             return;
         default:
-            std::cerr << "recieved an illegal command message" << std::endl;
+            LOG(ERROR) << "recieved an illegal command message";
             return;
         }
     }
@@ -162,7 +164,7 @@ void Worker::send_metadata(std::size_t rid)
             cursors_.at(rid).row_queue_->push_type(TYPE::TEXT, INT32_MAX);
             break;
         default:
-            std::cerr << "unsurpported data type: " << metadata->at(i).kind() << std::endl;
+            LOG(ERROR) << "unsurpported data type: " << metadata->at(i).kind();
             break;
         }
     }
@@ -235,7 +237,7 @@ void Worker::next(std::size_t rid)
                     case TYPE::TEXT:
                         rq->put_next_column(record->get_character(cindex)); break;
                     case TYPE::NULL_VALUE:
-                        std::cerr << "NULL_VALUE type should not be used" << std::endl; break;
+                        LOG(ERROR) << "NULL_VALUE type should not be used"; break;
                     }
                 }
             }
@@ -289,7 +291,7 @@ void Worker::set_params(std::unique_ptr<jogasaki::api::parameter_set>& p)
                         p->set_null(prefix + std::to_string(idx+1));
                     }
                 else {
-                    std::cerr << __func__ << " " << __LINE__ << ": received a type of parameter that cannot be handled" << std::endl;
+                    LOG(ERROR) << "the type of parameter received cannot be handled";
                 }
             }, param);
     }
