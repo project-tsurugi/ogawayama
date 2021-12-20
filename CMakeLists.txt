@@ -31,10 +31,11 @@ option(ENABLE_COVERAGE "enable coverage on debug build" OFF)
 option(BUILD_TESTS "Build test programs" ON)
 option(BUILD_SHARED_LIBS "build shared libraries instead of static" ON)
 option(BUILD_STUB_ONLY "build the stub only" OFF)
+option(BUILD_BRIDGE_ONLY "build the bridge only" OFF)
 
 if(NOT DEFINED SHARKSFIN_IMPLEMENTATION)
     set(
-            SHARKSFIN_IMPLEMENTATION "memory"
+            SHARKSFIN_IMPLEMENTATION "shirakami"
             CACHE STRING
             "sharksfin target name to link"
             FORCE
@@ -77,6 +78,14 @@ target_include_directories(api
         $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}/ogawayama>
 )
       
+add_library(bridge-api INTERFACE)
+
+target_include_directories(bridge-api
+    INTERFACE
+        $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/bridge/include>
+        $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}/ogawayama>
+)
+
 set(export_name "ogawayama")
 set(package_name "ogawayama")
 
@@ -92,6 +101,7 @@ write_basic_package_version_file(
 )
 
 install_custom(api ${export_name})
+install_custom(bridge-api ${export_name})
 
 install(
     FILES
@@ -109,9 +119,11 @@ install(
     EXPORT_LINK_INTERFACE_LIBRARIES
 )
 
-add_subdirectory(stub)
+if(NOT BUILD_BRIDGE_ONLY)
+    add_subdirectory(stub)
+endif()
 if(NOT BUILD_STUB_ONLY)
-    add_subdirectory(server)
+    add_subdirectory(bridge)
     add_subdirectory(examples)
     add_subdirectory(third_party)
 endif()

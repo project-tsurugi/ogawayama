@@ -20,21 +20,10 @@ namespace ogawayama::testing {
 
 class ParseErrorTest : public ::testing::Test {
     virtual void SetUp() {
-        int pid;
-
-        if ((pid = fork()) == 0) {  // child process, execute only at build/stub/test directory.
-            auto retv = execlp("../../server/src/ogawayama-server", "ogawayama-server", "-remove_shm", nullptr);
-            if (retv != 0) perror("error in ogawayama-server ");
-            _exit(0);
-        }
-        sleep(1);
+        envelope_ = std::make_unique<ogawayama::bridge::envelope>();
     }
-
-    virtual void TearDown() {
-        StubPtr stub;
-        EXPECT_EQ(ERROR_CODE::OK, make_stub(stub));
-        stub->get_impl()->send_terminate();
-    }
+private:
+    std::unique_ptr<ogawayama::bridge::envelope> envelope_{};
 };
 
 TEST_F(ParseErrorTest, DISABLED_execute_statement) {
@@ -42,7 +31,7 @@ TEST_F(ParseErrorTest, DISABLED_execute_statement) {
     ConnectionPtr connection;
     TransactionPtr transaction;
 
-    EXPECT_EQ(ERROR_CODE::OK, make_stub(stub));
+    EXPECT_EQ(ERROR_CODE::OK, make_stub(stub, shm_name));
 
     EXPECT_EQ(ERROR_CODE::OK, stub->get_connection(connection, 12));
 
@@ -68,7 +57,7 @@ TEST_F(ParseErrorTest, DISABLED_execute_query) {
     TransactionPtr transaction;
     ResultSetPtr result_set;
 
-    EXPECT_EQ(ERROR_CODE::OK, make_stub(stub));
+    EXPECT_EQ(ERROR_CODE::OK, make_stub(stub, shm_name));
 
     EXPECT_EQ(ERROR_CODE::OK, stub->get_connection(connection, 12));
 

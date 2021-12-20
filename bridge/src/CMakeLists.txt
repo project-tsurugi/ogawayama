@@ -16,35 +16,43 @@ file(GLOB SOURCES
     "*.cpp"
 )
 
-add_executable(simple
+add_library(bridge
     ${SOURCES}
 )
 
-set_target_properties(simple
-    PROPERTIES
-        RUNTIME_OUTPUT_NAME "ogawayama-simple"
+set_target_properties(bridge PROPERTIES
+    OUTPUT_NAME "ogawayama-bridge"
 )
 
-target_include_directories(simple
-    PRIVATE .
-    PRIVATE ../../stub/include
+target_include_directories(bridge
     PRIVATE ../../common/include
 )
 
-target_link_libraries(simple
-    PUBLIC stub
+target_link_libraries(bridge
+    PUBLIC api
+    PUBLIC bridge-api
+    PRIVATE jogasaki-${SHARKSFIN_IMPLEMENTATION}-api
+    PRIVATE tateyama-${SHARKSFIN_IMPLEMENTATION}-engine
+    PRIVATE takatori
+    PRIVATE yugawara
+    PRIVATE fpdecimal
+    PRIVATE shakujo-common
+    PRIVATE manager-metadata
     PRIVATE manager-message-interface
+    PRIVATE gflags::gflags
+    PRIVATE glog::glog
+    PRIVATE Boost::filesystem
+    PRIVATE Boost::thread
     PRIVATE pthread
     PRIVATE rt
 )
 
-set_compile_options(simple)
+install_custom(bridge ${export_name})
 
-if(INSTALL_EXAMPLES)
-    install_custom(simple ${export_name})
-endif()
+#for tests
+add_library(bridge-impl INTERFACE)
 
-# add_test(
-#         NAME simple
-#         COMMAND simple
-# )
+target_include_directories(bridge-impl
+    INTERFACE ../include
+    INTERFACE .
+)

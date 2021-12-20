@@ -1,5 +1,5 @@
 /*
- * Copyright 2019-2019 tsurugi project.
+ * Copyright 2019-2021 tsurugi project.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -15,14 +15,14 @@
  */
 #pragma once
 
-#include "boost/lockfree/spsc_queue.hpp"
-#include "boost/interprocess/sync/interprocess_condition.hpp"
-#include "boost/interprocess/sync/interprocess_mutex.hpp"
-#include "boost/bind.hpp"
-#include "boost/interprocess/smart_ptr/shared_ptr.hpp"
+#include <boost/lockfree/spsc_queue.hpp>
+#include <boost/interprocess/sync/interprocess_condition.hpp>
+#include <boost/interprocess/sync/interprocess_mutex.hpp>
+#include <boost/bind.hpp>
+#include <boost/interprocess/smart_ptr/shared_ptr.hpp>
 
-#include "ogawayama/stub/metadata.h"
-#include "ogawayama/common/shared_memory.h"
+#include <ogawayama/stub/metadata.h>
+#include <ogawayama/common/shared_memory.h>
 
 namespace ogawayama::common {
 

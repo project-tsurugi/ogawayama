@@ -1,5 +1,5 @@
 /*
- * Copyright 2019-2019 tsurugi project.
+ * Copyright 2019-2021 tsurugi project.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -13,13 +13,17 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#pragma once
+#include "fe_provider.h"
 
-#include "jogasaki/api.h"
+namespace ogawayama::bridge::api {
 
-namespace ogawayama::server {
+static bool bridge_ogawayama_entry;
 
-    void dump(jogasaki::api::database&, std::string &, std::string &);
-    void load(jogasaki::api::database&, std::string &, std::string &);
+/**
+ * @brief add frontend bridge to the component registry
+ */
+void prepare() {
+    bridge_ogawayama_entry = ::tateyama::api::registry<ogawayama::bridge::api::provider>::add("ogawayama", ogawayama::bridge::fe_provider::create);  // NOLINT
+}
 
-}  // ogawayama::server
+}  // ogawayama::bridge::api

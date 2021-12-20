@@ -1,5 +1,5 @@
 /*
- * Copyright 2019-2019 tsurugi project.
+ * Copyright 2019-2021 tsurugi project.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -18,38 +18,41 @@
 #include <future>
 #include <thread>
 
-#include "jogasaki/api.h"
-#include "ogawayama/stub/api.h"
-#include "ogawayama/common/channel_stream.h"
-#include "ogawayama/common/row_queue.h"
-#include "ogawayama/common/parameter_set.h"
-#include "manager/metadata/tables.h"
-#include "manager/metadata/metadata.h"
-#include "manager/metadata/error_code.h"
-#include "manager/metadata/datatypes.h"
+#include <jogasaki/api.h>
+#include <ogawayama/stub/api.h>
+#include <ogawayama/common/channel_stream.h>
+#include <ogawayama/common/row_queue.h>
+#include <ogawayama/common/parameter_set.h>
+#include <manager/metadata/tables.h>
+#include <manager/metadata/metadata.h>
+#include <manager/metadata/error_code.h>
+#include <manager/metadata/datatypes.h>
 
-namespace ogawayama::server {
+namespace ogawayama::bridge {
+
+class fe_provider;
 
 class Worker {
     class Cursor {
     public:
         void clear() {
             result_set_ = nullptr;
-//            prepared_ = nullptr;
+            result_set_iterator_ = nullptr;
         }
         std::unique_ptr<ogawayama::common::RowQueue> row_queue_{};
         std::unique_ptr<jogasaki::api::result_set> result_set_{};
+        std::unique_ptr<jogasaki::api::result_set_iterator> result_set_iterator_{};
         jogasaki::api::statement_handle prepared_{};
     };
 
  public:
-    Worker(jogasaki::api::database&, std::size_t);
+    Worker(jogasaki::api::database&, std::string&, std::string_view, std::size_t);
     ~Worker() {
         clear_all();
         if(thread_.joinable()) thread_.join();
     }
     void run();
-    friend int backend_main(int, char **);
+    friend class fe_provider;
 
  private:
     void execute_statement(std::string_view);
@@ -62,6 +65,7 @@ class Worker {
 
     jogasaki::api::database& db_;
     std::size_t id_;
+    std::string& dbname_;
 
     std::unique_ptr<ogawayama::common::SharedMemory> shm4_connection_;
     std::unique_ptr<ogawayama::common::ChannelStream> channel_;
@@ -81,7 +85,6 @@ class Worker {
     void set_params(std::unique_ptr<jogasaki::api::parameter_set>&);
     void clear_transaction() {
         cursors_.clear();
-//        transaction_ = nullptr;
     }
     void clear_all() {
         clear_transaction();
@@ -90,4 +93,4 @@ class Worker {
     }
 };
 
-}  // ogawayama::server
+}  // ogawayama::bridge

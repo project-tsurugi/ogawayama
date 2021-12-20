@@ -1,5 +1,5 @@
 /*
- * Copyright 2019-2019 tsurugi project.
+ * Copyright 2019-2021 tsurugi project.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -15,14 +15,16 @@
  */
 #pragma once
 
-#include "boost/lockfree/spsc_queue.hpp"
-#include "boost/interprocess/sync/interprocess_condition.hpp"
-#include "boost/interprocess/sync/interprocess_mutex.hpp"
-#include "boost/bind.hpp"
-#include "boost/interprocess/smart_ptr/shared_ptr.hpp"
+#include <atomic>
 
-#include "ogawayama/stub/metadata.h"
-#include "ogawayama/common/shared_memory.h"
+#include <boost/lockfree/spsc_queue.hpp>
+#include <boost/interprocess/sync/interprocess_condition.hpp>
+#include <boost/interprocess/sync/interprocess_mutex.hpp>
+#include <boost/bind.hpp>
+#include <boost/interprocess/smart_ptr/shared_ptr.hpp>
+
+#include <ogawayama/stub/metadata.h>
+#include <ogawayama/common/shared_memory.h>
 
 namespace ogawayama::common {
 
@@ -139,6 +141,7 @@ namespace ogawayama::common {
                 m_container_.resize(capacity_, ShmRowArgs(allocator_));
                 pushed_ = poped_ = 0;
                 m_types_.clear();
+                eor_ = closed_ = false;
             }
 
             void push_type(ogawayama::stub::Metadata::ColumnType::Type type, std::size_t length) {
@@ -149,18 +152,18 @@ namespace ogawayama::common {
                 return &m_types_;
             }
 
-            void hello() {
-                is_partner_ = true;
-            }
-            void bye() {
-                is_partner_ = false;
-            }
-            bool is_partner() {
-                return is_partner_;
-            }
+            void hello() { is_partner_ = true; }
+            void bye() { is_partner_ = false; }
+            bool is_partner() const { return is_partner_; }
+
             void set_requested(std::size_t requested) { requested_ = requested; }
-            std::size_t get_requested() { return requested_; }
-            std::size_t get_capacity() { return capacity_; }
+            std::size_t get_requested() const { return requested_; }
+            std::size_t get_capacity() const { return capacity_; }
+
+            void set_eor() { eor_ = true; }
+            bool is_eor() const { return eor_; }
+            void set_closed() { closed_ = true; }
+            bool is_closed() const { return closed_; }
 
         private:
             bool is_not_empty() const { return (pushed_ - poped_) > 0; }
@@ -172,10 +175,10 @@ namespace ogawayama::common {
             ShmQueue m_container_;
             ogawayama::stub::Metadata m_types_;
             VoidAllocator allocator_;
-            std::size_t capacity_;
-            std::size_t pushed_{0};
-            std::size_t poped_{0};
-            std::size_t requested_{1};
+            std::atomic_size_t capacity_;
+            std::atomic_size_t pushed_{0};
+            std::atomic_size_t poped_{0};
+            std::atomic_size_t requested_{1};
 
             boost::system_time timeout() { return boost::get_system_time() + boost::posix_time::milliseconds(param::TIMEOUT); }
 
@@ -183,7 +186,9 @@ namespace ogawayama::common {
             boost::interprocess::interprocess_condition m_not_empty_{};
             boost::interprocess::interprocess_condition m_not_full_{};
 
-            bool is_partner_{false};
+            std::atomic_bool is_partner_{false};
+            std::atomic_bool eor_{false};
+            std::atomic_bool closed_{false};
         };
         
     public:
@@ -337,7 +342,7 @@ namespace ogawayama::common {
         }
         bool is_need_next() {
             if (threshold_ == 0) { remaining_++; return true; } // multiple rows transfer is not used
-            if (remaining_ > threshold_) { return false; }
+            if (remaining_ > threshold_ || is_eor()) { return false; }
             std::size_t requested = queue_->get_capacity() - threshold_ - 1;
             remaining_ += requested;
             queue_->set_requested(requested);
@@ -351,6 +356,11 @@ namespace ogawayama::common {
         void clear() {
             queue_->clear();
         }
+
+        void set_eor() { queue_->set_eor(); }
+        bool is_eor() const { return queue_->is_eor(); }
+        void set_closed() { queue_->set_closed(); }
+        bool is_closed() const { return queue_->is_closed(); }
 
     private:
         SharedMemory *shared_memory_;

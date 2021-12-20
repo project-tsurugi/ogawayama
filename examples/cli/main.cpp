@@ -17,16 +17,15 @@
 
 #include "gflags/gflags.h"
 
-#include "utils.h"
+#include "ogawayama/common/channel_stream.h"
+#include "ogawayama/stub/api.h"
+#include "stubImpl.h"
+#include "transactionImpl.h"
 
 DEFINE_string(dbname, ogawayama::common::param::SHARED_MEMORY_NAME, "database name");  // NOLINT
-DEFINE_bool(terminate, false, "terminate commnand");  // NOLINT
-DEFINE_bool(dump, false, "Database contents are dumpd to the location just before shutdown");  //NOLINT
-DEFINE_bool(load, false, "Database contents are loaded from the location just after boot");  //NOLINT
 DEFINE_string(statement, "", "SQL statement");  // NOLINT
 DEFINE_string(query, "", "SQL query");  // NOLINT
 DEFINE_int32(schema, -1, "object id for recieve_message()");  // NOLINT
-DEFINE_bool(remove_shm, false, "remove the shared memory prior to the execution");  // NOLINT
 
 void prt_err(int line)
 {
@@ -42,22 +41,10 @@ int main(int argc, char **argv) {
     gflags::SetUsageMessage("a cli tool for ogawayama database server");
     gflags::ParseCommandLineFlags(&argc, &argv, true);
 
-    if (FLAGS_remove_shm) {
-        boost::interprocess::shared_memory_object::remove(FLAGS_dbname.c_str());
-    }
-
     StubPtr stub;
-    if (FLAGS_dump || FLAGS_load || FLAGS_statement != "" || FLAGS_query != "" || FLAGS_schema >= 0 || FLAGS_terminate) {
-        ERROR_CODE err = make_stub(stub, FLAGS_dbname.c_str());
+    if (FLAGS_statement != "" || FLAGS_query != "" || FLAGS_schema >= 0) {
+        ERROR_CODE err = make_stub(stub, (FLAGS_dbname).c_str());
         if (err != ERROR_CODE::OK) { prt_err(__LINE__, err); return 1; }
-    }
-
-    if (FLAGS_dump) {
-        send_dump_requests(stub->get_impl()->get_channel());
-    }
-
-    if (FLAGS_load) {
-        send_load_requests(stub->get_impl()->get_channel());
     }
 
     if (FLAGS_schema >= 0) {
@@ -198,11 +185,7 @@ int main(int argc, char **argv) {
             }
         }
     }
- finish:
-
-    if (FLAGS_terminate) {
-        stub->get_impl()->send_terminate();
-    }
+  finish:
 
     return 0;
 }

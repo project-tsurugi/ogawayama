@@ -28,6 +28,7 @@ class ResultSet::Impl
 {
 public:
     Impl(ResultSet *, std::size_t);
+    ~Impl();
     ErrorCode get_metadata(MetadataPtr &);
     ErrorCode next();
     template<typename T>

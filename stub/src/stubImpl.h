@@ -35,14 +35,13 @@ public:
     Impl(Stub *, std::string_view);
     ErrorCode get_connection(ConnectionPtr &, std::size_t);
     ErrorCode send_terminate();
-    const char* get_name() const { return name_; }
+    std::string_view get_shm_name() { return shared_memory_->get_name(); }
     auto get_managed_shared_memory() const { return shared_memory_.get(); }
     auto get_managed_shared_memory_ptr() const { return shared_memory_->get_managed_shared_memory_ptr(); }
     auto get_channel() const { return server_.get(); }
 private:
     Stub *envelope_;
 
-    char name_[ogawayama::common::param::MAX_DB_NAME_LENGTH]{};
     std::unique_ptr<ogawayama::common::SharedMemory> shared_memory_;
     std::unique_ptr<ogawayama::common::ChannelStream> server_;
 };

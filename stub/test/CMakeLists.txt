@@ -20,7 +20,11 @@ register_tests(
     TARGET stub
     DEPENDS
       stub-impl
+      bridge-impl
+      bridge
       manager-message-interface
+      jogasaki-${SHARKSFIN_IMPLEMENTATION}-engine
+      tateyama-${SHARKSFIN_IMPLEMENTATION}-engine
       glog::glog
       rt
     SOURCES ${TEST_SOURCES}

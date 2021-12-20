@@ -22,7 +22,7 @@ class ConnectionErrorTest : public ::testing::Test {};
 TEST_F(ConnectionErrorTest, not_find) {
     StubPtr stub;
 
-    EXPECT_EQ(ERROR_CODE::SERVER_FAILURE, make_stub(stub));
+    EXPECT_EQ(ERROR_CODE::SERVER_FAILURE, make_stub(stub, shm_name));
 }
 
 }  // namespace ogawayama::testing

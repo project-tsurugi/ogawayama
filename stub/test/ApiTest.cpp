@@ -20,21 +20,10 @@ namespace ogawayama::testing {
 
 class ApiTest : public ::testing::Test {
     virtual void SetUp() {
-        int pid;
-
-        if ((pid = fork()) == 0) {  // child process, execute only at build/stub/test directory.
-            auto retv = execlp("../../server/src/ogawayama-server", "ogawayama-server", "-remove_shm", nullptr);
-            if (retv != 0) perror("error in ogawayama-server ");
-            _exit(0);
-        }
-        sleep(1);
+        envelope_ = std::make_unique<ogawayama::bridge::envelope>();
     }
-
-    virtual void TearDown() {
-        StubPtr stub;
-        EXPECT_EQ(ERROR_CODE::OK, make_stub(stub));
-        stub->get_impl()->send_terminate();
-    }
+private:
+    std::unique_ptr<ogawayama::bridge::envelope> envelope_{};
 };
 
 TEST_F(ApiTest, DISABLED_use_executable_statement) {
@@ -44,7 +33,7 @@ TEST_F(ApiTest, DISABLED_use_executable_statement) {
     ResultSetPtr result_set;
     MetadataPtr metadata;
 
-    EXPECT_EQ(ERROR_CODE::OK, make_stub(stub));
+    EXPECT_EQ(ERROR_CODE::OK, make_stub(stub, shm_name));
 
     EXPECT_EQ(ERROR_CODE::OK, stub->get_connection(connection, 12));
 
@@ -132,7 +121,7 @@ TEST_F(ApiTest, DISABLED_mixing_executable_statement) {
     MetadataPtr metadata1;
     MetadataPtr metadata2;
 
-    EXPECT_EQ(ERROR_CODE::OK, make_stub(stub));
+    EXPECT_EQ(ERROR_CODE::OK, make_stub(stub, shm_name));
 
     EXPECT_EQ(ERROR_CODE::OK, stub->get_connection(connection, 13));
 
@@ -228,7 +217,7 @@ TEST_F(ApiTest, DISABLED_fetch_metadata) {
     ResultSetPtr result_set;
     MetadataPtr metadata;
 
-    EXPECT_EQ(ERROR_CODE::OK, make_stub(stub));
+    EXPECT_EQ(ERROR_CODE::OK, make_stub(stub, shm_name));
 
     EXPECT_EQ(ERROR_CODE::OK, stub->get_connection(connection, 14));
 
@@ -329,7 +318,7 @@ TEST_F(ApiTest, DISABLED_passing_multiple_row) {
     MetadataPtr metadata;
     const std::int32_t limit = 123; // Not a multiple of 32
 
-    EXPECT_EQ(ERROR_CODE::OK, make_stub(stub));
+    EXPECT_EQ(ERROR_CODE::OK, make_stub(stub, shm_name));
 
     EXPECT_EQ(ERROR_CODE::OK, stub->get_connection(connection, 15));
 
@@ -380,7 +369,7 @@ TEST_F(ApiTest, empty_transaction) {
     ConnectionPtr connection;
     TransactionPtr transaction;
 
-    EXPECT_EQ(ERROR_CODE::OK, make_stub(stub));
+    EXPECT_EQ(ERROR_CODE::OK, make_stub(stub, shm_name));
 
     EXPECT_EQ(ERROR_CODE::OK, stub->get_connection(connection, 16));
 

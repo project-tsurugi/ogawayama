@@ -30,6 +30,10 @@ ResultSet::Impl::Impl(ResultSet *result_set, std::size_t id) : envelope_(result_
          );
 }
 
+ResultSet::Impl::~Impl() {
+    row_queue_->set_closed();
+}
+
 /**
  * @brief get metadata for the result set.
  * @param metadata returns the metadata class

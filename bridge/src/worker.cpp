@@ -1,5 +1,5 @@
 /*
- * Copyright 2019-2019 tsurugi project.
+ * Copyright 2019-2021 tsurugi project.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -17,8 +17,10 @@
 #include <vector>
 #include <boost/foreach.hpp>
 
-#include "gflags/gflags.h"
-#include "glog/logging.h"
+#include <gflags/gflags.h>
+#include <glog/logging.h>
+
+#include <ogawayama/logging.h>
 
 #include <takatori/type/int.h>
 #include <takatori/type/float.h>
@@ -27,13 +29,12 @@
 
 #include "worker.h"
 
-namespace ogawayama::server {
+namespace ogawayama::bridge {
 
-DECLARE_string(dbname);
-
-Worker::Worker(jogasaki::api::database& db, std::size_t id) : db_(db), id_(id)
+Worker::Worker(jogasaki::api::database& db, std::string& dbname, std::string_view shm_name, std::size_t id) : db_(db), id_(id), dbname_(dbname)
 {
-    std::string name = FLAGS_dbname + std::to_string(id);
+    std::string name{shm_name};
+    name += "-" + std::to_string(id);
     shm4_connection_ = std::make_unique<ogawayama::common::SharedMemory>(name, ogawayama::common::param::SheredMemoryType::SHARED_MEMORY_CONNECTION);
     channel_ = std::make_unique<ogawayama::common::ChannelStream>(ogawayama::common::param::channel, shm4_connection_.get());
     parameters_ = std::make_unique<ogawayama::common::ParameterSet>(ogawayama::common::param::prepared, shm4_connection_.get());
@@ -48,13 +49,13 @@ void Worker::run()
         std::size_t ivalue;
         std::string_view string;
         try {
-            if (channel_->recv_req(type, ivalue, string) != ERROR_CODE::OK) {
-                std::cerr << __func__ << " " << __LINE__ << ": exiting" << std::endl;
+            if (auto rc = channel_->recv_req(type, ivalue, string); rc != ERROR_CODE::OK) {
+                LOG(WARNING) << "error (" << error_name(rc) << ") occured in command receive, exiting";
                 return;
             }
-            VLOG(1) << __func__ << ":" << __LINE__ << " recieved " << ivalue << " " << ogawayama::common::type_name(type) << " \"" << string << "\"";
+            VLOG(log_debug) << __func__ << ":" << __LINE__ << " recieved " << ivalue << " " << ogawayama::common::type_name(type) << " \"" << string << "\"";
         } catch (std::exception &ex) {
-            std::cerr << __func__ << " " << __LINE__ << ": exiting \"" << ex.what() << "\"" << std::endl;
+            LOG(WARNING) << "exception in command receive, exiting";
             return;
         }
 
@@ -113,7 +114,7 @@ void Worker::run()
             channel_->bye_and_notify();
             return;
         default:
-            std::cerr << "recieved an illegal command message" << std::endl;
+            LOG(ERROR) << "recieved an illegal command message";
             return;
         }
     }
@@ -163,7 +164,7 @@ void Worker::send_metadata(std::size_t rid)
             cursors_.at(rid).row_queue_->push_type(TYPE::TEXT, INT32_MAX);
             break;
         default:
-            std::cerr << "unsurpported data type: " << metadata->at(i).kind() << std::endl;
+            LOG(ERROR) << "unsurpported data type: " << metadata->at(i).kind();
             break;
         }
     }
@@ -197,7 +198,8 @@ bool Worker::execute_query(std::string_view sql, std::size_t rid)
         channel_->send_ack(ERROR_CODE::UNKNOWN);
         return false;
     }
-    
+    cursor.result_set_iterator_ = rs->iterator();
+
     send_metadata(rid);
     channel_->send_ack(ERROR_CODE::OK);
     return true;
@@ -207,7 +209,12 @@ void Worker::next(std::size_t rid)
 {
     auto& cursor = cursors_.at(rid);
     auto& rq = cursor.row_queue_;
-    auto iterator = cursor.result_set_->iterator();
+    auto& iterator = cursor.result_set_iterator_;
+
+    if (!iterator || rq->is_closed()) {
+        return;
+    }
+
     std::size_t limit = rq->get_requested();
     for(std::size_t i = 0; i < limit; i++) {
         auto record = iterator->next();
@@ -230,7 +237,7 @@ void Worker::next(std::size_t rid)
                     case TYPE::TEXT:
                         rq->put_next_column(record->get_character(cindex)); break;
                     case TYPE::NULL_VALUE:
-                        std::cerr << "NULL_VALUE type should not be used" << std::endl; break;
+                        LOG(ERROR) << "NULL_VALUE type should not be used"; break;
                     }
                 }
             }
@@ -238,6 +245,7 @@ void Worker::next(std::size_t rid)
         } else {
             rq->push_writing_row();
             cursor.clear();
+            rq->set_eor();
             break;
         }
     }
@@ -283,7 +291,7 @@ void Worker::set_params(std::unique_ptr<jogasaki::api::parameter_set>& p)
                         p->set_null(prefix + std::to_string(idx+1));
                     }
                 else {
-                    std::cerr << __func__ << " " << __LINE__ << ": received a type of parameter that cannot be handled" << std::endl;
+                    LOG(ERROR) << "the type of parameter received cannot be handled";
                 }
             }, param);
     }
@@ -353,6 +361,7 @@ bool Worker::execute_prepared_query(std::size_t sid, std::size_t rid)
         channel_->send_ack(ERROR_CODE::UNKNOWN);
         return false;
     }
+    cursor.result_set_iterator_ = rs->iterator();
 
     send_metadata(rid);
     channel_->send_ack(ERROR_CODE::OK);
@@ -363,13 +372,13 @@ void Worker::deploy_metadata(std::size_t table_id)
 {
     manager::metadata::ErrorCode error;
 
-    auto datatypes = std::make_unique<manager::metadata::DataTypes>(FLAGS_dbname);
+    auto datatypes = std::make_unique<manager::metadata::DataTypes>(dbname_);
     error = datatypes->Metadata::load();
     if (error != manager::metadata::ErrorCode::OK) {
         channel_->send_ack(ERROR_CODE::FILE_IO_ERROR);
         return;
     }
-    auto tables = std::make_unique<manager::metadata::Tables>(FLAGS_dbname);
+    auto tables = std::make_unique<manager::metadata::Tables>(dbname_);
     error = tables->Metadata::load();
     if (error != manager::metadata::ErrorCode::OK) {
         channel_->send_ack(ERROR_CODE::FILE_IO_ERROR);
@@ -540,4 +549,4 @@ void Worker::deploy_metadata(std::size_t table_id)
     }
 }
 
-}  // ogawayama::server
+}  // ogawayama::bridge

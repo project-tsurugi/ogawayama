@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-add_subdirectory(prepare)
-add_subdirectory(query)
-add_subdirectory(simple)
+add_subdirectory(cli)
 add_subdirectory(tpcc_loader)
 add_subdirectory(tpcc)
