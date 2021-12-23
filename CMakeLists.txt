@@ -87,8 +87,8 @@ target_include_directories(bridge-api
         $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}/ogawayama>
 )
 
-set(export_name "ogawayama")
-set(package_name "ogawayama")
+set(export_name "ogawayama-${SHARKSFIN_IMPLEMENTATION}")
+set(package_name "ogawayama-${SHARKSFIN_IMPLEMENTATION}")
 
 configure_file(
     ${CMAKE_CURRENT_SOURCE_DIR}/cmake/Config.cmake.in

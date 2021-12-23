@@ -1,4 +1,4 @@
-# Copyright 2019-2019 tsurugi project.
+# Copyright 2019-2021 tsurugi project.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -14,45 +14,38 @@
 
 file(GLOB SOURCES
     "*.cpp"
+    PRIVATE ${CMAKE_SOURCE_DIR}/third_party/jogasaki/examples/common/utils.cpp
 )
 
-add_library(bridge
+add_executable(server
     ${SOURCES}
 )
 
-set_target_properties(bridge PROPERTIES
-    OUTPUT_NAME "ogawayama-bridge-${SHARKSFIN_IMPLEMENTATION}"
+set_target_properties(server
+    PROPERTIES
+        RUNTIME_OUTPUT_NAME "tateyama-server-with-ogawayama"
 )
 
-target_include_directories(bridge
-    PRIVATE ../../common/include
+target_include_directories(server
+    PRIVATE ${CMAKE_BINARY_DIR}/protos
+    PRIVATE ${CMAKE_SOURCE_DIR}/third_party/jogasaki/examples
+    PRIVATE .
 )
 
-target_link_libraries(bridge
-    PUBLIC api
-    PUBLIC bridge-api
-    PRIVATE jogasaki-${SHARKSFIN_IMPLEMENTATION}-api
+target_link_libraries(server
     PRIVATE tateyama-${SHARKSFIN_IMPLEMENTATION}-engine
+    PRIVATE jogasaki-${SHARKSFIN_IMPLEMENTATION}-engine
+    PRIVATE bridge
     PRIVATE takatori
     PRIVATE yugawara
-    PRIVATE fpdecimal
-    PRIVATE shakujo-common
-    PRIVATE manager-metadata
-    PRIVATE manager-message-interface
-    PRIVATE gflags::gflags
     PRIVATE glog::glog
-    PRIVATE Boost::filesystem
-    PRIVATE Boost::thread
+    PRIVATE gflags::gflags
     PRIVATE pthread
+    PRIVATE Boost::filesystem
     PRIVATE rt
 )
+set_compile_options(server)
 
-install_custom(bridge ${export_name})
-
-#for tests
-add_library(bridge-impl INTERFACE)
-
-target_include_directories(bridge-impl
-    INTERFACE ../include
-    INTERFACE .
-)
+if(INSTALL_EXAMPLES)
+    install_custom(server ${export_name})
+endif()
