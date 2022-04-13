@@ -1,5 +1,5 @@
 /*
- * Copyright 2019-2021 tsurugi project.
+ * Copyright 2019-2022 tsurugi project.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -22,6 +22,8 @@
 #include <glog/logging.h>
 
 #include <tateyama/api/registry.h>
+#include <tateyama/api/environment.h>
+#include <tateyama/api/configuration.h>
 
 #include <ogawayama/bridge/provider.h>
 #include "worker.h"
@@ -42,7 +44,23 @@ private:
     public:
         listener() = delete;
 
-        listener(jogasaki::api::database* db, std::size_t size, std::string& name) : db_(db), name_(name) {
+        listener(tateyama::api::environment& env, jogasaki::api::database* db) : db_(db) {
+            auto endpoint_config = env.configuration()->get_section("ogawayama"); 
+            if (endpoint_config == nullptr) {
+                LOG(ERROR) << "cannot find ogawayama section in the configuration";
+                exit(1);
+            }
+            std::string name;
+            if (!endpoint_config->get<>("name", name_)) {
+                LOG(ERROR) << "cannot name at the section in the configuration";
+                exit(1);
+            }
+            std::size_t threads;
+            if (!endpoint_config->get<>("threads", threads)) {
+                LOG(ERROR) << "cannot find thread_pool_size at the section in the configuration";
+                exit(1);
+            }
+
             // communication channel
             try {
                 shared_memory_ = std::make_unique<ogawayama::common::SharedMemory>(name, ogawayama::common::param::SheredMemoryType::SHARED_MEMORY_SERVER_CHANNEL, true, true /* FLAGS_remove_shm */);
@@ -52,7 +70,7 @@ private:
             }
 
             // worker objects
-            workers_.reserve(size);
+            workers_.reserve(threads);
         }
 
         void operator()() {
@@ -122,12 +140,12 @@ private:
     };
 
     public:
-    tateyama::status initialize(jogasaki::api::database* db, void* context) override {
+    tateyama::status initialize(tateyama::api::environment& env, jogasaki::api::database* db, [[maybe_unused]] void* context) override {
         auto& ctx = *reinterpret_cast<fe_endpoint_context*>(context);  //NOLINT
         auto& options = ctx.options_;
 
         // create listener object
-        listener_ = std::make_unique<listener>(db, std::stol(options["threads"]), options["dbname"]);
+        listener_ = std::make_unique<listener>(env, db);
 
         return tateyama::status::ok;
     }

@@ -16,6 +16,7 @@
 #pragma once
 
 #include <jogasaki/api.h>
+#include <tateyama/api/environment.h>
 #include <tateyama/status.h>
 
 namespace ogawayama::bridge::api {
@@ -49,7 +50,7 @@ public:
      * implementations can exchange necessary information. The knowledge on its content must be shared between
      * caller and endpoint.
      */
-    virtual tateyama::status initialize(jogasaki::api::database* db, void* context) = 0;
+    virtual tateyama::status initialize(tateyama::api::environment& env, jogasaki::api::database* db, void* context) = 0;
 
     /**
      * @brief start endpoint
