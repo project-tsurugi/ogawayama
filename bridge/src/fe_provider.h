@@ -50,12 +50,11 @@ private:
                 LOG(ERROR) << "cannot find ogawayama section in the configuration";
                 exit(1);
             }
-            std::string name;
             if (!endpoint_config->get<>("name", name_)) {
-                LOG(ERROR) << "cannot name at the section in the configuration";
+                LOG(ERROR) << "cannot find name at the section in the configuration";
                 exit(1);
             }
-            std::size_t threads;
+            std::size_t threads{};
             if (!endpoint_config->get<>("threads", threads)) {
                 LOG(ERROR) << "cannot find thread_pool_size at the section in the configuration";
                 exit(1);
@@ -63,7 +62,7 @@ private:
 
             // communication channel
             try {
-                shared_memory_ = std::make_unique<ogawayama::common::SharedMemory>(name, ogawayama::common::param::SheredMemoryType::SHARED_MEMORY_SERVER_CHANNEL, true, true /* FLAGS_remove_shm */);
+                shared_memory_ = std::make_unique<ogawayama::common::SharedMemory>(name_, ogawayama::common::param::SheredMemoryType::SHARED_MEMORY_SERVER_CHANNEL, true, true /* FLAGS_remove_shm */);
                 bridge_ch_ = std::make_unique<ogawayama::common::ChannelStream>(ogawayama::common::param::server, shared_memory_.get(), true, false);
             } catch (const std::exception& ex) {
                 LOG(ERROR) << ex.what() << std::endl;

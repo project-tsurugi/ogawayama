@@ -205,7 +205,7 @@ namespace ogawayama::common {
             } else {
                 queue_ = mem->find<SpscQueue>(name_).first;
                 if (queue_ == nullptr) {
-                    throw SharedMemoryException("can't find shared memory for RowQueue");
+                    throw SharedMemoryException(std::string("can't find shared memory for RowQueue: ") + std::string(name));
                 }
                 queue_->hello();
             }

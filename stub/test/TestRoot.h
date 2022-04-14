@@ -40,7 +40,7 @@ public:
     envelope() {
         // environment
         auto env = std::make_shared<tateyama::api::environment>();
-        std::string dir {""};  // FIXME have to update tateyama/configuration.h
+        std::string dir {"../../../stub/test/configuration"};  // FIXME have to update tateyama/configuration.h
         if (auto conf = tateyama::api::configuration::create_configuration(dir); conf != nullptr) {
             env->configuration(conf);
         } else {
@@ -55,14 +55,8 @@ public:
         db_ = jogasaki::api::create_database(cfg);
         db_->start();
 
-        ipc_endpoint_context init_context;
-        init_context.options_ = std::unordered_map<std::string, std::string>{
-            {"dbname", shm_name},
-            {"threads", std::to_string(1)},
-        };
-
         bridge_ = std::move(ogawayama::bridge::fe_provider::create());
-        bridge_->initialize(*env, db_.get(), std::addressof(init_context));
+        bridge_->initialize(*env, db_.get(), nullptr);
         bridge_->start();
     }
     ~envelope() {

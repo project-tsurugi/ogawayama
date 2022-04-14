@@ -74,7 +74,7 @@ namespace ogawayama::common {
             } else {
                 params_ = mem->find<Parameters>(name_).first;
                 if (params_ == nullptr) {
-                    throw SharedMemoryException("can't find shared memory for ParameterSet");
+                    throw SharedMemoryException(std::string("can't find shared memory for ParameterSet: ") + std::string(name));
                 }
             }
         }
