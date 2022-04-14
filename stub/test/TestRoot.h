@@ -40,8 +40,7 @@ public:
     envelope() {
         // environment
         auto env = std::make_shared<tateyama::api::environment>();
-        std::string dir {"../../../stub/test/configuration"};  // FIXME have to update tateyama/configuration.h
-        if (auto conf = tateyama::api::configuration::create_configuration(dir); conf != nullptr) {
+        if (auto conf = tateyama::api::configuration::create_configuration("../../../stub/test/configuration"); conf != nullptr) {
             env->configuration(conf);
         } else {
             LOG(ERROR) << "error in create_configuration";
