@@ -141,9 +141,6 @@ private:
 
     public:
     tateyama::status initialize(tateyama::api::environment& env, jogasaki::api::database* db, [[maybe_unused]] void* context) override {
-        auto& ctx = *reinterpret_cast<fe_endpoint_context*>(context);  //NOLINT
-        auto& options = ctx.options_;
-
         // create listener object
         listener_ = std::make_unique<listener>(env, db);
 

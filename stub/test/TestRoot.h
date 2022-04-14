@@ -38,6 +38,16 @@ struct ipc_endpoint_context {
 class envelope {
 public:
     envelope() {
+        // environment
+        auto env = std::make_shared<tateyama::api::environment>();
+        std::string dir {""};  // FIXME have to update tateyama/configuration.h
+        if (auto conf = tateyama::api::configuration::create_configuration(dir); conf != nullptr) {
+            env->configuration(conf);
+        } else {
+            LOG(ERROR) << "error in create_configuration";
+            exit(1);
+        }
+
         // database
         auto cfg = std::make_shared<jogasaki::configuration>();
         cfg->thread_pool_size(1);  // FLAGS_threads
@@ -52,7 +62,7 @@ public:
         };
 
         bridge_ = std::move(ogawayama::bridge::fe_provider::create());
-        bridge_->initialize(db_.get(), std::addressof(init_context));
+        bridge_->initialize(*env, db_.get(), std::addressof(init_context));
         bridge_->start();
     }
     ~envelope() {

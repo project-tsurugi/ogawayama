@@ -25,6 +25,7 @@ register_tests(
       manager-message-interface
       jogasaki-${SHARKSFIN_IMPLEMENTATION}-engine
       tateyama-${SHARKSFIN_IMPLEMENTATION}-engine
+      Boost::filesystem
       glog::glog
       rt
     SOURCES ${TEST_SOURCES}
