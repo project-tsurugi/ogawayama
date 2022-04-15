@@ -31,6 +31,8 @@
 
 namespace ogawayama::bridge {
 
+DEFINE_bool(remove_shm, true, "remove the shared memory prior to the execution");  // NOLINT
+
 Worker::Worker(jogasaki::api::database& db, std::string& dbname, std::string_view shm_name, std::size_t id) : db_(db), id_(id), dbname_(dbname)
 {
     std::string name{shm_name};

@@ -20,10 +20,6 @@
 
 #include <gflags/gflags.h>
 
-namespace ogawayama::bridge {
-DEFINE_bool(remove_shm, true, "remove the shared memory prior to the execution");  // NOLINT
-}
-
 int main(int argc, char **argv) {
     google::InitGoogleLogging("ogawayama tests");
     ::testing::InitGoogleTest(&argc, argv);
