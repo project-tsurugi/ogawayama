@@ -27,6 +27,7 @@ register_tests(
       tateyama-${SHARKSFIN_IMPLEMENTATION}-engine
       Boost::filesystem
       glog::glog
+      gflags::gflags
       rt
     SOURCES ${TEST_SOURCES}
 )

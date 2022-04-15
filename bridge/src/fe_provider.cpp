@@ -17,6 +17,8 @@
 
 namespace ogawayama::bridge::api {
 
+DEFINE_bool(remove_shm, false, "remove the shared memory prior to the execution");  // NOLINT
+
 static bool bridge_ogawayama_entry;
 
 /**

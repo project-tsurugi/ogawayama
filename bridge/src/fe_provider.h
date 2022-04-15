@@ -30,9 +30,7 @@
 
 namespace ogawayama::bridge {
 
-struct fe_endpoint_context {
-    std::unordered_map<std::string, std::string> options_{};
-};
+DECLARE_bool(remove_shm);
 
 /**
  * @brief fe endpoint provider
@@ -62,7 +60,7 @@ private:
 
             // communication channel
             try {
-                shared_memory_ = std::make_unique<ogawayama::common::SharedMemory>(name_, ogawayama::common::param::SheredMemoryType::SHARED_MEMORY_SERVER_CHANNEL, true, true /* FLAGS_remove_shm */);
+                shared_memory_ = std::make_unique<ogawayama::common::SharedMemory>(name_, ogawayama::common::param::SheredMemoryType::SHARED_MEMORY_SERVER_CHANNEL, true, FLAGS_remove_shm);
                 bridge_ch_ = std::make_unique<ogawayama::common::ChannelStream>(ogawayama::common::param::server, shared_memory_.get(), true, false);
             } catch (const std::exception& ex) {
                 LOG(ERROR) << ex.what() << std::endl;
