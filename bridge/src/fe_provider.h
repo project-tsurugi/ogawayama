@@ -43,7 +43,7 @@ private:
         listener() = delete;
 
         listener(tateyama::api::environment& env, jogasaki::api::database* db) : db_(db) {
-            auto endpoint_config = env.configuration()->get_section("ogawayama"); 
+            auto endpoint_config = env.configuration()->get_section("fdw"); 
             if (endpoint_config == nullptr) {
                 LOG(ERROR) << "cannot find ogawayama section in the configuration";
                 exit(1);
