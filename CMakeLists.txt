@@ -59,6 +59,7 @@ if (NOT BUILD_STUB_ONLY)
   find_package(jogasaki-${SHARKSFIN_IMPLEMENTATION} REQUIRED)
   find_package(tateyama-${SHARKSFIN_IMPLEMENTATION} REQUIRED)
   find_package(shakujo REQUIRED)
+  find_package(sharksfin REQUIRED)
 endif()
 
 include(GNUInstallDirs)
