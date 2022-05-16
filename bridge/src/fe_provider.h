@@ -48,15 +48,18 @@ private:
                 LOG(ERROR) << "cannot find ogawayama section in the configuration";
                 exit(1);
             }
-            if (!endpoint_config->get<>("name", name_)) {
+            auto name_opt = endpoint_config->get<std::string>("name");
+            if (!name_opt) {
                 LOG(ERROR) << "cannot find name at the section in the configuration";
                 exit(1);
             }
-            std::size_t threads{};
-            if (!endpoint_config->get<>("threads", threads)) {
+            name_ = name_opt.value();
+            auto threads_opt = endpoint_config->get<std::size_t>("threads");
+            if (!threads_opt) {
                 LOG(ERROR) << "cannot find thread_pool_size at the section in the configuration";
                 exit(1);
             }
+            auto threads = threads_opt.value();
 
             // communication channel
             try {
