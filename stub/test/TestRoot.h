@@ -40,7 +40,7 @@ public:
     envelope() {
         // environment
         auto env = std::make_shared<tateyama::api::environment>();
-        if (auto conf = tateyama::api::configuration::create_configuration("../../../stub/test/configuration"); conf != nullptr) {
+        if (auto conf = tateyama::api::configuration::create_configuration("../../../stub/test/configuration/tsurugi.ini"); conf != nullptr) {
             env->configuration(conf);
         } else {
             LOG(ERROR) << "error in create_configuration";
