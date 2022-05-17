@@ -36,7 +36,7 @@ private:
     std::unique_ptr<ogawayama::bridge::envelope> envelope_{};
 };
 
-TEST_F(SchemaDeployTest, DISABLED_basic_flow) {
+TEST_F(SchemaDeployTest, basic_flow) {
     StubPtr stub;
     ConnectionPtr connection;
     TransactionPtr transaction;
@@ -90,7 +90,7 @@ TEST_F(SchemaDeployTest, DISABLED_basic_flow) {
     EXPECT_EQ(ERROR_CODE::OK, transaction->commit());
 }
 
-TEST_F(SchemaDeployTest, DISABLED_register_twice) {
+TEST_F(SchemaDeployTest, register_twice) {
     StubPtr stub;
     ConnectionPtr connection;
     TransactionPtr transaction;
@@ -106,7 +106,7 @@ TEST_F(SchemaDeployTest, DISABLED_register_twice) {
     EXPECT_EQ(ERROR_CODE::INVALID_PARAMETER, transaction->get_impl()->create_table(1));
 }
 
-TEST_F(SchemaDeployTest, DISABLED_nullable_pkey) {
+TEST_F(SchemaDeployTest, nullable_pkey) {
     StubPtr stub;
     ConnectionPtr connection;
     TransactionPtr transaction;
