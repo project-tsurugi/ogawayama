@@ -16,7 +16,6 @@
 #include <memory>
 #include <string>
 #include <exception>
-#include <iostream>
 
 #include <gflags/gflags.h>
 #include <glog/logging.h>
@@ -54,7 +53,6 @@ private:
                 exit(1);
             }
             name_ = name_opt.value();
-            std::cout << name_ << std::endl;
             auto threads_opt = endpoint_config->get<std::size_t>("threads");
             if (!threads_opt) {
                 LOG(ERROR) << "cannot find thread_pool_size at the section in the configuration";

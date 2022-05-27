@@ -36,9 +36,19 @@ jobs:
         with:
           repository: project-tsurugi/jogasaki
           path: third_party/temp_jogasaki
-          ref: 44ac681f76d7637b57250836fa5facdf5c99ca67
+          ref: 635b3476a96633740bec0b6f43fdbbef27c6a2a4
           submodules: recursive
           token: ${{ secrets.GHA_PAT }}
+
+      - id: Install_limestone
+        name: Install_limestone
+        run: |
+          cd third_party/temp_jogasaki/third_party/sharksfin/third_party/shirakami/third_party/limestone
+          rm -rf build
+          mkdir -p build
+          cd build
+          cmake -DCMAKE_BUILD_TYPE=Debug -DBUILD_CPR=OFF -DCMAKE_INSTALL_PREFIX=${GITHUB_WORKSPACE}/.local ..
+          cmake --build . --target install --clean-first -- -j
 
       - id: Install_shirakami
         name: Install_shirakami
