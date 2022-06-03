@@ -30,7 +30,7 @@ static constexpr std::string_view update_table = "UPDATE MOCK SET C2=3.3, C3='OP
 /**
  * @brief execute a statement.
  * @param statement the SQL statement string
- * @return true in error, otherwise false
+ * @return error code defined in error_code.h
  */
 ErrorCode Transaction::Impl::execute_statement(std::string_view statement) {
     if (statement == update_table) {
@@ -40,9 +40,9 @@ ErrorCode Transaction::Impl::execute_statement(std::string_view statement) {
 }
 
 /**
- * @brief connect to the DB and get Transaction class
- * @param connection returns a connection class
- * @return true in error, otherwise false
+ * @brief execute a statement.
+ * @param statement the SQL query string
+ * @return error code defined in error_code.h
  */
 ErrorCode Transaction::Impl::execute_query(std::string_view query, std::shared_ptr<ResultSet> &result_set)
 {

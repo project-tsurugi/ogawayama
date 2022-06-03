@@ -72,6 +72,18 @@ ErrorCode Connection::Impl::prepare(std::string_view sql, PreparedStatementPtr &
 }
 
 /**
+ * @brief relay a create tabe message from the frontend to the server
+ * @param table id given by the frontend
+ * @return error code defined in error_code.h
+ */
+ErrorCode Connection::Impl::create_table(std::size_t id)
+{
+    channel_->send_req(ogawayama::common::CommandMessage::Type::CREATE_TABLE, id);
+    return channel_->recv_ack();
+}
+
+
+/**
  * @brief constructor of Connection class
  */
 Connection::Connection(Stub *stub, std::size_t pgprocno) : manager_(stub)
@@ -93,5 +105,21 @@ ErrorCode Connection::begin(TransactionPtr &transaction) { return impl_->begin(t
  * @brief prepare statement
  */
 ErrorCode Connection::prepare(std::string_view sql, PreparedStatementPtr &prepared) { return impl_->prepare(sql, prepared); }
+
+/**
+ * @brief receive a message from manager
+ */
+manager::message::Status Connection::receive_message(manager::message::Message *msg)
+{
+    switch(msg->get_id()){
+    case manager::message::MessageId::CREATE_TABLE:
+        {
+            ErrorCode reply = impl_->create_table(static_cast<std::size_t>(msg->get_object_id()));
+            return manager::message::Status(reply == ErrorCode::OK ? manager::message::ErrorCode::SUCCESS : manager::message::ErrorCode::FAILURE,
+                                            static_cast<int>(reply));
+        }
+    }
+    return manager::message::Status(manager::message::ErrorCode::FAILURE, static_cast<int>(ErrorCode::UNSUPPORTED));
+}
 
 }  // namespace ogawayama::stub

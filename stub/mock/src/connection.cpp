@@ -61,8 +61,15 @@ Connection::Connection(Stub *stub, std::size_t pgprocno) : manager_(stub)
 Connection::~Connection() = default;
 
 /**
- * @brief destructor of Stub class
+ * @brief begin a transaction
+ * *param transaction returns a transaction class
+ * @return error code defined in error_code.h
  */
 ErrorCode Connection::begin(std::unique_ptr<Transaction> &transaction) { return impl_->begin(transaction); }
+
+manager::message::Status Connection::receive_message(manager::message::Message *msg)
+{
+    return manager::message::Status(manager::message::ErrorCode::SUCCESS, 0);
+}
 
 }  // namespace ogawayama::stub

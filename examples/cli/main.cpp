@@ -53,13 +53,7 @@ int main(int argc, char **argv) {
 
         err = stub->get_connection(connection, 12);
         if (err != ERROR_CODE::OK) { prt_err(__LINE__, err); return 1; }
-        TransactionPtr transaction;
-        err = connection->begin(transaction);
-        if (err != ERROR_CODE::OK) { prt_err(__LINE__, err); return 1; }
-        std::cerr << "set schema \"" << FLAGS_schema << "\"" << std::endl;
-        err = transaction->get_impl()->create_table(static_cast<std::size_t>(FLAGS_schema));
-        if (err != ERROR_CODE::OK) { prt_err(__LINE__, err); return 1; }
-        err = transaction->commit();
+        err = connection->get_impl()->create_table(static_cast<std::size_t>(FLAGS_schema));
         if (err != ERROR_CODE::OK) { prt_err(__LINE__, err); return 1; }
     }
 

@@ -47,9 +47,9 @@ TEST_F(SchemaDeployTest, basic_flow) {
 
     EXPECT_EQ(ERROR_CODE::OK, stub->get_connection(connection, 12));
 
-    EXPECT_EQ(ERROR_CODE::OK, connection->begin(transaction));
+    EXPECT_EQ(ERROR_CODE::OK, connection->get_impl()->create_table(1));
 
-    EXPECT_EQ(ERROR_CODE::OK, transaction->get_impl()->create_table(1));
+    EXPECT_EQ(ERROR_CODE::OK, connection->begin(transaction));
 
     EXPECT_EQ(ERROR_CODE::OK, transaction->execute_statement(
                                                              "INSERT INTO table_1 (column_1, column_2, column_3) VALUES (1.1, 'ABCDE', 1234)"
@@ -93,31 +93,25 @@ TEST_F(SchemaDeployTest, basic_flow) {
 TEST_F(SchemaDeployTest, register_twice) {
     StubPtr stub;
     ConnectionPtr connection;
-    TransactionPtr transaction;
 
     EXPECT_EQ(ERROR_CODE::OK, make_stub(stub, shm_name));
 
     EXPECT_EQ(ERROR_CODE::OK, stub->get_connection(connection, 12));
 
-    EXPECT_EQ(ERROR_CODE::OK, connection->begin(transaction));
+    EXPECT_EQ(ERROR_CODE::OK, connection->get_impl()->create_table(1));
 
-    EXPECT_EQ(ERROR_CODE::OK, transaction->get_impl()->create_table(1));
-
-    EXPECT_EQ(ERROR_CODE::INVALID_PARAMETER, transaction->get_impl()->create_table(1));
+    EXPECT_EQ(ERROR_CODE::INVALID_PARAMETER, connection->get_impl()->create_table(1));
 }
 
 TEST_F(SchemaDeployTest, nullable_pkey) {
     StubPtr stub;
     ConnectionPtr connection;
-    TransactionPtr transaction;
 
     EXPECT_EQ(ERROR_CODE::OK, make_stub(stub, shm_name));
 
     EXPECT_EQ(ERROR_CODE::OK, stub->get_connection(connection, 12));
 
-    EXPECT_EQ(ERROR_CODE::OK, connection->begin(transaction));
-
-    EXPECT_EQ(ERROR_CODE::INVALID_PARAMETER, transaction->get_impl()->create_table(2));
+    EXPECT_EQ(ERROR_CODE::INVALID_PARAMETER, connection->get_impl()->create_table(2));
 }
 
 }  // namespace ogawayama::testing
