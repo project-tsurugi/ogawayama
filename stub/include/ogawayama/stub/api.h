@@ -257,7 +257,7 @@ namespace ogawayama::stub {
 /**
  * @brief Information about a connection.
  */
-class Connection {
+class Connection : public manager::message::Receiver {
 public:
     /**
      * @brief Construct a new object.
@@ -295,6 +295,12 @@ public:
      * @return error code defined in error_code.h
      */
     ErrorCode prepare(std::string_view, PreparedStatementPtr &);
+
+    /**
+     * @brief recieve a command issued by the frontend, and then process it
+     * @return error code defined in error_code.h
+     */
+    manager::message::Status receive_message(manager::message::Message *);
 
 private:
     class Impl;

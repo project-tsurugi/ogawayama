@@ -50,6 +50,25 @@ public:
         result_sets = result_sets_.get();
     }
 
+    /**
+     * @brief relay a create tabe message from the frontend to the server
+     * @param table id given by the frontend
+     * @return error code defined in error_code.h
+     */
+    ErrorCode create_table(std::size_t);
+
+    /**
+     * @brief relay a begin ddl message from the frontend to the server
+     * @return error code defined in error_code.h
+     */
+    ErrorCode begin_ddl();
+
+    /**
+     * @brief relay a end ddl from the frontend to the server
+     * @return error code defined in error_code.h
+     */
+    ErrorCode end_ddl();
+
 private:
     Connection *envelope_;
 

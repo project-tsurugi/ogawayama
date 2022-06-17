@@ -82,6 +82,11 @@ enum class ErrorCode {
      */
     TIMEOUT,
 
+    /**
+     * @brief trying to begin a transaction when it has already been started
+     */
+    TRANSACTION_ALREADY_STARTED,
+
 };
 
 constexpr std::string_view error_name(ErrorCode code) {

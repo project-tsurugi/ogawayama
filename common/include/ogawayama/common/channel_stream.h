@@ -88,11 +88,6 @@ public:
         /**
          * @brief
          */
-        EXECUTE_CREATE_TABLE,
-
-        /**
-         * @brief
-         */
         NEXT,
 
         /**
@@ -113,6 +108,16 @@ public:
         /**
          * @brief
          */
+        BEGIN_DDL,
+
+        /**
+         * @brief
+         */
+        END_DDL,
+
+        /**
+         * @brief
+         */
         TERMINATE,
 
         /**
@@ -124,6 +129,11 @@ public:
          * @brief
          */
         LOAD_DATABASE,
+
+        /**
+         * @brief
+         */
+        EXECUTE_CREATE_TABLE,
     };
 
     CommandMessage() = delete;

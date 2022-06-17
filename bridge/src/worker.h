@@ -62,6 +62,8 @@ class Worker {
     void execute_prepared_statement(std::size_t);
     bool execute_prepared_query(std::size_t, std::size_t);
     void deploy_metadata(std::size_t);
+    void begin_ddl();
+    void end_ddl();
 
     jogasaki::api::database& db_;
     std::size_t id_;

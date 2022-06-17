@@ -151,17 +151,6 @@ ErrorCode Transaction::Impl::rollback()
 }
 
 /**
- * @brief relay a create tabe message from the frontend to the server
- * @param table id given by the frontend
- * @return error code defined in error_code.h
- */
-ErrorCode Transaction::Impl::create_table(std::size_t id)
-{
-    channel_->send_req(ogawayama::common::CommandMessage::Type::CREATE_TABLE, id);
-    return channel_->recv_ack();
-}
-
-/**
  * @brief constructor of Transaction class
  */
 Transaction::Transaction(Connection *connection) : manager_(connection)
@@ -211,14 +200,6 @@ ErrorCode Transaction::rollback()
 
 manager::message::Status Transaction::receive_message(manager::message::Message *msg)
 {
-    switch(msg->get_id()){
-    case manager::message::MessageId::CREATE_TABLE:
-        {
-            ErrorCode reply = impl_->create_table(static_cast<std::size_t>(msg->get_object_id()));
-            return manager::message::Status(reply == ErrorCode::OK ? manager::message::ErrorCode::SUCCESS : manager::message::ErrorCode::FAILURE,
-                                            static_cast<int>(reply));
-        }
-    }
     return manager::message::Status(manager::message::ErrorCode::FAILURE, static_cast<int>(ErrorCode::UNSUPPORTED));
 }
 
