@@ -55,7 +55,7 @@ void Worker::run()
                 LOG(WARNING) << "error (" << error_name(rc) << ") occured in command receive, exiting";
                 return;
             }
-            VLOG(log_debug) << __func__ << ":" << __LINE__ << " recieved " << ivalue << " " << ogawayama::common::type_name(type) << " \"" << string << "\"";
+            VLOG(log_debug) << "recieved " << ivalue << " " << ogawayama::common::type_name(type) << " \"" << string << "\"";
         } catch (std::exception &ex) {
             LOG(WARNING) << "exception in command receive, exiting";
             return;
@@ -107,6 +107,12 @@ void Worker::run()
             break;
         case ogawayama::common::CommandMessage::Type::CREATE_TABLE:
             deploy_metadata(ivalue);
+            break;
+        case ogawayama::common::CommandMessage::Type::BEGIN_DDL:
+            begin_ddl();
+            break;
+        case ogawayama::common::CommandMessage::Type::END_DDL:
+            end_ddl();
             break;
         case ogawayama::common::CommandMessage::Type::DISCONNECT:
             if (transaction_handle_) {
@@ -390,6 +396,7 @@ void Worker::deploy_metadata(std::size_t table_id)
     boost::property_tree::ptree table;
     if ((error = tables->get(table_id, table)) == manager::metadata::ErrorCode::OK) {
 
+        VLOG(log_debug) << "found table with id " << table_id ;
         // table metadata
         auto id = table.get_optional<manager::metadata::ObjectIdType>(manager::metadata::Tables::ID);
         auto table_name = table.get_optional<std::string>(manager::metadata::Tables::NAME);
@@ -398,6 +405,7 @@ void Worker::deploy_metadata(std::size_t table_id)
             return;
         }
 
+        VLOG(log_debug) << " name is " << table_name.value();
         boost::property_tree::ptree primary_keys = table.get_child(manager::metadata::Tables::PRIMARY_KEY_NODE);
 
         std::vector<std::size_t> pk_columns;  // index: received order, content: ordinalPosition
@@ -405,6 +413,7 @@ void Worker::deploy_metadata(std::size_t table_id)
             const boost::property_tree::ptree& value = node.second;
             boost::optional<uint64_t> primary_key = value.get_value_optional<uint64_t>();
             pk_columns.emplace_back(primary_key.value());
+            VLOG(log_debug) << " found pk with index " << primary_key.value();
         }
         if(pk_columns.empty()) {
             channel_->send_ack(ERROR_CODE::INVALID_PARAMETER);
@@ -420,6 +429,7 @@ void Worker::deploy_metadata(std::size_t table_id)
                 return;
             }
             columns_map[ordinal_position.value()] = &node.second;
+            VLOG(log_debug) << " found column metadata, ordinal_position " << ordinal_position.value();
         }
 
         takatori::util::reference_vector<yugawara::storage::column> columns;            // index: ordinalPosition order (the first value of index and order are different)
@@ -460,6 +470,8 @@ void Worker::deploy_metadata(std::size_t table_id)
                 d = static_cast<manager::metadata::Tables::Column::Direction>(direction.value()) == manager::metadata::Tables::Column::Direction::DESCENDANT;
             }
             is_descendant.emplace_back(d);                              // is_descendant will be used in PK section
+
+            VLOG(log_debug) << " found column, name-data_type_id-nullable-direction " << name_value << "-" << static_cast<std::size_t>(data_type_id_value) <<  "-" << nullable_value << "-" << d; 
 
             switch(data_type_id_value) {  // build yugawara::storage::column
             case manager::metadata::DataTypes::DataTypesId::INT32:
@@ -549,6 +561,33 @@ void Worker::deploy_metadata(std::size_t table_id)
     } else {
         channel_->send_ack(ERROR_CODE::UNKNOWN);
     }
+}
+
+void Worker::begin_ddl()
+{
+    ERROR_CODE err_code = ERROR_CODE::OK;
+    
+    if (!transaction_handle_) {
+        if(auto rc = db_.create_transaction(transaction_handle_); rc != jogasaki::status::ok) {
+            err_code = ERROR_CODE::UNKNOWN;  // FIXME log error
+        }
+    } else {
+        err_code = ERROR_CODE::TRANSACTION_ALREADY_STARTED;
+    }
+    channel_->send_ack(err_code);
+}
+
+void Worker::end_ddl()
+{
+    ERROR_CODE err_code = ERROR_CODE::OK;
+
+    if (!transaction_handle_) {
+        err_code = ERROR_CODE::NO_TRANSACTION;
+    } else {
+        transaction_handle_.commit();
+        clear_transaction();
+    }
+    channel_->send_ack(err_code);
 }
 
 }  // ogawayama::bridge

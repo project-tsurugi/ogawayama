@@ -57,6 +57,18 @@ public:
      */
     ErrorCode create_table(std::size_t);
 
+    /**
+     * @brief relay a begin ddl message from the frontend to the server
+     * @return error code defined in error_code.h
+     */
+    ErrorCode begin_ddl();
+
+    /**
+     * @brief relay a end ddl from the frontend to the server
+     * @return error code defined in error_code.h
+     */
+    ErrorCode end_ddl();
+
 private:
     Connection *envelope_;
 

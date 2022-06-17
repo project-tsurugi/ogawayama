@@ -82,6 +82,28 @@ ErrorCode Connection::Impl::create_table(std::size_t id)
     return channel_->recv_ack();
 }
 
+/**
+ * @brief relay a create tabe message from the frontend to the server
+ * @param table id given by the frontend
+ * @return error code defined in error_code.h
+ */
+ErrorCode Connection::Impl::begin_ddl()
+{
+    channel_->send_req(ogawayama::common::CommandMessage::Type::BEGIN_DDL);
+    return channel_->recv_ack();
+}
+
+/**
+ * @brief relay a create tabe message from the frontend to the server
+ * @param table id given by the frontend
+ * @return error code defined in error_code.h
+ */
+ErrorCode Connection::Impl::end_ddl()
+{
+    channel_->send_req(ogawayama::common::CommandMessage::Type::END_DDL);
+    return channel_->recv_ack();
+}
+
 
 /**
  * @brief constructor of Connection class
@@ -118,6 +140,20 @@ manager::message::Status Connection::receive_message(manager::message::Message *
             return manager::message::Status(reply == ErrorCode::OK ? manager::message::ErrorCode::SUCCESS : manager::message::ErrorCode::FAILURE,
                                             static_cast<int>(reply));
         }
+    case manager::message::MessageId::BEGIN_DDL:
+        {
+            ErrorCode reply = impl_->begin_ddl();
+            return manager::message::Status(reply == ErrorCode::OK ? manager::message::ErrorCode::SUCCESS : manager::message::ErrorCode::FAILURE,
+                                            static_cast<int>(reply));
+        }
+    case manager::message::MessageId::END_DDL:
+        {
+            ErrorCode reply = impl_->end_ddl();
+            return manager::message::Status(reply == ErrorCode::OK ? manager::message::ErrorCode::SUCCESS : manager::message::ErrorCode::FAILURE,
+                                            static_cast<int>(reply));
+        }
+    default:
+        break;
     }
     return manager::message::Status(manager::message::ErrorCode::FAILURE, static_cast<int>(ErrorCode::UNSUPPORTED));
 }
