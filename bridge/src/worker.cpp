@@ -568,7 +568,7 @@ void Worker::begin_ddl()
     ERROR_CODE err_code = ERROR_CODE::OK;
     
     if (!transaction_handle_) {
-        if(auto rc = db_.create_transaction(transaction_handle_); rc != jogasaki::status::ok) {
+        if(auto rc = db_.create_transaction(transaction_handle_); rc != jogasaki::status::ok) {  // FIXME use transaction option to specify exclusive exexution
             err_code = ERROR_CODE::UNKNOWN;  // FIXME log error
         }
     } else {
