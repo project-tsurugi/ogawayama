@@ -132,7 +132,8 @@ void Worker::execute_statement(std::string_view sql)
 {
     if (!transaction_handle_) {
         if(auto rc = db_.create_transaction(transaction_handle_); rc != jogasaki::status::ok) {
-            // FIXME log error and exit
+            LOG(ERROR) << "fail to db_.create_transaction(transaction_handle_)";
+            channel_->send_ack(ERROR_CODE::UNKNOWN);
             return;
         }
     }
@@ -182,7 +183,7 @@ bool Worker::execute_query(std::string_view sql, std::size_t rid)
 {
     if (!transaction_handle_) {
         if(auto rc = db_.create_transaction(transaction_handle_); rc != jogasaki::status::ok) {
-            // FIXME log error and exit
+            LOG(ERROR) << "fail to db_.create_transaction(transaction_handle_)";
             return false;
         }
     }
@@ -314,7 +315,8 @@ void Worker::execute_prepared_statement(std::size_t sid)
 
     if (!transaction_handle_) {
         if(auto rc = db_.create_transaction(transaction_handle_); rc != jogasaki::status::ok) {
-            // FIXME log error and exit
+            LOG(ERROR) << "fail to db_.create_transaction(transaction_handle_)";
+            channel_->send_ack(ERROR_CODE::UNKNOWN);
             return;
         }
     }
@@ -342,7 +344,7 @@ bool Worker::execute_prepared_query(std::size_t sid, std::size_t rid)
 
     if (!transaction_handle_) {
         if(auto rc = db_.create_transaction(transaction_handle_); rc != jogasaki::status::ok) {
-            // FIXME log error and exit
+            LOG(ERROR) << "fail to db_.create_transaction(transaction_handle_)";
             return false;
         }
     }
@@ -569,7 +571,8 @@ void Worker::begin_ddl()
     
     if (!transaction_handle_) {
         if(auto rc = db_.create_transaction(transaction_handle_); rc != jogasaki::status::ok) {  // FIXME use transaction option to specify exclusive exexution
-            err_code = ERROR_CODE::UNKNOWN;  // FIXME log error
+            LOG(ERROR) << "fail to db_.create_transaction(transaction_handle_)";
+            err_code = ERROR_CODE::UNKNOWN;
         }
     } else {
         err_code = ERROR_CODE::TRANSACTION_ALREADY_STARTED;
