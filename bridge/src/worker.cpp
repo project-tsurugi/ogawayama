@@ -15,6 +15,7 @@
  */
 
 #include <vector>
+#include <optional>
 #include <boost/foreach.hpp>
 
 #include <gflags/gflags.h>
@@ -523,7 +524,11 @@ void Worker::deploy_metadata(std::size_t table_id)
             ordinal_position_value++;
         }
 
-        auto t = std::make_shared<yugawara::storage::table>(yugawara::storage::table::simple_name_type(table_name.value()), std::move(columns));
+        auto t = std::make_shared<yugawara::storage::table>(
+            std::make_optional(static_cast<yugawara::storage::index::definition_id_type>(table_id)),
+            yugawara::storage::table::simple_name_type(table_name.value()),
+            std::move(columns)
+        );
         if (auto rc = db_.create_table(t); rc != jogasaki::status::ok) {
             channel_->send_ack((rc == jogasaki::status::err_already_exists) ? ERROR_CODE::INVALID_PARAMETER : ERROR_CODE::UNKNOWN);
             return;
@@ -543,6 +548,7 @@ void Worker::deploy_metadata(std::size_t table_id)
         }
 
         auto i = std::make_shared<yugawara::storage::index>(
+            std::make_optional(static_cast<yugawara::storage::index::definition_id_type>(table_id)),
             t,
             yugawara::storage::index::simple_name_type(table_name.value()),
             std::move(keys),
