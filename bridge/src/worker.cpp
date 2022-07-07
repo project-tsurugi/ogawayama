@@ -525,7 +525,7 @@ void Worker::deploy_metadata(std::size_t table_id)
         }
 
         auto t = std::make_shared<yugawara::storage::table>(
-            std::make_optional(static_cast<yugawara::storage::index::definition_id_type>(table_id)),
+            std::make_optional(static_cast<yugawara::storage::table::definition_id_type>(table_id)),
             yugawara::storage::table::simple_name_type(table_name.value()),
             std::move(columns)
         );
