@@ -20,7 +20,8 @@
 #include <unordered_map>
 #include <jogasaki/api.h>
 #include <ogawayama/stub/api.h>
-#include "fe_provider.h"
+#include <ogawayama/bridge/service.h>
+#include <tateyama/framework/server.h>
 
 #include "stubImpl.h"
 #include "connectionImpl.h"
@@ -31,40 +32,30 @@ const char* const shm_name = "ogawayama_test";
 
 namespace ogawayama::bridge {
 
-struct ipc_endpoint_context {
-    std::unordered_map<std::string, std::string> options_{};
-};
-
 class envelope {
 public:
     envelope() {
         // environment
-        auto env = std::make_shared<tateyama::api::environment>();
         if (auto conf = tateyama::api::configuration::create_configuration("../../../stub/test/configuration/tsurugi.ini"); conf != nullptr) {
-            env->configuration(conf);
+            sv_ = std::make_shared<tateyama::framework::server>(tateyama::framework::boot_mode::database_server, conf);
         } else {
             LOG(ERROR) << "error in create_configuration";
             exit(1);
         }
-
-        // database
-        auto cfg = std::make_shared<jogasaki::configuration>();
+        add_core_components(*sv_);
+        auto sqlres = std::make_shared<jogasaki::api::resource::bridge>();
+        sv_->add_resource(sqlres);
+        sv_->add_service(std::make_shared<ogawayama::bridge::service>());
+        sv_->setup();
+        auto& cfg = sqlres->database()->config();
         cfg->thread_pool_size(1);  // FLAGS_threads
-
-        db_ = jogasaki::api::create_database(cfg);
-        db_->start();
-
-        bridge_ = std::move(ogawayama::bridge::fe_provider::create());
-        bridge_->initialize(*env, db_.get(), nullptr);
-        bridge_->start();
+        sv_->start();
     }
     ~envelope() {
-        bridge_->shutdown();
-        db_->stop();
+        sv_->shutdown();
     }
 private:
-    std::unique_ptr<jogasaki::api::database> db_;
-    std::shared_ptr<fe_provider> bridge_;
+    std::shared_ptr<tateyama::framework::server> sv_;
 };
 
 }
