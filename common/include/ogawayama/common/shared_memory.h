@@ -119,7 +119,10 @@ public:
                 boost::interprocess::shared_memory_object::remove(shm_name_.c_str());
             }
             try {
-                managed_shared_memory_ = std::make_unique<boost::interprocess::managed_shared_memory>(boost::interprocess::create_only, shm_name_.c_str(), shm_size);
+                boost::interprocess::permissions  unrestricted_permissions;
+                unrestricted_permissions.set_unrestricted();
+
+                managed_shared_memory_ = std::make_unique<boost::interprocess::managed_shared_memory>(boost::interprocess::create_only, shm_name_.c_str(), shm_size, nullptr, unrestricted_permissions);
             }
             catch(const boost::interprocess::interprocess_exception& ex) {
                 throw SharedMemoryException(std::string("shared memory already exist: ") + shm_name_);
