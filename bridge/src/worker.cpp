@@ -56,7 +56,7 @@ void Worker::run()
                 LOG(WARNING) << "error (" << error_name(rc) << ") occured in command receive, exiting";
                 return;
             }
-            VLOG(log_debug) << "recieved " << ivalue << " " << ogawayama::common::type_name(type) << " \"" << string << "\"";
+            VLOG(log_debug) << "--> " << ogawayama::common::type_name(type) << " : ivalue = " << ivalue << " : string = " << " \"" << string << "\"";
         } catch (std::exception &ex) {
             LOG(WARNING) << "exception in command receive, exiting";
             return;
@@ -73,15 +73,18 @@ void Worker::run()
             break;
         case ogawayama::common::CommandMessage::Type::NEXT:
             channel_->send_ack(ERROR_CODE::OK);
+            VLOG(log_debug) << "<-- OK";
             next(ivalue);
             break;
         case ogawayama::common::CommandMessage::Type::COMMIT:
             if (!transaction_handle_) {
                 channel_->send_ack(ERROR_CODE::NO_TRANSACTION);
+                VLOG(log_debug) << "<-- NO_TRANSACTION";
                 break;
             }
             transaction_handle_.commit();
             channel_->send_ack(ERROR_CODE::OK);
+            VLOG(log_debug) << "<-- OK";
             clear_transaction();
             break;
         case ogawayama::common::CommandMessage::Type::ROLLBACK:
@@ -90,6 +93,7 @@ void Worker::run()
             }
             transaction_handle_.abort();
             channel_->send_ack(ERROR_CODE::OK);
+            VLOG(log_debug) << "<-- OK";
             clear_transaction();
             break;
         case ogawayama::common::CommandMessage::Type::PREPARE:
@@ -135,6 +139,7 @@ void Worker::execute_statement(std::string_view sql)
         if(auto rc = db_.create_transaction(transaction_handle_); rc != jogasaki::status::ok) {
             LOG(ERROR) << "fail to db_.create_transaction(transaction_handle_)";
             channel_->send_ack(ERROR_CODE::UNKNOWN);
+            VLOG(log_debug) << "<-- UNKNOWN";
             return;
         }
     }
@@ -142,13 +147,16 @@ void Worker::execute_statement(std::string_view sql)
     std::unique_ptr<jogasaki::api::executable_statement> e{};
     if(auto rc = db_.create_executable(sql, e); rc != jogasaki::status::ok) {
         channel_->send_ack(ERROR_CODE::UNKNOWN);
+        VLOG(log_debug) << "<-- UNKNOWN";
         return;
     }
     if(auto rc = transaction_handle_.execute(*e); rc != jogasaki::status::ok) {
         channel_->send_ack(ERROR_CODE::UNKNOWN);
+        VLOG(log_debug) << "<-- UNKNOWN";
         return;
     }
     channel_->send_ack(ERROR_CODE::OK);
+    VLOG(log_debug) << "<-- OK";
     return;
 }
 
@@ -201,17 +209,20 @@ bool Worker::execute_query(std::string_view sql, std::size_t rid)
     std::unique_ptr<jogasaki::api::executable_statement> e{};
     if(auto rc = db_.create_executable(sql, e); rc != jogasaki::status::ok) {
         channel_->send_ack(ERROR_CODE::UNKNOWN);
+        VLOG(log_debug) << "<-- UNKNOWN";
         return false;
     }
     auto& rs =  cursor.result_set_;
     if(auto rc = transaction_handle_.execute(*e, rs); rc != jogasaki::status::ok || !rs) {
         channel_->send_ack(ERROR_CODE::UNKNOWN);
+        VLOG(log_debug) << "<-- UNKNOWN";
         return false;
     }
     cursor.result_set_iterator_ = rs->iterator();
 
     send_metadata(rid);
     channel_->send_ack(ERROR_CODE::OK);
+    VLOG(log_debug) << "<-- OK";
     return true;
 }
 
@@ -269,9 +280,11 @@ void Worker::prepare(std::string_view sql, std::size_t sid)
 
     if(auto rc = db_.prepare(sql, prepared_statements_.at(sid)); rc != jogasaki::status::ok) {
         channel_->send_ack(ERROR_CODE::UNKNOWN);
+        VLOG(log_debug) << "<-- UNKNOWN";
         return;
     }
     channel_->send_ack(ERROR_CODE::OK);    
+    VLOG(log_debug) << "<-- OK";
 }
 
 void Worker::set_params(std::unique_ptr<jogasaki::api::parameter_set>& p)
@@ -311,6 +324,7 @@ void Worker::execute_prepared_statement(std::size_t sid)
 {
     if (sid >= prepared_statements_.size()) {
         channel_->send_ack(ERROR_CODE::UNKNOWN);
+        VLOG(log_debug) << "<-- UNKNOWN";
         return;
     }
 
@@ -318,6 +332,7 @@ void Worker::execute_prepared_statement(std::size_t sid)
         if(auto rc = db_.create_transaction(transaction_handle_); rc != jogasaki::status::ok) {
             LOG(ERROR) << "fail to db_.create_transaction(transaction_handle_)";
             channel_->send_ack(ERROR_CODE::UNKNOWN);
+            VLOG(log_debug) << "<-- UNKNOWN";
             return;
         }
     }
@@ -327,19 +342,23 @@ void Worker::execute_prepared_statement(std::size_t sid)
     std::unique_ptr<jogasaki::api::executable_statement> e{};
     if(auto rc = db_.resolve(cursors_.at(sid).prepared_, std::shared_ptr{std::move(params)}, e); rc != jogasaki::status::ok) {
         channel_->send_ack(ERROR_CODE::UNKNOWN);
+        VLOG(log_debug) << "<-- UNKNOWN";
         return;
     }
     if(auto rc = transaction_handle_.execute(*e); rc != jogasaki::status::ok) {
         channel_->send_ack(ERROR_CODE::UNKNOWN);
+        VLOG(log_debug) << "<-- UNKNOWN";
         return;
     }
     channel_->send_ack(ERROR_CODE::OK);
+    VLOG(log_debug) << "<-- OK";
 }
 
 bool Worker::execute_prepared_query(std::size_t sid, std::size_t rid)
 {
     if (sid >= prepared_statements_.size()) {
         channel_->send_ack(ERROR_CODE::UNKNOWN);
+        VLOG(log_debug) << "<-- UNKNOWN";
         return false;
     }
 
@@ -365,17 +384,20 @@ bool Worker::execute_prepared_query(std::size_t sid, std::size_t rid)
     std::unique_ptr<jogasaki::api::executable_statement> e{};
     if(auto rc = db_.resolve(cursors_.at(sid).prepared_, std::shared_ptr{std::move(params)}, e); rc != jogasaki::status::ok) {
         channel_->send_ack(ERROR_CODE::UNKNOWN);
+        VLOG(log_debug) << "<-- UNKNOWN";
         return false;
     }
     auto& rs =  cursor.result_set_;
     if(auto rc = transaction_handle_.execute(*e, rs); rc != jogasaki::status::ok || !rs) {
         channel_->send_ack(ERROR_CODE::UNKNOWN);
+        VLOG(log_debug) << "<-- UNKNOWN";
         return false;
     }
     cursor.result_set_iterator_ = rs->iterator();
 
     send_metadata(rid);
     channel_->send_ack(ERROR_CODE::OK);
+    VLOG(log_debug) << "<-- OK";
     return true;
 }
 
@@ -387,12 +409,14 @@ void Worker::deploy_metadata(std::size_t table_id)
     error = datatypes->Metadata::load();
     if (error != manager::metadata::ErrorCode::OK) {
         channel_->send_ack(ERROR_CODE::FILE_IO_ERROR);
+        VLOG(log_debug) << "<-- FILE_IO_ERROR";
         return;
     }
     auto tables = std::make_unique<manager::metadata::Tables>(dbname_);
     error = tables->Metadata::load();
     if (error != manager::metadata::ErrorCode::OK) {
         channel_->send_ack(ERROR_CODE::FILE_IO_ERROR);
+        VLOG(log_debug) << "<-- FILE_IO_ERROR";
         return;
     }
 
@@ -405,6 +429,7 @@ void Worker::deploy_metadata(std::size_t table_id)
         auto table_name = table.get_optional<std::string>(manager::metadata::Tables::NAME);
         if (!id || !table_name || (id.value() != table_id)) {
             channel_->send_ack(ERROR_CODE::INVALID_PARAMETER);
+            VLOG(log_debug) << "<-- INVALID_PARAMETER";
             return;
         }
 
@@ -420,6 +445,7 @@ void Worker::deploy_metadata(std::size_t table_id)
         }
         if(pk_columns.empty()) {
             channel_->send_ack(ERROR_CODE::INVALID_PARAMETER);
+            VLOG(log_debug) << "<-- INVALID_PARAMETER";
             return;
         }
 
@@ -429,6 +455,7 @@ void Worker::deploy_metadata(std::size_t table_id)
             auto ordinal_position = node.second.get_optional<uint64_t>(manager::metadata::Tables::Column::ORDINAL_POSITION);
             if (!ordinal_position) {
                 channel_->send_ack(ERROR_CODE::INVALID_PARAMETER);
+                VLOG(log_debug) << "<-- INVALID_PARAMETER";
                 return;
             }
             columns_map[ordinal_position.value()] = &node.second;
@@ -442,6 +469,7 @@ void Worker::deploy_metadata(std::size_t table_id)
         for(auto &&e : columns_map) {
             if (ordinal_position_value != e.first) {
                 channel_->send_ack(ERROR_CODE::INVALID_PARAMETER);
+                VLOG(log_debug) << "<-- INVALID_PARAMETER";
                 return;
             }
             const boost::property_tree::ptree& column = *e.second;
@@ -452,6 +480,7 @@ void Worker::deploy_metadata(std::size_t table_id)
             auto ordinal_position = column.get_optional<uint64_t>(manager::metadata::Tables::Column::ORDINAL_POSITION);
             if (!nullable || !data_type_id || !name) {
                 channel_->send_ack(ERROR_CODE::INVALID_PARAMETER);
+                VLOG(log_debug) << "<-- INVALID_PARAMETER";
                 return;
             }
             auto nullable_value = nullable.value();
@@ -461,6 +490,7 @@ void Worker::deploy_metadata(std::size_t table_id)
             if (std::vector<std::size_t>::iterator itr = std::find(pk_columns.begin(), pk_columns.end(), ordinal_position_value); itr != pk_columns.end()) {  // is this pk_column ?
                 if(nullable_value) {
                     channel_->send_ack(ERROR_CODE::INVALID_PARAMETER);  // pk_column must not be nullable
+                    VLOG(log_debug) << "<-- INVALID_PARAMETER";
                     return;
                 }
             } else {  // this is value column
@@ -496,18 +526,21 @@ void Worker::deploy_metadata(std::size_t table_id)
                 auto varying = column.get_optional<bool>(manager::metadata::Tables::Column::VARYING);
                 if(!varying) {  // varying field is necessary for CHAR/VARCHRA
                     channel_->send_ack(ERROR_CODE::INVALID_PARAMETER);
+                    VLOG(log_debug) << "<-- INVALID_PARAMETER";
                     return;
                 }
                 auto varying_value = varying.value();
                 if((!varying_value && (data_type_id_value != manager::metadata::DataTypes::DataTypesId::CHAR)) ||
                    (varying_value && (data_type_id_value != manager::metadata::DataTypes::DataTypesId::VARCHAR))) {
                     channel_->send_ack(ERROR_CODE::INVALID_PARAMETER);
+                    VLOG(log_debug) << "<-- INVALID_PARAMETER";
                     return;
                 }
                 auto data_length = column.get_optional<uint64_t>(manager::metadata::Tables::Column::DATA_LENGTH);
                 if (!data_length) {
                     if(varying_value) {  // data_length field is necessary for VARCHAR
                         channel_->send_ack(ERROR_CODE::UNSUPPORTED);
+                        VLOG(log_debug) << "<-- UNSUPPORTED";
                         return;
                     }
                 } else {
@@ -531,6 +564,7 @@ void Worker::deploy_metadata(std::size_t table_id)
         );
         if (auto rc = db_.create_table(t); rc != jogasaki::status::ok) {
             channel_->send_ack((rc == jogasaki::status::err_already_exists) ? ERROR_CODE::INVALID_PARAMETER : ERROR_CODE::UNKNOWN);
+            VLOG(log_debug) << "<-- " << ((rc == jogasaki::status::err_already_exists) ? "INVALID_PARAMETER" : "UNKNOWN");
             return;
         }
         
@@ -562,12 +596,15 @@ void Worker::deploy_metadata(std::size_t table_id)
         );
         if(db_.create_index(i) != jogasaki::status::ok) {
             channel_->send_ack(ERROR_CODE::UNKNOWN);
+            VLOG(log_debug) << "<-- UNKNOWN";
             return;
         }
 
         channel_->send_ack(ERROR_CODE::OK);
+        VLOG(log_debug) << "<-- OK";
     } else {
         channel_->send_ack(ERROR_CODE::UNKNOWN);
+        VLOG(log_debug) << "<-- UNKNOWN";
     }
 }
 
@@ -584,6 +621,7 @@ void Worker::begin_ddl()
         err_code = ERROR_CODE::TRANSACTION_ALREADY_STARTED;
     }
     channel_->send_ack(err_code);
+    VLOG(log_debug) << "<-- " << ogawayama::stub::error_name(err_code);
 }
 
 void Worker::end_ddl()
@@ -597,6 +635,7 @@ void Worker::end_ddl()
         clear_transaction();
     }
     channel_->send_ack(err_code);
+    VLOG(log_debug) << "<-- " << ogawayama::stub::error_name(err_code);
 }
 
 }  // ogawayama::bridge
