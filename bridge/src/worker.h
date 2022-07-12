@@ -30,7 +30,7 @@
 
 namespace ogawayama::bridge {
 
-class fe_provider;
+class listener;
 
 class Worker {
     class Cursor {
@@ -52,7 +52,7 @@ class Worker {
         if(thread_.joinable()) thread_.join();
     }
     void run();
-    friend class fe_provider;
+    friend class listener;
 
  private:
     void execute_statement(std::string_view);
