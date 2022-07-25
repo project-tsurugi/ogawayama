@@ -87,8 +87,10 @@ class Worker {
     void set_params(std::unique_ptr<jogasaki::api::parameter_set>&);
     void clear_transaction() {
         cursors_.clear();
-        if (auto rc = db_.destroy_transaction(transaction_handle_); rc != jogasaki::status::ok) {
-            LOG(ERROR) << "fail to db_.destroy_transaction(transaction_handle_)";
+        if (transaction_handle_) {
+            if (auto rc = db_.destroy_transaction(transaction_handle_); rc != jogasaki::status::ok) {
+                LOG(ERROR) << "fail to db_.destroy_transaction(transaction_handle_)";
+            }
         }
         transaction_handle_ = jogasaki::api::transaction_handle();
     }
