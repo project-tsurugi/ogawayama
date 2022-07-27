@@ -35,7 +35,6 @@ target_link_libraries(bridge
     PRIVATE tateyama-${SHARKSFIN_IMPLEMENTATION}-engine
     PRIVATE takatori
     PRIVATE yugawara
-    PRIVATE fpdecimal
     PRIVATE shakujo-common
     PRIVATE manager-metadata
     PRIVATE manager-message-interface
