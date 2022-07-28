@@ -46,7 +46,7 @@ jobs:
         with:
           repository: project-tsurugi/jogasaki
           path: third_party/temp_jogasaki
-          ref: 37bd7d531342701a788bbd10b42e62ba8b56abef
+          ref: 9e0f1bfcbe494c7acc899402a3877b61a7a65743
           submodules: recursive
           token: ${{ secrets.GHA_PAT }}
 
@@ -78,16 +78,6 @@ jobs:
           mkdir -p build
           cd build
           cmake -DCMAKE_BUILD_TYPE=Debug -DFORCE_INSTALL_RPATH=ON -DBUILD_TESTS=OFF -DBUILD_DOCUMENTS=OFF -DBUILD_EXAMPLES=OFF -DCMAKE_INSTALL_PREFIX=${GITHUB_WORKSPACE}/.local ..
-          cmake --build . --target install --clean-first -- -j
-
-      - id: Install_fpdecimal
-        name: Install_fpdecimal
-        run: |
-          cd third_party/temp_jogasaki/third_party/mizugaki/third_party/yugawara/third_party/takatori/third_party/fpdecimal
-          rm -rf build
-          mkdir -p build
-          cd build
-          cmake -DCMAKE_BUILD_TYPE=Debug -DBUILD_TESTS=OFF -DBUILD_DOCUMENTS=OFF -DCMAKE_INSTALL_PREFIX=${GITHUB_WORKSPACE}/.local ..
           cmake --build . --target install --clean-first -- -j
 
       - id: Install_takatori
