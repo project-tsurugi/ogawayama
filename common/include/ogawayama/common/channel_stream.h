@@ -108,6 +108,11 @@ public:
         /**
          * @brief
          */
+        DROP_TABLE,
+
+        /**
+         * @brief
+         */
         BEGIN_DDL,
 
         /**

@@ -113,6 +113,9 @@ void Worker::run()
         case ogawayama::common::CommandMessage::Type::CREATE_TABLE:
             deploy_metadata(ivalue);
             break;
+        case ogawayama::common::CommandMessage::Type::DROP_TABLE:
+            withdraw_metadata(ivalue);
+            break;
         case ogawayama::common::CommandMessage::Type::BEGIN_DDL:
             begin_ddl();
             break;
@@ -401,6 +404,36 @@ bool Worker::execute_prepared_query(std::size_t sid, std::size_t rid)
     return true;
 }
 
+void Worker::begin_ddl()
+{
+    ERROR_CODE err_code = ERROR_CODE::OK;
+
+    if (!transaction_handle_) {
+        if(auto rc = db_.create_transaction(transaction_handle_); rc != jogasaki::status::ok) {  // FIXME use transaction option to specify exclusive exexution
+            LOG(ERROR) << "fail to db_.create_transaction(transaction_handle_)";
+            err_code = ERROR_CODE::UNKNOWN;
+        }
+    } else {
+        err_code = ERROR_CODE::TRANSACTION_ALREADY_STARTED;
+    }
+    channel_->send_ack(err_code);
+    VLOG(log_debug) << "<-- " << ogawayama::stub::error_name(err_code);
+}
+
+void Worker::end_ddl()
+{
+    ERROR_CODE err_code = ERROR_CODE::OK;
+
+    if (!transaction_handle_) {
+        err_code = ERROR_CODE::NO_TRANSACTION;
+    } else {
+        transaction_handle_.commit();
+        clear_transaction();
+    }
+    channel_->send_ack(err_code);
+    VLOG(log_debug) << "<-- " << ogawayama::stub::error_name(err_code);
+}
+
 void Worker::deploy_metadata(std::size_t table_id)
 {
     manager::metadata::ErrorCode error;
@@ -608,34 +641,12 @@ void Worker::deploy_metadata(std::size_t table_id)
     }
 }
 
-void Worker::begin_ddl()
+void Worker::withdraw_metadata(std::size_t table_id)
 {
-    ERROR_CODE err_code = ERROR_CODE::OK;
-    
-    if (!transaction_handle_) {
-        if(auto rc = db_.create_transaction(transaction_handle_); rc != jogasaki::status::ok) {  // FIXME use transaction option to specify exclusive exexution
-            LOG(ERROR) << "fail to db_.create_transaction(transaction_handle_)";
-            err_code = ERROR_CODE::UNKNOWN;
-        }
-    } else {
-        err_code = ERROR_CODE::TRANSACTION_ALREADY_STARTED;
-    }
-    channel_->send_ack(err_code);
-    VLOG(log_debug) << "<-- " << ogawayama::stub::error_name(err_code);
-}
+    // FIXME implement
 
-void Worker::end_ddl()
-{
-    ERROR_CODE err_code = ERROR_CODE::OK;
-
-    if (!transaction_handle_) {
-        err_code = ERROR_CODE::NO_TRANSACTION;
-    } else {
-        transaction_handle_.commit();
-        clear_transaction();
-    }
-    channel_->send_ack(err_code);
-    VLOG(log_debug) << "<-- " << ogawayama::stub::error_name(err_code);
+    channel_->send_ack(ERROR_CODE::OK);
+    VLOG(log_debug) << "<-- OK";
 }
 
 }  // ogawayama::bridge

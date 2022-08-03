@@ -83,6 +83,17 @@ ErrorCode Connection::Impl::create_table(std::size_t id)
 }
 
 /**
+ * @brief relay a drop tabe message from the frontend to the server
+ * @param table id given by the frontend
+ * @return error code defined in error_code.h
+ */
+ErrorCode Connection::Impl::drop_table(std::size_t id)
+{
+    channel_->send_req(ogawayama::common::CommandMessage::Type::DROP_TABLE, id);
+    return channel_->recv_ack();
+}
+
+/**
  * @brief relay a create tabe message from the frontend to the server
  * @param table id given by the frontend
  * @return error code defined in error_code.h
@@ -137,6 +148,12 @@ manager::message::Status Connection::receive_message(manager::message::Message *
     case manager::message::MessageId::CREATE_TABLE:
         {
             ErrorCode reply = impl_->create_table(static_cast<std::size_t>(msg->get_object_id()));
+            return manager::message::Status(reply == ErrorCode::OK ? manager::message::ErrorCode::SUCCESS : manager::message::ErrorCode::FAILURE,
+                                            static_cast<int>(reply));
+        }
+    case manager::message::MessageId::DROP_TABLE:
+        {
+            ErrorCode reply = impl_->drop_table(static_cast<std::size_t>(msg->get_object_id()));
             return manager::message::Status(reply == ErrorCode::OK ? manager::message::ErrorCode::SUCCESS : manager::message::ErrorCode::FAILURE,
                                             static_cast<int>(reply));
         }

@@ -58,6 +58,13 @@ public:
     ErrorCode create_table(std::size_t);
 
     /**
+     * @brief relay a drop tabe message from the frontend to the server
+     * @param table id given by the frontend
+     * @return error code defined in error_code.h
+     */
+    ErrorCode drop_table(std::size_t);
+
+    /**
      * @brief relay a begin ddl message from the frontend to the server
      * @return error code defined in error_code.h
      */
