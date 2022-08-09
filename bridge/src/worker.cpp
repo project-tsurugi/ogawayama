@@ -643,10 +643,46 @@ void Worker::deploy_metadata(std::size_t table_id)
 
 void Worker::withdraw_metadata(std::size_t table_id)
 {
-    // FIXME implement
+    manager::metadata::ErrorCode error;
 
-    channel_->send_ack(ERROR_CODE::OK);
-    VLOG(log_debug) << "<-- OK";
+    auto datatypes = std::make_unique<manager::metadata::DataTypes>(dbname_);
+    error = datatypes->Metadata::load();
+    if (error != manager::metadata::ErrorCode::OK) {
+        channel_->send_ack(ERROR_CODE::FILE_IO_ERROR);
+        VLOG(log_debug) << "<-- FILE_IO_ERROR";
+        return;
+    }
+    auto tables = std::make_unique<manager::metadata::Tables>(dbname_);
+    error = tables->Metadata::load();
+    if (error != manager::metadata::ErrorCode::OK) {
+        channel_->send_ack(ERROR_CODE::FILE_IO_ERROR);
+        VLOG(log_debug) << "<-- FILE_IO_ERROR";
+        return;
+    }
+
+    boost::property_tree::ptree table;
+    if ((error = tables->get(table_id, table)) == manager::metadata::ErrorCode::OK) {
+        VLOG(log_debug) << "found table with id " << table_id ;
+        // table metadata
+        auto id = table.get_optional<manager::metadata::ObjectIdType>(manager::metadata::Tables::ID);
+        auto table_name = table.get_optional<std::string>(manager::metadata::Tables::NAME);
+        if (!id || !table_name || (id.value() != table_id)) {
+            channel_->send_ack(ERROR_CODE::INVALID_PARAMETER);
+            VLOG(log_debug) << "<-- INVALID_PARAMETER";
+            return;
+        }
+
+        VLOG(log_debug) << " name is " << table_name.value();
+        if (auto rc = db_.drop_table(table_name.value()); rc != jogasaki::status::ok) {
+            channel_->send_ack(ERROR_CODE::INVALID_PARAMETER);
+            return;
+        }
+        channel_->send_ack(ERROR_CODE::OK);
+        VLOG(log_debug) << "<-- OK";
+    } else {
+        channel_->send_ack(ERROR_CODE::UNKNOWN);
+        VLOG(log_debug) << "<-- UNKNOWN";
+    }
 }
 
 }  // ogawayama::bridge
