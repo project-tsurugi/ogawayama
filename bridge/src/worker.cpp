@@ -128,6 +128,7 @@ void Worker::run()
             }
             clear_all();
             channel_->bye_and_notify();
+            VLOG(log_debug) << "<-- bye_and_notify()";
             return;
         default:
             LOG(ERROR) << "recieved an illegal command message";
@@ -674,6 +675,10 @@ void Worker::withdraw_metadata(std::size_t table_id)
 
         VLOG(log_debug) << " name is " << table_name.value();
         if (auto rc = db_.drop_table(table_name.value()); rc != jogasaki::status::ok) {
+            channel_->send_ack(ERROR_CODE::INVALID_PARAMETER);
+            return;
+        }
+        if (auto rc = db_.drop_index(table_name.value()); rc != jogasaki::status::ok) {
             channel_->send_ack(ERROR_CODE::INVALID_PARAMETER);
             return;
         }
