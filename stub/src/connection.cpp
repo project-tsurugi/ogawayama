@@ -140,39 +140,39 @@ ErrorCode Connection::begin(TransactionPtr &transaction) { return impl_->begin(t
 ErrorCode Connection::prepare(std::string_view sql, PreparedStatementPtr &prepared) { return impl_->prepare(sql, prepared); }
 
 /**
- * @brief receive a message from manager
+ * @brief receive a begin_ddl message from manager
  */
-manager::message::Status Connection::receive_message(manager::message::Message *msg)
+manager::message::Status Connection::receive_begin_ddl(int64_t mode)
 {
-    switch(msg->get_id()){
-    case manager::message::MessageId::CREATE_TABLE:
-        {
-            ErrorCode reply = impl_->create_table(static_cast<std::size_t>(msg->get_object_id()));
-            return manager::message::Status(reply == ErrorCode::OK ? manager::message::ErrorCode::SUCCESS : manager::message::ErrorCode::FAILURE,
-                                            static_cast<int>(reply));
-        }
-    case manager::message::MessageId::DROP_TABLE:
-        {
-            ErrorCode reply = impl_->drop_table(static_cast<std::size_t>(msg->get_object_id()));
-            return manager::message::Status(reply == ErrorCode::OK ? manager::message::ErrorCode::SUCCESS : manager::message::ErrorCode::FAILURE,
-                                            static_cast<int>(reply));
-        }
-    case manager::message::MessageId::BEGIN_DDL:
-        {
-            ErrorCode reply = impl_->begin_ddl();
-            return manager::message::Status(reply == ErrorCode::OK ? manager::message::ErrorCode::SUCCESS : manager::message::ErrorCode::FAILURE,
-                                            static_cast<int>(reply));
-        }
-    case manager::message::MessageId::END_DDL:
-        {
-            ErrorCode reply = impl_->end_ddl();
-            return manager::message::Status(reply == ErrorCode::OK ? manager::message::ErrorCode::SUCCESS : manager::message::ErrorCode::FAILURE,
-                                            static_cast<int>(reply));
-        }
-    default:
-        break;
-    }
-    return manager::message::Status(manager::message::ErrorCode::FAILURE, static_cast<int>(ErrorCode::UNSUPPORTED));
+    ErrorCode reply = impl_->begin_ddl();
+    return manager::message::Status(reply == ErrorCode::OK ? manager::message::ErrorCode::SUCCESS : manager::message::ErrorCode::FAILURE, static_cast<int>(reply));
+}
+
+/**
+ * @brief receive a end_ddl message from manager
+ */
+manager::message::Status Connection::receive_end_ddl()
+{
+    ErrorCode reply = impl_->end_ddl();
+    return manager::message::Status(reply == ErrorCode::OK ? manager::message::ErrorCode::SUCCESS : manager::message::ErrorCode::FAILURE, static_cast<int>(reply));
+}
+
+/**
+ * @brief receive a create_table message from manager
+ */
+manager::message::Status Connection::receive_create_table(metadata::ObjectIdType object_id)
+{
+    ErrorCode reply = impl_->create_table(static_cast<std::size_t>(object_id));
+    return manager::message::Status(reply == ErrorCode::OK ? manager::message::ErrorCode::SUCCESS : manager::message::ErrorCode::FAILURE, static_cast<int>(reply));
+}
+
+/**
+ * @brief receive a drop_table message from manager
+ */
+manager::message::Status Connection::receive_drop_table(metadata::ObjectIdType object_id)
+{
+    ErrorCode reply = impl_->drop_table(static_cast<std::size_t>(object_id));
+    return manager::message::Status(reply == ErrorCode::OK ? manager::message::ErrorCode::SUCCESS : manager::message::ErrorCode::FAILURE, static_cast<int>(reply));
 }
 
 }  // namespace ogawayama::stub
