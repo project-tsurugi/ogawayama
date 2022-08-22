@@ -108,6 +108,11 @@ public:
         /**
          * @brief
          */
+        DROP_TABLE,
+
+        /**
+         * @brief
+         */
         BEGIN_DDL,
 
         /**
@@ -497,6 +502,7 @@ constexpr std::string_view type_name(CommandMessage::Type type) {
     case CommandMessage::Type::COMMIT: return "COMMIT";
     case CommandMessage::Type::ROLLBACK: return "ROLLBACK";
     case CommandMessage::Type::CREATE_TABLE: return "CREATE_TABLE";
+    case CommandMessage::Type::DROP_TABLE: return "DROP_TABLE";
     case CommandMessage::Type::BEGIN_DDL: return "BEGIN_DDL";
     case CommandMessage::Type::END_DDL: return "END_DDL";
     case CommandMessage::Type::PREPARE: return "PREPARE";

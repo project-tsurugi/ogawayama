@@ -113,6 +113,9 @@ void Worker::run()
         case ogawayama::common::CommandMessage::Type::CREATE_TABLE:
             deploy_metadata(ivalue);
             break;
+        case ogawayama::common::CommandMessage::Type::DROP_TABLE:
+            withdraw_metadata(ivalue);
+            break;
         case ogawayama::common::CommandMessage::Type::BEGIN_DDL:
             begin_ddl();
             break;
@@ -125,6 +128,7 @@ void Worker::run()
             }
             clear_all();
             channel_->bye_and_notify();
+            VLOG(log_debug) << "<-- bye_and_notify()";
             return;
         default:
             LOG(ERROR) << "recieved an illegal command message";
@@ -401,6 +405,36 @@ bool Worker::execute_prepared_query(std::size_t sid, std::size_t rid)
     return true;
 }
 
+void Worker::begin_ddl()
+{
+    ERROR_CODE err_code = ERROR_CODE::OK;
+
+    if (!transaction_handle_) {
+        if(auto rc = db_.create_transaction(transaction_handle_); rc != jogasaki::status::ok) {  // FIXME use transaction option to specify exclusive exexution
+            LOG(ERROR) << "fail to db_.create_transaction(transaction_handle_)";
+            err_code = ERROR_CODE::UNKNOWN;
+        }
+    } else {
+        err_code = ERROR_CODE::TRANSACTION_ALREADY_STARTED;
+    }
+    channel_->send_ack(err_code);
+    VLOG(log_debug) << "<-- " << ogawayama::stub::error_name(err_code);
+}
+
+void Worker::end_ddl()
+{
+    ERROR_CODE err_code = ERROR_CODE::OK;
+
+    if (!transaction_handle_) {
+        err_code = ERROR_CODE::NO_TRANSACTION;
+    } else {
+        transaction_handle_.commit();
+        clear_transaction();
+    }
+    channel_->send_ack(err_code);
+    VLOG(log_debug) << "<-- " << ogawayama::stub::error_name(err_code);
+}
+
 void Worker::deploy_metadata(std::size_t table_id)
 {
     manager::metadata::ErrorCode error;
@@ -608,34 +642,52 @@ void Worker::deploy_metadata(std::size_t table_id)
     }
 }
 
-void Worker::begin_ddl()
+void Worker::withdraw_metadata(std::size_t table_id)
 {
-    ERROR_CODE err_code = ERROR_CODE::OK;
-    
-    if (!transaction_handle_) {
-        if(auto rc = db_.create_transaction(transaction_handle_); rc != jogasaki::status::ok) {  // FIXME use transaction option to specify exclusive exexution
-            LOG(ERROR) << "fail to db_.create_transaction(transaction_handle_)";
-            err_code = ERROR_CODE::UNKNOWN;
+    manager::metadata::ErrorCode error;
+
+    auto datatypes = std::make_unique<manager::metadata::DataTypes>(dbname_);
+    error = datatypes->Metadata::load();
+    if (error != manager::metadata::ErrorCode::OK) {
+        channel_->send_ack(ERROR_CODE::FILE_IO_ERROR);
+        VLOG(log_debug) << "<-- FILE_IO_ERROR";
+        return;
+    }
+    auto tables = std::make_unique<manager::metadata::Tables>(dbname_);
+    error = tables->Metadata::load();
+    if (error != manager::metadata::ErrorCode::OK) {
+        channel_->send_ack(ERROR_CODE::FILE_IO_ERROR);
+        VLOG(log_debug) << "<-- FILE_IO_ERROR";
+        return;
+    }
+
+    boost::property_tree::ptree table;
+    if ((error = tables->get(table_id, table)) == manager::metadata::ErrorCode::OK) {
+        VLOG(log_debug) << "found table with id " << table_id ;
+        // table metadata
+        auto id = table.get_optional<manager::metadata::ObjectIdType>(manager::metadata::Tables::ID);
+        auto table_name = table.get_optional<std::string>(manager::metadata::Tables::NAME);
+        if (!id || !table_name || (id.value() != table_id)) {
+            channel_->send_ack(ERROR_CODE::INVALID_PARAMETER);
+            VLOG(log_debug) << "<-- INVALID_PARAMETER";
+            return;
         }
-    } else {
-        err_code = ERROR_CODE::TRANSACTION_ALREADY_STARTED;
-    }
-    channel_->send_ack(err_code);
-    VLOG(log_debug) << "<-- " << ogawayama::stub::error_name(err_code);
-}
 
-void Worker::end_ddl()
-{
-    ERROR_CODE err_code = ERROR_CODE::OK;
-
-    if (!transaction_handle_) {
-        err_code = ERROR_CODE::NO_TRANSACTION;
+        VLOG(log_debug) << " name is " << table_name.value();
+        if (auto rc = db_.drop_table(table_name.value()); rc != jogasaki::status::ok) {
+            channel_->send_ack(ERROR_CODE::INVALID_PARAMETER);
+            return;
+        }
+        if (auto rc = db_.drop_index(table_name.value()); rc != jogasaki::status::ok) {
+            channel_->send_ack(ERROR_CODE::INVALID_PARAMETER);
+            return;
+        }
+        channel_->send_ack(ERROR_CODE::OK);
+        VLOG(log_debug) << "<-- OK";
     } else {
-        transaction_handle_.commit();
-        clear_transaction();
+        channel_->send_ack(ERROR_CODE::UNKNOWN);
+        VLOG(log_debug) << "<-- UNKNOWN";
     }
-    channel_->send_ack(err_code);
-    VLOG(log_debug) << "<-- " << ogawayama::stub::error_name(err_code);
 }
 
 }  // ogawayama::bridge
