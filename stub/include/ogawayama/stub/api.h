@@ -294,7 +294,7 @@ public:
      * @brief implements begin_ddl() procedure
      * @return Status defined in message-broker/include/manager/message/status.h
      */
-    manager::message::Status receive_begin_ddl(int64_t mode) const;
+    manager::message::Status receive_begin_ddl(const int64_t mode) const;
 
     /**
      * @brief implements end_ddl() procedure
@@ -306,13 +306,13 @@ public:
      * @brief implements receive_create_table() procedure
      * @return Status defined in message-broker/include/manager/message/status.h
      */
-    manager::message::Status receive_create_table(metadata::ObjectIdType object_id) const;
+    manager::message::Status receive_create_table(const metadata::ObjectIdType object_id) const;
 
     /**
      * @brief implements drop_table() procedure
      * @return Status defined in message-broker/include/manager/message/status.h
      */
-    manager::message::Status receive_drop_table(metadata::ObjectIdType object_id) const;
+    manager::message::Status receive_drop_table(const metadata::ObjectIdType object_id) const;
 
 private:
     class Impl;
