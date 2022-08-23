@@ -67,7 +67,7 @@ Connection::~Connection() = default;
  */
 ErrorCode Connection::begin(std::unique_ptr<Transaction> &transaction) { return impl_->begin(transaction); }
 
-manager::message::Status Connection::receive_begin_ddl(int64_t mode)
+manager::message::Status Connection::receive_begin_ddl(int64_t mode) const
 {
     return manager::message::Status(manager::message::ErrorCode::FAILURE, static_cast<int>(ErrorCode::UNSUPPORTED));
 }
@@ -75,7 +75,7 @@ manager::message::Status Connection::receive_begin_ddl(int64_t mode)
 /**
  * @brief receive a end_ddl message from manager
  */
-manager::message::Status Connection::receive_end_ddl()
+manager::message::Status Connection::receive_end_ddl() const
 {
     return manager::message::Status(manager::message::ErrorCode::FAILURE, static_cast<int>(ErrorCode::UNSUPPORTED));
 }
@@ -84,7 +84,7 @@ manager::message::Status Connection::receive_end_ddl()
  * @brief implements receive_create_table() procedure
  * @return Status defined in message-broker/include/manager/message/status.h
  */
-manager::message::Status Connection::receive_create_table(metadata::ObjectIdType object_id)
+manager::message::Status Connection::receive_create_table(metadata::ObjectIdType object_id) const
 {
     return manager::message::Status(manager::message::ErrorCode::FAILURE, static_cast<int>(ErrorCode::UNSUPPORTED));
 }
@@ -93,7 +93,7 @@ manager::message::Status Connection::receive_create_table(metadata::ObjectIdType
  * @brief implements drop_table() procedure
  * @return Status defined in message-broker/include/manager/message/status.h
  */
-manager::message::Status Connection::receive_drop_table(metadata::ObjectIdType object_id)
+manager::message::Status Connection::receive_drop_table(metadata::ObjectIdType object_id) const
 {
     return manager::message::Status(manager::message::ErrorCode::FAILURE, static_cast<int>(ErrorCode::UNSUPPORTED));
 }
