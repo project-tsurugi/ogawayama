@@ -84,7 +84,7 @@ manager::message::Status Connection::receive_end_ddl() const
  * @brief implements receive_create_table() procedure
  * @return Status defined in message-broker/include/manager/message/status.h
  */
-manager::message::Status Connection::receive_create_table(metadata::ObjectIdType object_id) const
+manager::message::Status Connection::receive_create_table(manager::metadata::ObjectIdType object_id) const
 {
     return manager::message::Status(manager::message::ErrorCode::FAILURE, static_cast<int>(ErrorCode::UNSUPPORTED));
 }
@@ -93,7 +93,7 @@ manager::message::Status Connection::receive_create_table(metadata::ObjectIdType
  * @brief implements drop_table() procedure
  * @return Status defined in message-broker/include/manager/message/status.h
  */
-manager::message::Status Connection::receive_drop_table(metadata::ObjectIdType object_id) const
+manager::message::Status Connection::receive_drop_table(manager::metadata::ObjectIdType object_id) const
 {
     return manager::message::Status(manager::message::ErrorCode::FAILURE, static_cast<int>(ErrorCode::UNSUPPORTED));
 }

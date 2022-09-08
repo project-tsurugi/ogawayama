@@ -34,7 +34,7 @@ target_include_directories(tpcc-loader
 
 target_link_libraries(tpcc-loader
     PUBLIC stub
-    PRIVATE manager-message-interface
+    PRIVATE message-manager-interface
     PRIVATE gflags::gflags
     PRIVATE rt
 )

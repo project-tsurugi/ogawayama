@@ -22,7 +22,7 @@ register_tests(
       stub-impl
       bridge-impl
       bridge
-      manager-message-interface
+      message-manager-interface
       jogasaki-${SHARKSFIN_IMPLEMENTATION}-engine
       tateyama-${SHARKSFIN_IMPLEMENTATION}-engine
       Boost::filesystem
