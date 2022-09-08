@@ -13,7 +13,7 @@
 # limitations under the License.
 
 add_subdirectory(src)
-#add_subdirectory(mock)
+add_subdirectory(mock)
 if(NOT BUILD_STUB_ONLY)
-#add_subdirectory(test)
+add_subdirectory(test)
 endif()
