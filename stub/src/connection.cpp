@@ -160,7 +160,7 @@ manager::message::Status Connection::receive_end_ddl() const
 /**
  * @brief receive a create_table message from manager
  */
-manager::message::Status Connection::receive_create_table(const metadata::ObjectIdType object_id) const
+manager::message::Status Connection::receive_create_table(const manager::metadata::ObjectIdType object_id) const
 {
     ErrorCode reply = impl_->create_table(static_cast<std::size_t>(object_id));
     return manager::message::Status(reply == ErrorCode::OK ? manager::message::ErrorCode::SUCCESS : manager::message::ErrorCode::FAILURE, static_cast<int>(reply));
@@ -169,7 +169,7 @@ manager::message::Status Connection::receive_create_table(const metadata::Object
 /**
  * @brief receive a drop_table message from manager
  */
-manager::message::Status Connection::receive_drop_table(const metadata::ObjectIdType object_id) const
+manager::message::Status Connection::receive_drop_table(const manager::metadata::ObjectIdType object_id) const
 {
     ErrorCode reply = impl_->drop_table(static_cast<std::size_t>(object_id));
     return manager::message::Status(reply == ErrorCode::OK ? manager::message::ErrorCode::SUCCESS : manager::message::ErrorCode::FAILURE, static_cast<int>(reply));

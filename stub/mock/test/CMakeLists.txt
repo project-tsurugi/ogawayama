@@ -20,7 +20,7 @@ register_tests(
     TARGET stub-mock
     DEPENDS
       stub-mock-impl
-      manager-message-interface
+      message-manager-interface
       glog::glog
       rt
     SOURCES ${TEST_SOURCES}

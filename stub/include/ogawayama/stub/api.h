@@ -306,13 +306,13 @@ public:
      * @brief implements receive_create_table() procedure
      * @return Status defined in message-broker/include/manager/message/status.h
      */
-    manager::message::Status receive_create_table(const metadata::ObjectIdType object_id) const;
+    manager::message::Status receive_create_table(const manager::metadata::ObjectIdType object_id) const;
 
     /**
      * @brief implements drop_table() procedure
      * @return Status defined in message-broker/include/manager/message/status.h
      */
-    manager::message::Status receive_drop_table(const metadata::ObjectIdType object_id) const;
+    manager::message::Status receive_drop_table(const manager::metadata::ObjectIdType object_id) const;
 
 private:
     class Impl;
