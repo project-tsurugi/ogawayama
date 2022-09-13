@@ -159,7 +159,7 @@ namespace ogawayama::stub {
 /**
  * @brief Information about a transaction.
  */
-class Transaction : public manager::message::Receiver {
+class Transaction {
 public:
     /**
      * @brief Construct a new object.
@@ -232,12 +232,6 @@ public:
      */
     ErrorCode rollback();
 
-    /**
-     * @brief recieve a command issued by the frontend, and then process it
-     * @return error code defined in error_code.h
-     */
-    manager::message::Status receive_message(manager::message::Message *);
-
 private:
     class Impl;
     std::unique_ptr<Impl> impl_;
@@ -297,10 +291,28 @@ public:
     ErrorCode prepare(std::string_view, PreparedStatementPtr &);
 
     /**
-     * @brief recieve a command issued by the frontend, and then process it
-     * @return error code defined in error_code.h
+     * @brief implements begin_ddl() procedure
+     * @return Status defined in message-broker/include/manager/message/status.h
      */
-    manager::message::Status receive_message(manager::message::Message *);
+    manager::message::Status receive_begin_ddl(const int64_t mode) const;
+
+    /**
+     * @brief implements end_ddl() procedure
+     * @return Status defined in message-broker/include/manager/message/status.h
+     */
+    manager::message::Status receive_end_ddl() const;
+
+    /**
+     * @brief implements receive_create_table() procedure
+     * @return Status defined in message-broker/include/manager/message/status.h
+     */
+    manager::message::Status receive_create_table(const manager::metadata::ObjectIdType object_id) const;
+
+    /**
+     * @brief implements drop_table() procedure
+     * @return Status defined in message-broker/include/manager/message/status.h
+     */
+    manager::message::Status receive_drop_table(const manager::metadata::ObjectIdType object_id) const;
 
 private:
     class Impl;

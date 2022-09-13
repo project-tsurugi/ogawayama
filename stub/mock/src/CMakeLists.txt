@@ -31,7 +31,7 @@ set_target_properties(stub-mock
 )
 
 target_link_libraries(stub-mock
-    PRIVATE manager-message-interface
+    PRIVATE message-manager-interface
 )
 
 #for tests

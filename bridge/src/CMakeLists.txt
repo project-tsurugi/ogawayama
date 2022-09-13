@@ -36,8 +36,8 @@ target_link_libraries(bridge
     PRIVATE takatori
     PRIVATE yugawara
     PRIVATE shakujo-common
-    PRIVATE manager-metadata
-    PRIVATE manager-message-interface
+    PRIVATE metadata-manager-api
+    PRIVATE message-manager-interface
     PRIVATE gflags::gflags
     PRIVATE glog::glog
     PRIVATE Boost::filesystem

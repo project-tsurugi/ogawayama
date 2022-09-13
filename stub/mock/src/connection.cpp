@@ -67,9 +67,36 @@ Connection::~Connection() = default;
  */
 ErrorCode Connection::begin(std::unique_ptr<Transaction> &transaction) { return impl_->begin(transaction); }
 
-manager::message::Status Connection::receive_message(manager::message::Message *msg)
+manager::message::Status Connection::receive_begin_ddl(int64_t mode) const
 {
-    return manager::message::Status(manager::message::ErrorCode::SUCCESS, 0);
+    return manager::message::Status(manager::message::ErrorCode::FAILURE, static_cast<int>(ErrorCode::UNSUPPORTED));
 }
+
+/**
+ * @brief receive a end_ddl message from manager
+ */
+manager::message::Status Connection::receive_end_ddl() const
+{
+    return manager::message::Status(manager::message::ErrorCode::FAILURE, static_cast<int>(ErrorCode::UNSUPPORTED));
+}
+
+/**
+ * @brief implements receive_create_table() procedure
+ * @return Status defined in message-broker/include/manager/message/status.h
+ */
+manager::message::Status Connection::receive_create_table(manager::metadata::ObjectIdType object_id) const
+{
+    return manager::message::Status(manager::message::ErrorCode::FAILURE, static_cast<int>(ErrorCode::UNSUPPORTED));
+}
+
+/**
+ * @brief implements drop_table() procedure
+ * @return Status defined in message-broker/include/manager/message/status.h
+ */
+manager::message::Status Connection::receive_drop_table(manager::metadata::ObjectIdType object_id) const
+{
+    return manager::message::Status(manager::message::ErrorCode::FAILURE, static_cast<int>(ErrorCode::UNSUPPORTED));
+}
+
 
 }  // namespace ogawayama::stub

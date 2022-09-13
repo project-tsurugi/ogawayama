@@ -31,7 +31,7 @@ target_include_directories(stub
 )
 
 target_link_libraries(stub
-    PRIVATE manager-message-interface
+    PRIVATE message-manager-interface
     PRIVATE pthread
     PRIVATE rt
 )
