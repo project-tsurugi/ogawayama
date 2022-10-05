@@ -411,7 +411,7 @@ void Worker::begin_ddl()
 
     if (!transaction_handle_) {
         if(auto rc = db_.create_transaction(transaction_handle_); rc != jogasaki::status::ok) {  // FIXME use transaction option to specify exclusive exexution
-            LOG(ERROR) << "fail to db_.create_transaction(transaction_handle_)";
+            LOG(ERROR) << "fail to db_.create_transaction(transaction_handle_) " << jogasaki::to_string_view(rc);
             err_code = ERROR_CODE::UNKNOWN;
         }
     } else {
