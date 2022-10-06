@@ -118,17 +118,6 @@ ErrorCode Transaction::Impl::execute_query(PreparedStatement* prepared, std::sha
 }
 
 /**
- * @brief execute a create table statement (with metadata handling).
- * @param statement the SQL statement string
- * @return error code defined in error_code.h
- */
-ErrorCode Transaction::Impl::execute_create_table(std::string_view statement) {
-    channel_->send_req(ogawayama::common::CommandMessage::Type::EXECUTE_CREATE_TABLE, 1, statement);
-    ErrorCode reply = channel_->recv_ack();
-    return reply;
-}
-
-/**
  * @brief commit the current transaction.
  * @return error code defined in error_code.h
  */
@@ -181,11 +170,6 @@ ErrorCode Transaction::execute_query(std::string_view query, std::shared_ptr<Res
 ErrorCode Transaction::execute_query(PreparedStatement* prepared, std::shared_ptr<ResultSet> &result_set)
 {
     return impl_->execute_query(prepared, result_set);
-}
-
-ErrorCode Transaction::execute_create_table(std::string_view statement)
-{
-    return impl_->execute_create_table(statement);
 }
 
 ErrorCode Transaction::commit()
