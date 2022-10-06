@@ -214,13 +214,6 @@ public:
     ErrorCode execute_query(PreparedStatement *, ResultSetPtr &);
 
     /**
-     * @brief execute a create table statement (with metadata handling).
-     * @param statement the SQL statement string
-     * @return error code defined in error_code.h
-     */
-    ErrorCode execute_create_table(std::string_view);
-
-    /**
      * @brief commit the current transaction.
      * @return error code defined in error_code.h
      */

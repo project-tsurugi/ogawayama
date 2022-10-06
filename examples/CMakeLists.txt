@@ -13,5 +13,5 @@
 # limitations under the License.
 
 add_subdirectory(cli)
-add_subdirectory(tpcc_loader)
+# add_subdirectory(tpcc_loader)
 add_subdirectory(tpcc)
