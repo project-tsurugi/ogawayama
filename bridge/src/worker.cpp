@@ -17,6 +17,7 @@
 #include <vector>
 #include <optional>
 #include <boost/foreach.hpp>
+#include <boost/property_tree/json_parser.hpp>
 
 #include <gflags/gflags.h>
 #include <glog/logging.h>
@@ -455,7 +456,14 @@ void Worker::deploy_metadata(std::size_t table_id)
     }
 
     boost::property_tree::ptree table;
-    if ((error = tables->get(table_id, table)) == manager::metadata::ErrorCode::OK) {
+    if (error = tables->get(table_id, table); error == manager::metadata::ErrorCode::OK) {
+        if (FLAGS_v >= log_trace) {
+            std::ostringstream oss;
+            boost::property_tree::json_parser::write_json(oss, table);
+            VLOG(log_trace) << "==== schema metadata begin ====";
+            VLOG(log_trace) << oss.str();
+            VLOG(log_trace) << "==== schema metadata end ====";
+        }
 
         VLOG(log_debug) << "found table with id " << table_id ;
         // table metadata
