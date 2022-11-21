@@ -148,8 +148,14 @@ bool service::start(tateyama::framework::environment& env) {
 }
 
 bool service::shutdown(tateyama::framework::environment& env) {
-    listener_->terminate();
-    listener_thread_.join();
+    // For clean up, shutdown can be called multiple times with/without setup()/start().
+    if(listener_thread_.joinable()) {
+        if(listener_) {
+            listener_->terminate();
+        }
+        listener_thread_.join();
+    }
+    listener_.reset();
     return true;
 }
 
