@@ -640,7 +640,7 @@ void Worker::deploy_metadata(std::size_t table_id)
             pn = pk_columns_name.value();
         }
         if (pn.empty()) {
-            pn = "primary_index";
+            pn = table_name.value();
         }
 
         auto i = std::make_shared<yugawara::storage::index>(
@@ -678,7 +678,8 @@ void Worker::deploy_metadata(std::size_t table_id)
                 in = secondary_index_name.value();
             }
             if (in.empty()) {
-                in = "secondary_index_";
+                in = table_name.value();
+                in += "_constraint_";
                 in += std::to_string(i);
             }
 
