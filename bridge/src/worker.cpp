@@ -592,7 +592,14 @@ void Worker::deploy_metadata(std::size_t table_id)
                     VLOG(log_debug) << "<-- INVALID_PARAMETER";
                     return;
                 }
-                auto data_length = column.get_optional<uint64_t>(manager::metadata::Column::DATA_LENGTH);
+
+                std::vector<boost::optional<int64_t>> data_length_vector;
+                boost::property_tree::ptree data_length_array = column.get_child(manager::metadata::Column::DATA_LENGTH);
+                BOOST_FOREACH (const boost::property_tree::ptree::value_type& node, data_length_array) {
+                    const boost::property_tree::ptree& value = node.second;
+                    data_length_vector.emplace_back(value.get_value_optional<int64_t>());
+                }
+                auto data_length = data_length_vector.at(0);
                 if (!data_length) {
                     if(varying_value) {  // data_length field is necessary for VARCHAR
                         channel_->send_ack(ERROR_CODE::UNSUPPORTED);
