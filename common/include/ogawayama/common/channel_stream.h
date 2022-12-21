@@ -186,7 +186,7 @@ public:
         /**
          * @brief waiting acknowledge from the other side.
          */
-        void wait() {
+        void wait() noexcept {
             boost::interprocess::scoped_lock lock(m_notify_mutex_);
             while (true) {
                 if (m_not_notify_.timed_wait(lock, timeout(), boost::bind(&MsgBuffer::is_notified, this))) {
@@ -230,7 +230,7 @@ public:
             m_not_locked_.notify_one();
         }
 
-        void send_req(ogawayama::common::CommandMessage::Type type, std::size_t ivalue, std::string_view string) {
+        void send_req(ogawayama::common::CommandMessage::Type type, std::size_t ivalue, std::string_view string) noexcept {
             boost::interprocess::scoped_lock lock(m_req_mutex_);
             while (true) {
                 if (m_req_invalid_.timed_wait(lock, timeout(), boost::bind(&MsgBuffer::is_req_invalid, this))) {
@@ -390,7 +390,7 @@ public:
     /**
      * @brief waiting acknowledge from the other side.
      */
-    void wait() {
+    void wait() noexcept {
         buffer_->wait();
     }
 
@@ -415,10 +415,10 @@ public:
         buffer_->unlock();
     }
 
-    void send_req(ogawayama::common::CommandMessage::Type type, std::size_t ivalue = 0, std::string_view string = "") {
+    void send_req(ogawayama::common::CommandMessage::Type type, std::size_t ivalue = 0, std::string_view string = "") noexcept {
         buffer_->send_req(type, ivalue, string);
     }
-    void send_req(ogawayama::common::CommandMessage::Type type, std::string_view string) {
+    void send_req(ogawayama::common::CommandMessage::Type type, std::string_view string) noexcept {
         buffer_->send_req(type, 0, string);
     }
     ogawayama::stub::ErrorCode recv_req(ogawayama::common::CommandMessage::Type &type, std::size_t &ivalue) {

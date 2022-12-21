@@ -65,20 +65,24 @@ ErrorCode Transaction::Impl::execute_statement(PreparedStatement* prepared) {
  */
 ErrorCode Transaction::Impl::execute_query(std::string_view query, std::shared_ptr<ResultSet> &result_set)
 {
+    bool found = false;
     for (auto& rs : *result_sets_) {
         if(rs == nullptr) {
             result_set = std::make_shared<ResultSet>(envelope_, &rs - &(*result_sets_)[0]);
             rs = result_set;
-            goto found;
+            found = true;
+            break;
         }
         if(rs.use_count() == 1) {
             result_set = rs;
-            goto found;
+            found = true;
+            break;
         }
     }
-    result_set = std::make_shared<ResultSet>(envelope_, result_sets_->size());
-    result_sets_->emplace_back(result_set);
- found:
+    if (!found) {
+        result_set = std::make_shared<ResultSet>(envelope_, result_sets_->size());
+        result_sets_->emplace_back(result_set);
+    }
     result_set->get_impl()->set_bulk_transfer_mode();
     channel_->send_req(ogawayama::common::CommandMessage::Type::EXECUTE_QUERY,
                    static_cast<std::int32_t>(result_set->get_impl()->get_id()),
@@ -94,20 +98,24 @@ ErrorCode Transaction::Impl::execute_query(std::string_view query, std::shared_p
  */
 ErrorCode Transaction::Impl::execute_query(PreparedStatement* prepared, std::shared_ptr<ResultSet> &result_set)
 {
+    bool found = false;
     for (auto& rs : *result_sets_) {
         if(rs == nullptr) {
             result_set = std::make_shared<ResultSet>(envelope_, &rs - &(*result_sets_)[0]);
             rs = result_set;
-            goto found;
+            found = true;
+            break;
         }
         if(rs.use_count() == 1) {
             result_set = rs;
-            goto found;
+            found = true;
+            break;
         }
     }
-    result_set = std::make_shared<ResultSet>(envelope_, result_sets_->size());
-    result_sets_->emplace_back(result_set);
- found:
+    if (!found) {
+        result_set = std::make_shared<ResultSet>(envelope_, result_sets_->size());
+        result_sets_->emplace_back(result_set);
+    }
     result_set->get_impl()->set_bulk_transfer_mode();
     channel_->send_req(ogawayama::common::CommandMessage::Type::EXECUTE_PREPARED_QUERY,
                        prepared->get_impl()->get_sid(),

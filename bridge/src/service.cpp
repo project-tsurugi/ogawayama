@@ -68,21 +68,22 @@ public:
     void operator()() {
         while(true) {
             ogawayama::common::CommandMessage::Type type;
-            std::size_t index;
+            std::size_t index{};
             std::string_view string;
             try {
                 auto rv = bridge_ch_->recv_req(type, index, string);
                 if (rv != ERROR_CODE::OK) {
                     if (rv != ERROR_CODE::TIMEOUT) {
-                        LOG(ERROR) << __func__ << " " << __LINE__ <<  " " << ogawayama::stub::error_name(rv) << std::endl;
+                        LOG(ERROR) << __LINE__ <<  " " << ogawayama::stub::error_name(rv) << std::endl;
                     }
                     continue;
                 }
             } catch (std::exception &ex) {
-                LOG(ERROR) << __func__ << " " << __LINE__ << ": exiting \"" << ex.what() << "\"" << std::endl;
-                goto finish;
+                LOG(ERROR) << __LINE__ << ": exiting \"" << ex.what() << "\"" << std::endl;
+                break;
             }
 
+            bool finish = false;
             switch (type) {
                 case ogawayama::common::CommandMessage::Type::CONNECT:
                     if (workers_.size() < (index + 1)) {
@@ -96,24 +97,21 @@ public:
                         worker->thread_ = std::thread(std::move(worker->task_));
                     } catch (std::exception &ex) {
                         LOG(ERROR) << ex.what() << std::endl;
-                        goto finish;
+                        return;
                     }
                     break;
                 case ogawayama::common::CommandMessage::Type::TERMINATE:
                     bridge_ch_->notify();
                     bridge_ch_->lock();
                     bridge_ch_->unlock();
-                    goto finish;
+                    return;
                 default:
                     LOG(ERROR) << "unsurpported message" << std::endl;
                     bridge_ch_->notify();
-                    goto finish;
+                    return;
             }
             bridge_ch_->notify();
         }
-
-        finish:
-        return;
     }
 
     void terminate() {

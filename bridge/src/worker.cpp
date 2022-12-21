@@ -50,7 +50,7 @@ void Worker::run()
 {
     while(true) {
         ogawayama::common::CommandMessage::Type type;
-        std::size_t ivalue;
+        std::size_t ivalue{};
         std::string_view string;
         try {
             if (auto rc = channel_->recv_req(type, ivalue, string); rc != ERROR_CODE::OK) {
@@ -162,7 +162,6 @@ void Worker::execute_statement(std::string_view sql)
     }
     channel_->send_ack(ERROR_CODE::OK);
     VLOG(log_debug) << "<-- OK";
-    return;
 }
 
 void Worker::send_metadata(std::size_t rid)
@@ -551,7 +550,7 @@ void Worker::deploy_metadata(std::size_t table_id)
             auto data_type_id_value = static_cast<manager::metadata::DataTypes::DataTypesId>(data_type_id.value());
             auto name_value = name.value();
 
-            if (std::vector<std::size_t>::iterator itr = std::find(pk_columns.begin(), pk_columns.end(), column_number_value); itr != pk_columns.end()) {  // is this pk_column ?
+            if (auto itr = std::find(pk_columns.begin(), pk_columns.end(), column_number_value); itr != pk_columns.end()) {  // is this pk_column ?
                 if(!is_not_null_value) {
                     channel_->send_ack(ERROR_CODE::INVALID_PARAMETER);  // pk_column must be is_not_null
                     VLOG(log_debug) << "<-- INVALID_PARAMETER";
@@ -560,7 +559,7 @@ void Worker::deploy_metadata(std::size_t table_id)
             } else {  // this is value column
                 value_columns.emplace_back(column_number_value);
             }
-            VLOG(log_debug) << " found column, name : data_type_id : is_not_null " << name_value << " : " << static_cast<std::size_t>(data_type_id_value) <<  " : " << (is_not_null_value ? "not_null" : "nullable");
+            VLOG(log_debug) << " found column, name : data_type_id : is_not_null " << name_value << " : " << static_cast<std::size_t>(data_type_id_value) <<  " : " << (is_not_null_value ? "not_null" : "nullable");  // NOLINT
 
             switch(data_type_id_value) {  // build yugawara::storage::column
             case manager::metadata::DataTypes::DataTypesId::INT32:
@@ -633,12 +632,14 @@ void Worker::deploy_metadata(std::size_t table_id)
         
         // build key metadata (yugawara::storage::index::key)
         std::vector<yugawara::storage::index::key> keys;
+        keys.reserve(pk_columns.size());
         for (std::size_t position : pk_columns) {
             keys.emplace_back(yugawara::storage::index::key(t->columns()[position-1]));
         }
 
         // build value metadata (yugawara::storage::index::column_ref)
         std::vector<yugawara::storage::index::column_ref> values;
+        values.reserve(value_columns.size());
         for(std::size_t position : value_columns) {
             values.emplace_back(yugawara::storage::index::column_ref(t->columns()[position-1]));
         }
