@@ -61,7 +61,7 @@ ErrorCode ResultSet::Impl::next()
     }
 
     row_queue_->next();
-    if (row_queue_->get_current_row().size() == 0) {
+    if (row_queue_->get_current_row().empty()) {
         return ErrorCode::END_OF_ROW;
     }
     c_idx_ = 0;
@@ -101,7 +101,7 @@ ErrorCode ResultSet::Impl::next_column(T &value) {
  * @return error code defined in error_code.h
  */
 template<>
-ErrorCode ResultSet::Impl::next_column(std::string_view &s) {
+ErrorCode ResultSet::Impl::next_column(std::string_view &value) {
     const ogawayama::common::ShmRowArgs &r = row_queue_->get_current_row();
 
     if (c_idx_ >= r.size()) {
@@ -109,7 +109,7 @@ ErrorCode ResultSet::Impl::next_column(std::string_view &s) {
     }
     const ogawayama::common::ShmClmArg &c = r.at(c_idx_++);
     try {
-        s = std::get<ogawayama::common::ShmString>(c);
+        value = std::get<ogawayama::common::ShmString>(c);
         return ErrorCode::OK;
     }
     catch (const std::bad_variant_access&) {

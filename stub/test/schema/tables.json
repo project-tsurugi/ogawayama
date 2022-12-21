@@ -1,92 +1,166 @@
 {
-    "formatVersion": "1",
-    "generation": "1",
     "tables": [
         {
+            "formatVersion": "1",
+            "generation": "1",
+            "id": "1",
             "name": "table_1",
-            "namespace": "public",
-            "primaryKey": [
-                "1",
-                "2"
-            ],
+            "databaseName": "",
+            "schemaName": "",
+            "namespace": "",
+            "ownerId": "-1",
+            "acl": "",
+            "numberOfTuples": "0",
             "columns": [
                 {
+                    "formatVersion": "1",
+                    "generation": "1",
+                    "id": "1",
                     "name": "column_1",
-                    "ordinalPosition": "1",
+                    "tableId": "1",
+                    "columnNumber": "1",
                     "dataTypeId": "9",
                     "varying": "false",
-                    "nullable": "false",
-                    "default": "default_expr1",
-                    "direction": "1",
-                    "id": "1",
-                    "tableId": "1"
+                    "isNotNull": "true",
+                    "defaultExpression": "'-1.23'::numeric",
+                    "dataLength": ""
                 },
                 {
-                    "name": "column_2",
-                    "ordinalPosition": "2",
-                    "dataTypeId": "14",
-                    "dataLength": "8",
-                    "varying": "true",
-                    "nullable": "false",
-                    "direction": "2",
+                    "formatVersion": "1",
+                    "generation": "1",
                     "id": "2",
-                    "tableId": "1"
+                    "name": "column_2",
+                    "tableId": "1",
+                    "columnNumber": "2",
+                    "dataTypeId": "14",
+                    "varying": "true",
+                    "isNotNull": "true",
+                    "defaultExpression": "",
+                    "dataLength": [
+                        "8"
+                    ]
                 },
                 {
+                    "formatVersion": "1",
+                    "generation": "1",
+                    "id": "3",
                     "name": "column_3",
-                    "ordinalPosition": "3",
+                    "tableId": "1",
+                    "columnNumber": "3",
                     "dataTypeId": "6",
                     "varying": "false",
-                    "nullable": "true",
-                    "default": "default_expr2",
-                    "id": "3",
-                    "tableId": "1"
+                    "isNotNull": "false",
+                    "defaultExpression": "1000",
+                    "dataLength": ""
                 }
             ],
-            "id": "1"
+            "constraints": [
+                {
+                    "formatVersion": "1",
+                    "generation": "1",
+                    "name": "",
+                    "type": "0",
+                    "columns": [
+                        "1",
+                        "2"
+                    ],
+                    "columnsId": [
+                        "1",
+                        "2"
+                    ],
+                    "indexId": "1",
+                    "expression": "",
+                    "pkTable": "",
+                    "pkColumns": "",
+                    "pkColumnsId": "",
+                    "fkMatchType": "-1",
+                    "fkDeleteAction": "-1",
+                    "fkUpdateAction": "-1",
+                    "tableId": "1",
+                    "id": "1"
+                }
+            ]
         },
         {
+            "formatVersion": "1",
+            "generation": "1",
+            "id": "2",
             "name": "table_2",
-            "namespace": "public",
-            "primaryKey": [
-                "1",
-                "2"
-            ],
+            "databaseName": "",
+            "schemaName": "",
+            "namespace": "",
+            "ownerId": "-1",
+            "acl": "",
+            "numberOfTuples": "0",
             "columns": [
                 {
+                    "formatVersion": "1",
+                    "generation": "1",
+                    "id": "4",
                     "name": "column_1",
-                    "ordinalPosition": "1",
+                    "tableId": "2",
+                    "columnNumber": "1",
                     "dataTypeId": "8",
                     "varying": "false",
-                    "nullable": "false",
-                    "default": "default_expr1",
-                    "direction": "1",
-                    "id": "4",
-                    "tableId": "2"
+                    "isNotNull": "true",
+                    "defaultExpression": "9.87",
+                    "dataLength": ""
                 },
                 {
-                    "name": "column_2",
-                    "ordinalPosition": "2",
-                    "dataTypeId": "14",
-                    "dataLength": "8",
-                    "varying": "true",
-                    "nullable": "true",
-                    "direction": "2",
+                    "formatVersion": "1",
+                    "generation": "1",
                     "id": "5",
-                    "tableId": "2"
+                    "name": "column_2",
+                    "tableId": "2",
+                    "columnNumber": "2",
+                    "dataTypeId": "14",
+                    "varying": "true",
+                    "isNotNull": "false",
+                    "defaultExpression": "",
+                    "dataLength": [
+                        "8"
+                    ]
                 },
                 {
+                    "formatVersion": "1",
+                    "generation": "1",
+                    "id": "6",
                     "name": "column_3",
-                    "ordinalPosition": "3",
+                    "tableId": "2",
+                    "columnNumber": "3",
                     "dataTypeId": "6",
                     "varying": "false",
-                    "nullable": "true",
-                    "default": "default_expr2",
-                    "id": "6",
-                    "tableId": "2"
+                    "isNotNull": "false",
+                    "defaultExpression": "2000",
+                    "dataLength": ""
                 }
             ],
-            "id": "2"
+            "constraints": [
+                {
+                    "formatVersion": "1",
+                    "generation": "1",
+                    "name": "",
+                    "type": "0",
+                    "columns": [
+                        "1",
+                        "2"
+                    ],
+                    "columnsId": [
+                        "4",
+                        "5"
+                    ],
+                    "indexId": "2",
+                    "expression": "",
+                    "pkTable": "",
+                    "pkColumns": "",
+                    "pkColumnsId": "",
+                    "fkMatchType": "-1",
+                    "fkDeleteAction": "-1",
+                    "fkUpdateAction": "-1",
+                    "tableId": "2",
+                    "id": "2"
+                }
+            ]
         }
     ]
 }

@@ -1,0 +1,62 @@
+{
+    "indexes": [
+        {
+            "formatVersion": "1",
+            "generation": "1",
+            "id": "1",
+            "name": "table_1_pkey",
+            "databaseName": "",
+            "schemaName": "",
+            "namespace": "",
+            "ownerId": "-1",
+            "acl": "",
+            "tableId": "1",
+            "accessMethod": "1",
+            "IsPrimary": "true",
+            "IsUnique": "true",
+            "numberOfColumns": "2",
+            "numberOfKeyColumns": "2",
+            "columns": [
+                "1",
+                "2"
+            ],
+            "columnsId": [
+                "1",
+                "2"
+            ],
+            "options": [
+                "0",
+                "0"
+            ]
+        },
+        {
+            "formatVersion": "1",
+            "generation": "1",
+            "id": "2",
+            "name": "table_2_pkey",
+            "databaseName": "",
+            "schemaName": "",
+            "namespace": "",
+            "ownerId": "-1",
+            "acl": "",
+            "tableId": "2",
+            "accessMethod": "1",
+            "IsPrimary": "true",
+            "IsUnique": "true",
+            "numberOfColumns": "2",
+            "numberOfKeyColumns": "2",
+            "columns": [
+                "1",
+                "2"
+            ],
+            "columnsId": [
+                "4",
+                "5"
+            ],
+            "options": [
+                "0",
+                "0"
+            ]
+        }
+    ]
+}

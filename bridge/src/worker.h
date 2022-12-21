@@ -39,10 +39,13 @@ class Worker {
             result_set_ = nullptr;
             result_set_iterator_ = nullptr;
         }
+    private:
         std::unique_ptr<ogawayama::common::RowQueue> row_queue_{};
         std::unique_ptr<jogasaki::api::result_set> result_set_{};
         std::unique_ptr<jogasaki::api::result_set_iterator> result_set_iterator_{};
         jogasaki::api::statement_handle prepared_{};
+
+        friend class Worker;
     };
 
  public:
@@ -51,6 +54,12 @@ class Worker {
         clear_all();
         if(thread_.joinable()) thread_.join();
     }
+
+    Worker(Worker const& other) = delete;
+    Worker& operator=(Worker const& other) = delete;
+    Worker(Worker&& other) noexcept = delete;
+    Worker& operator=(Worker&& other) noexcept = delete;
+
     void run();
     friend class listener;
 

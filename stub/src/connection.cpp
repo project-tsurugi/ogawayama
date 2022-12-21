@@ -30,7 +30,7 @@ Connection::Impl::Impl(Connection *connection, std::size_t pgprocno) : envelope_
     result_sets_ = std::make_unique<std::vector<std::shared_ptr<ResultSet>>>();
 }
 
-Connection::Impl::~Impl()
+Connection::Impl::~Impl()  // NOLINT  FIXME replace communication channel using protocol buffres 
 {
     channel_->send_req(ogawayama::common::CommandMessage::Type::DISCONNECT);
     channel_->wait();

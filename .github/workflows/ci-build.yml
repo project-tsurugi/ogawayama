@@ -46,7 +46,7 @@ jobs:
         with:
           repository: project-tsurugi/jogasaki
           path: third_party/temp_jogasaki
-          ref: 5a197e8d0333398b1e8e7c6f2316bb746af2ff90
+          ref: c69cd8c1e84be2d1b07a96862cca72a7b41d7633
           submodules: recursive
           token: ${{ secrets.GHA_PAT }}
 
@@ -212,7 +212,7 @@ jobs:
       - id: Clang-Tidy
         name: Clang-Tidy
         run: |
-          python tools/bin/run-clang-tidy.py -quiet -export-fixes=build/clang-tidy-fix.yaml -p build -extra-arg=-Wno-unknown-warning-option -header-filter=$(pwd)'/(common|server|stub)/.*\\.h$' $(pwd)'/(common|server|stub)/.*\\.cpp$' 2>&1 | tee build/clang-tidy.log
+          python tools/bin/run-clang-tidy.py -quiet -export-fixes=build/clang-tidy-fix.yaml -p build -extra-arg=-Wno-unknown-warning-option -header-filter=$(pwd)'/(common|server|stub/include|bridge)/.*\\.h$' $(pwd)'/(common|server|stub/src|bridge)/.*\\.cpp$' 2>&1 | tee build/clang-tidy.log
         if: matrix.container-tag != 'ubuntu-18.04'
 
       # - id: Doxygen

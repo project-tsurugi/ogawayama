@@ -79,8 +79,8 @@ public:
 private:
     Transaction *envelope_;
 
-    ogawayama::common::ChannelStream *channel_; // copy of unique_ptr<ChannelStream> channel_ belongs to Connection (and its Impl)
-    std::vector<std::shared_ptr<ResultSet>>* result_sets_; // copy of std::vector<std::shared_ptr<ResultSet>> belongs to Connection (and its Impl)
+    ogawayama::common::ChannelStream *channel_{}; // copy of unique_ptr<ChannelStream> channel_ belongs to Connection (and its Impl)
+    std::vector<std::shared_ptr<ResultSet>>* result_sets_{}; // copy of std::vector<std::shared_ptr<ResultSet>> belongs to Connection (and its Impl)
 };
 
 }  // namespace ogawayama::stub
