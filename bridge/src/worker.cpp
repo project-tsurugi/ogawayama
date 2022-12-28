@@ -27,6 +27,11 @@
 #include <takatori/type/int.h>
 #include <takatori/type/float.h>
 #include <takatori/type/character.h>
+#include <takatori/type/decimal.h>
+#include <takatori/type/date.h>
+#include <takatori/type/time_of_day.h>
+#include <takatori/type/time_point.h>
+#include <takatori/type/datetime_interval.h>
 #include <yugawara/storage/configurable_provider.h>
 
 #include "worker.h"
@@ -435,6 +440,13 @@ void Worker::end_ddl()
     VLOG(log_debug) << "<-- " << ogawayama::stub::error_name(err_code);
 }
 
+static void get_data_length_vector(const boost::property_tree::ptree& column, std::vector<boost::optional<int64_t>>& data_length_vector) {
+    boost::property_tree::ptree data_length_array = column.get_child(manager::metadata::Column::DATA_LENGTH);
+    BOOST_FOREACH (const boost::property_tree::ptree::value_type& node, data_length_array) {
+        data_length_vector.emplace_back(node.second.get_value_optional<int64_t>());
+    }
+}
+
 void Worker::deploy_metadata(std::size_t table_id)
 {
     manager::metadata::ErrorCode error;
@@ -559,7 +571,7 @@ void Worker::deploy_metadata(std::size_t table_id)
             } else {  // this is value column
                 value_columns.emplace_back(column_number_value);
             }
-            VLOG(log_debug) << " found column, name : data_type_id : is_not_null " << name_value << " : " << static_cast<std::size_t>(data_type_id_value) <<  " : " << (is_not_null_value ? "not_null" : "nullable");  // NOLINT
+            VLOG(log_debug) << " found column: name = " << name_value << ", data_type_id = " << static_cast<std::size_t>(data_type_id_value) << ", is_not_null = " << (is_not_null_value ? "not_null" : "nullable");  // NOLINT
 
             switch(data_type_id_value) {  // build yugawara::storage::column
             case manager::metadata::DataTypes::DataTypesId::INT32:
@@ -577,7 +589,6 @@ void Worker::deploy_metadata(std::size_t table_id)
             case manager::metadata::DataTypes::DataTypesId::CHAR:
             case manager::metadata::DataTypes::DataTypesId::VARCHAR:
             {
-                std::size_t data_length_value{1};  // for CHAR
                 auto varying = column.get_optional<bool>(manager::metadata::Column::VARYING);
                 if(!varying) {  // varying field is necessary for CHAR/VARCHRA
                     channel_->send_ack(ERROR_CODE::INVALID_PARAMETER);
@@ -588,29 +599,98 @@ void Worker::deploy_metadata(std::size_t table_id)
                 if((!varying_value && (data_type_id_value != manager::metadata::DataTypes::DataTypesId::CHAR)) ||
                    (varying_value && (data_type_id_value != manager::metadata::DataTypes::DataTypesId::VARCHAR))) {
                     channel_->send_ack(ERROR_CODE::INVALID_PARAMETER);
-                    VLOG(log_debug) << "<-- INVALID_PARAMETER";
+                    VLOG(log_debug) << "<-- INVALID_PARAMETER";  // type and attributes are inconsistent
                     return;
                 }
 
+                std::size_t data_length_value{1};  // for CHAR
+                bool use_default = false;
                 std::vector<boost::optional<int64_t>> data_length_vector;
-                boost::property_tree::ptree data_length_array = column.get_child(manager::metadata::Column::DATA_LENGTH);
-                BOOST_FOREACH (const boost::property_tree::ptree::value_type& node, data_length_array) {
-                    const boost::property_tree::ptree& value = node.second;
-                    data_length_vector.emplace_back(value.get_value_optional<int64_t>());
+                get_data_length_vector(column, data_length_vector);
+                if (data_length_vector.size() == 0) {
+                    if(varying_value) {  // no data_length field, use default
+                        use_default = true;
+                    }
+                } else {
+                    auto data_length = data_length_vector.at(0);
+                    if (!data_length) {
+                        if(varying_value) {  // no data_length_value, use default
+                            use_default = true;
+                        }
+                    } else {
+                        data_length_value = data_length.value();
+                    }
                 }
-                auto data_length = data_length_vector.at(0);
-                if (!data_length) {
-                    if(varying_value) {  // data_length field is necessary for VARCHAR
+                columns.emplace_back(yugawara::storage::column(name_value,
+                                                               (use_default ?
+                                                                takatori::type::character(takatori::type::varying_t(varying_value)) :
+                                                                takatori::type::character(takatori::type::varying_t(varying_value), data_length_value)),
+                                                               yugawara::variable::nullity(!is_not_null_value)));
+                break;
+            }
+            case manager::metadata::DataTypes::DataTypesId::NUMERIC:  // decimal
+            {
+                std::size_t p{}, s{};
+                std::vector<boost::optional<int64_t>> data_length_vector;
+                get_data_length_vector(column, data_length_vector);
+                if (data_length_vector.size() == 0) {
+                    columns.emplace_back(yugawara::storage::column(name_value,
+                                                                   takatori::type::decimal(),
+                                                                   yugawara::variable::nullity(!is_not_null_value)));
+                } else {
+                    auto po = data_length_vector.at(0);
+                    if (!po) {
                         channel_->send_ack(ERROR_CODE::UNSUPPORTED);
                         VLOG(log_debug) << "<-- UNSUPPORTED";
                         return;
                     }
-                } else {
-                    data_length_value = data_length.value();
+                    p = po.value();
+                    if (data_length_vector.size() >= 2) {
+                        auto so = data_length_vector.at(0);
+                        if (!so) {
+                            s = so.value();
+                        }
+                    }
+                    columns.emplace_back(yugawara::storage::column(name_value,
+                                                                   takatori::type::decimal(p, s),
+                                                                   yugawara::variable::nullity(!is_not_null_value)));
                 }
+                break;
+            }
+            case manager::metadata::DataTypes::DataTypesId::DATE:  // date
+            {
                 columns.emplace_back(yugawara::storage::column(name_value,
-                                                                    takatori::type::character(takatori::type::varying_t(varying_value), data_length_value),
-                                                                    yugawara::variable::nullity(!is_not_null_value)));
+                                                               takatori::type::date(),
+                                                               yugawara::variable::nullity(!is_not_null_value)));
+                break;
+            }
+            case manager::metadata::DataTypes::DataTypesId::TIME:  // time_of_day
+            case manager::metadata::DataTypes::DataTypesId::TIMETZ:  // time_of_day
+            {
+                columns.emplace_back(yugawara::storage::column(name_value,
+                                                               takatori::type::time_of_day(
+                                                                   data_type_id_value == manager::metadata::DataTypes::DataTypesId::TIMETZ ?
+                                                                   takatori::type::with_time_zone : ~takatori::type::with_time_zone
+                                                               ),
+                                                               yugawara::variable::nullity(!is_not_null_value)));
+                break;
+            }
+            case manager::metadata::DataTypes::DataTypesId::TIMESTAMP:  // time_point
+            case manager::metadata::DataTypes::DataTypesId::TIMESTAMPTZ:  // time_point
+            {
+                columns.emplace_back(yugawara::storage::column(name_value,
+                                                               takatori::type::time_point(
+                                                                   data_type_id_value == manager::metadata::DataTypes::DataTypesId::TIMESTAMPTZ ?
+                                                                   takatori::type::with_time_zone : ~takatori::type::with_time_zone
+                                                               ),
+                                                               yugawara::variable::nullity(!is_not_null_value)));
+                break;
+            }
+            case manager::metadata::DataTypes::DataTypesId::INTERVAL:  // datetime_interval
+            {
+                columns.emplace_back(yugawara::storage::column(name_value,
+                                                               takatori::type::datetime_interval(),
+                                                               yugawara::variable::nullity(!is_not_null_value)));
                 break;
             }
             default:
