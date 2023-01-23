@@ -52,6 +52,7 @@ find_package(glog REQUIRED)
 find_package(gflags REQUIRED)
 find_package(metadata-manager REQUIRED)
 find_package(message-manager REQUIRED)
+find_package(Protobuf REQUIRED)
 
 if (NOT BUILD_STUB_ONLY)
   find_package(takatori REQUIRED)
