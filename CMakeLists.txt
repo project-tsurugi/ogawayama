@@ -53,9 +53,9 @@ find_package(gflags REQUIRED)
 find_package(metadata-manager REQUIRED)
 find_package(message-manager REQUIRED)
 find_package(Protobuf REQUIRED)
+find_package(takatori REQUIRED)
 
 if (NOT BUILD_STUB_ONLY)
-  find_package(takatori REQUIRED)
   find_package(yugawara REQUIRED)
   find_package(mpdecpp REQUIRED)
   find_package(jogasaki-${SHARKSFIN_IMPLEMENTATION} REQUIRED)
@@ -78,7 +78,7 @@ add_library(api INTERFACE)
 
 target_include_directories(api
     INTERFACE
-        $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/stub/include>
+        $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
         $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}/ogawayama>
 )
       
@@ -124,7 +124,7 @@ install(
 )
 
 if(NOT BUILD_BRIDGE_ONLY)
-    add_subdirectory(stub)
+    add_subdirectory(src)
 endif()
 if(NOT BUILD_STUB_ONLY)
     add_subdirectory(bridge)

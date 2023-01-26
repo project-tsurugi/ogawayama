@@ -46,8 +46,8 @@ Worker::Worker(jogasaki::api::database& db, std::string& dbname, std::string_vie
     name += "-" + std::to_string(id);
     shm4_connection_ = std::make_unique<ogawayama::common::SharedMemory>(name, ogawayama::common::param::SheredMemoryType::SHARED_MEMORY_CONNECTION);
     channel_ = std::make_unique<ogawayama::common::ChannelStream>(ogawayama::common::param::channel, shm4_connection_.get());
-    parameters_ = std::make_unique<ogawayama::common::ParameterSet>(ogawayama::common::param::prepared, shm4_connection_.get());
-    shm4_row_queue_ = std::make_unique<ogawayama::common::SharedMemory>(name, ogawayama::common::param::SheredMemoryType::SHARED_MEMORY_ROW_QUEUE);
+//    parameters_ = std::make_unique<ogawayama::common::ParameterSet>(ogawayama::common::param::prepared, shm4_connection_.get());
+//    shm4_row_queue_ = std::make_unique<ogawayama::common::SharedMemory>(name, ogawayama::common::param::SheredMemoryType::SHARED_MEMORY_ROW_QUEUE);
     channel_->send_ack(ERROR_CODE::OK);
 }
 
@@ -69,6 +69,30 @@ void Worker::run()
         }
 
         switch (type) {
+        case ogawayama::common::CommandMessage::Type::CREATE_TABLE:
+            deploy_metadata(ivalue);
+            break;
+        case ogawayama::common::CommandMessage::Type::DROP_TABLE:
+            withdraw_metadata(ivalue);
+            break;
+        case ogawayama::common::CommandMessage::Type::BEGIN_DDL:
+            begin_ddl();
+            break;
+        case ogawayama::common::CommandMessage::Type::END_DDL:
+            end_ddl();
+            break;
+        case ogawayama::common::CommandMessage::Type::DISCONNECT:
+            if (transaction_handle_) {
+                transaction_handle_.abort();
+            }
+            clear_all();
+            channel_->bye_and_notify();
+            VLOG(log_debug) << "<-- bye_and_notify()";
+            return;
+#if 0
+        case ogawayama::common::CommandMessage::Type::PREPARE:
+            prepare(string, ivalue);
+            break;
         case ogawayama::common::CommandMessage::Type::EXECUTE_STATEMENT:
             execute_statement(string);
             break;
@@ -81,6 +105,17 @@ void Worker::run()
             channel_->send_ack(ERROR_CODE::OK);
             VLOG(log_debug) << "<-- OK";
             next(ivalue);
+            break;
+        case ogawayama::common::CommandMessage::Type::EXECUTE_PREPARED_STATEMENT:
+            execute_prepared_statement(ivalue);
+            break;
+        case ogawayama::common::CommandMessage::Type::EXECUTE_PREPARED_QUERY:
+            {
+                std::size_t rid = std::stoi(std::string(string));
+                if(execute_prepared_query(ivalue, rid)) {
+                    next(rid);
+                }
+            }
             break;
         case ogawayama::common::CommandMessage::Type::COMMIT:
             if (!transaction_handle_) {
@@ -102,312 +137,12 @@ void Worker::run()
             VLOG(log_debug) << "<-- OK";
             clear_transaction();
             break;
-        case ogawayama::common::CommandMessage::Type::PREPARE:
-            prepare(string, ivalue);
-            break;
-        case ogawayama::common::CommandMessage::Type::EXECUTE_PREPARED_STATEMENT:
-            execute_prepared_statement(ivalue);
-            break;
-        case ogawayama::common::CommandMessage::Type::EXECUTE_PREPARED_QUERY:
-            {
-                std::size_t rid = std::stoi(std::string(string));
-                if(execute_prepared_query(ivalue, rid)) {
-                    next(rid);
-                }
-            }
-            break;
-        case ogawayama::common::CommandMessage::Type::CREATE_TABLE:
-            deploy_metadata(ivalue);
-            break;
-        case ogawayama::common::CommandMessage::Type::DROP_TABLE:
-            withdraw_metadata(ivalue);
-            break;
-        case ogawayama::common::CommandMessage::Type::BEGIN_DDL:
-            begin_ddl();
-            break;
-        case ogawayama::common::CommandMessage::Type::END_DDL:
-            end_ddl();
-            break;
-        case ogawayama::common::CommandMessage::Type::DISCONNECT:
-            if (transaction_handle_) {
-                transaction_handle_.abort();
-            }
-            clear_all();
-            channel_->bye_and_notify();
-            VLOG(log_debug) << "<-- bye_and_notify()";
-            return;
+#endif
         default:
             LOG(ERROR) << "recieved an illegal command message";
             return;
         }
     }
-}
-
-void Worker::execute_statement(std::string_view sql)
-{
-    if (!transaction_handle_) {
-        if(auto rc = db_.create_transaction(transaction_handle_); rc != jogasaki::status::ok) {
-            LOG(ERROR) << "fail to db_.create_transaction(transaction_handle_)";
-            channel_->send_ack(ERROR_CODE::UNKNOWN);
-            VLOG(log_debug) << "<-- UNKNOWN";
-            return;
-        }
-    }
-
-    std::unique_ptr<jogasaki::api::executable_statement> e{};
-    if(auto rc = db_.create_executable(sql, e); rc != jogasaki::status::ok) {
-        channel_->send_ack(ERROR_CODE::UNKNOWN);
-        VLOG(log_debug) << "<-- UNKNOWN";
-        return;
-    }
-    if(auto rc = transaction_handle_.execute(*e); rc != jogasaki::status::ok) {
-        channel_->send_ack(ERROR_CODE::UNKNOWN);
-        VLOG(log_debug) << "<-- UNKNOWN";
-        return;
-    }
-    channel_->send_ack(ERROR_CODE::OK);
-    VLOG(log_debug) << "<-- OK";
-}
-
-void Worker::send_metadata(std::size_t rid)
-{
-    auto metadata = cursors_.at(rid).result_set_->meta();
-    std::size_t n = metadata->field_count();
-    for (std::size_t i = 0; i < n; i++) {
-        switch(metadata->at(i).kind()) {
-        case jogasaki::api::field_type_kind::int4:
-            cursors_.at(rid).row_queue_->push_type(TYPE::INT32, 4);
-            break;
-        case jogasaki::api::field_type_kind::int8:
-            cursors_.at(rid).row_queue_->push_type(TYPE::INT64, 8);
-            break;
-        case jogasaki::api::field_type_kind::float4:
-            cursors_.at(rid).row_queue_->push_type(TYPE::FLOAT32, 4);
-            break;
-        case jogasaki::api::field_type_kind::float8:
-            cursors_.at(rid).row_queue_->push_type(TYPE::FLOAT64, 8);
-            break;
-        case jogasaki::api::field_type_kind::character:
-            cursors_.at(rid).row_queue_->push_type(TYPE::TEXT, INT32_MAX);
-            break;
-        default:
-            LOG(ERROR) << "unsurpported data type: " << metadata->at(i).kind();
-            break;
-        }
-    }
-}
-
-bool Worker::execute_query(std::string_view sql, std::size_t rid)
-{
-    if (!transaction_handle_) {
-        if(auto rc = db_.create_transaction(transaction_handle_); rc != jogasaki::status::ok) {
-            LOG(ERROR) << "fail to db_.create_transaction(transaction_handle_)";
-            return false;
-        }
-    }
-    if (cursors_.size() < (rid + 1)) {
-        cursors_.resize(rid + 1);
-    }
-
-    auto& cursor = cursors_.at(rid);
-    
-    cursor.row_queue_ = std::make_unique<ogawayama::common::RowQueue>
-        (shm4_row_queue_->shm_name(ogawayama::common::param::resultset, rid), shm4_row_queue_.get());
-    cursor.row_queue_->clear();
-
-    std::unique_ptr<jogasaki::api::executable_statement> e{};
-    if(auto rc = db_.create_executable(sql, e); rc != jogasaki::status::ok) {
-        channel_->send_ack(ERROR_CODE::UNKNOWN);
-        VLOG(log_debug) << "<-- UNKNOWN";
-        return false;
-    }
-    auto& rs =  cursor.result_set_;
-    if(auto rc = transaction_handle_.execute(*e, rs); rc != jogasaki::status::ok || !rs) {
-        channel_->send_ack(ERROR_CODE::UNKNOWN);
-        VLOG(log_debug) << "<-- UNKNOWN";
-        return false;
-    }
-    cursor.result_set_iterator_ = rs->iterator();
-
-    send_metadata(rid);
-    channel_->send_ack(ERROR_CODE::OK);
-    VLOG(log_debug) << "<-- OK";
-    return true;
-}
-
-void Worker::next(std::size_t rid)
-{
-    auto& cursor = cursors_.at(rid);
-    auto& rq = cursor.row_queue_;
-    auto& iterator = cursor.result_set_iterator_;
-
-    if (!iterator || rq->is_closed()) {
-        return;
-    }
-
-    std::size_t limit = rq->get_requested();
-    for(std::size_t i = 0; i < limit; i++) {
-        auto record = iterator->next();
-        if (record != nullptr) {
-            rq->resize_writing_row(rq->get_metadata_ptr()->get_types().size());
-            for (auto& t: rq->get_metadata_ptr()->get_types()) {
-                std::size_t cindex = rq->get_cindex();
-                if (record->is_null(cindex)) {
-                    rq->put_next_column(std::monostate());
-                } else {
-                    switch (t.get_type()) {
-                    case TYPE::INT32:
-                        rq->put_next_column(record->get_int4(cindex)); break;
-                    case TYPE::INT64:
-                        rq->put_next_column(record->get_int8(cindex)); break;
-                    case TYPE::FLOAT32:
-                        rq->put_next_column(record->get_float4(cindex)); break;
-                    case TYPE::FLOAT64:
-                        rq->put_next_column(record->get_float8(cindex)); break;
-                    case TYPE::TEXT:
-                        rq->put_next_column(record->get_character(cindex)); break;
-                    case TYPE::NULL_VALUE:
-                        LOG(ERROR) << "NULL_VALUE type should not be used"; break;
-                    }
-                }
-            }
-            rq->push_writing_row();
-        } else {
-            rq->push_writing_row();
-            cursor.clear();
-            rq->set_eor();
-            break;
-        }
-    }
-}
-
-void Worker::prepare(std::string_view sql, std::size_t sid)
-{
-    if (prepared_statements_.size() < (sid + 1)) {
-        prepared_statements_.resize(sid + 1);
-    }
-
-    if(auto rc = db_.prepare(sql, prepared_statements_.at(sid)); rc != jogasaki::status::ok) {
-        channel_->send_ack(ERROR_CODE::UNKNOWN);
-        VLOG(log_debug) << "<-- UNKNOWN";
-        return;
-    }
-    channel_->send_ack(ERROR_CODE::OK);    
-    VLOG(log_debug) << "<-- OK";
-}
-
-void Worker::set_params(std::unique_ptr<jogasaki::api::parameter_set>& p)
-{
-    auto& params = parameters_->get_params();
-    for(auto& param: params) {
-        std::size_t idx = &param - &params[0];
-        std::visit([&p, &idx](auto&& arg) {
-                using T = std::decay_t<decltype(arg)>;
-                std::string prefix = "p";
-                if constexpr (std::is_same_v<T, std::int32_t>) {
-                        p->set_int4(prefix + std::to_string(idx+1), arg);
-                    }
-                else if constexpr (std::is_same_v<T, std::int64_t>) {
-                        p->set_int8(prefix + std::to_string(idx+1), arg);
-                    }
-                else if constexpr (std::is_same_v<T, float>) {
-                        p->set_float4(prefix + std::to_string(idx+1), arg);
-                    }
-                else if constexpr (std::is_same_v<T, double>) {
-                        p->set_float8(prefix + std::to_string(idx+1), arg);
-                    }
-                else if constexpr (std::is_same_v<T, ogawayama::common::ShmString>) {
-                        p->set_character(prefix + std::to_string(idx+1), std::string_view(arg));
-                    }
-                else if constexpr (std::is_same_v<T, std::monostate>) {
-                        p->set_null(prefix + std::to_string(idx+1));
-                    }
-                else {
-                    LOG(ERROR) << "the type of parameter received cannot be handled";
-                }
-            }, param);
-    }
-}
-
-void Worker::execute_prepared_statement(std::size_t sid)
-{
-    if (sid >= prepared_statements_.size()) {
-        channel_->send_ack(ERROR_CODE::UNKNOWN);
-        VLOG(log_debug) << "<-- UNKNOWN";
-        return;
-    }
-
-    if (!transaction_handle_) {
-        if(auto rc = db_.create_transaction(transaction_handle_); rc != jogasaki::status::ok) {
-            LOG(ERROR) << "fail to db_.create_transaction(transaction_handle_)";
-            channel_->send_ack(ERROR_CODE::UNKNOWN);
-            VLOG(log_debug) << "<-- UNKNOWN";
-            return;
-        }
-    }
-    auto params = jogasaki::api::create_parameter_set();
-    set_params(params);
-
-    std::unique_ptr<jogasaki::api::executable_statement> e{};
-    if(auto rc = db_.resolve(cursors_.at(sid).prepared_, std::shared_ptr{std::move(params)}, e); rc != jogasaki::status::ok) {
-        channel_->send_ack(ERROR_CODE::UNKNOWN);
-        VLOG(log_debug) << "<-- UNKNOWN";
-        return;
-    }
-    if(auto rc = transaction_handle_.execute(*e); rc != jogasaki::status::ok) {
-        channel_->send_ack(ERROR_CODE::UNKNOWN);
-        VLOG(log_debug) << "<-- UNKNOWN";
-        return;
-    }
-    channel_->send_ack(ERROR_CODE::OK);
-    VLOG(log_debug) << "<-- OK";
-}
-
-bool Worker::execute_prepared_query(std::size_t sid, std::size_t rid)
-{
-    if (sid >= prepared_statements_.size()) {
-        channel_->send_ack(ERROR_CODE::UNKNOWN);
-        VLOG(log_debug) << "<-- UNKNOWN";
-        return false;
-    }
-
-    if (!transaction_handle_) {
-        if(auto rc = db_.create_transaction(transaction_handle_); rc != jogasaki::status::ok) {
-            LOG(ERROR) << "fail to db_.create_transaction(transaction_handle_)";
-            return false;
-        }
-    }
-    if (cursors_.size() < (rid + 1)) {
-        cursors_.resize(rid + 1);
-    }
-
-    auto& cursor = cursors_.at(rid);
-
-    cursor.row_queue_ = std::make_unique<ogawayama::common::RowQueue>
-        (shm4_row_queue_->shm_name(ogawayama::common::param::resultset, rid), shm4_row_queue_.get());
-    cursor.row_queue_->clear();
-
-    auto params = jogasaki::api::create_parameter_set();
-    set_params(params);
-
-    std::unique_ptr<jogasaki::api::executable_statement> e{};
-    if(auto rc = db_.resolve(cursors_.at(sid).prepared_, std::shared_ptr{std::move(params)}, e); rc != jogasaki::status::ok) {
-        channel_->send_ack(ERROR_CODE::UNKNOWN);
-        VLOG(log_debug) << "<-- UNKNOWN";
-        return false;
-    }
-    auto& rs =  cursor.result_set_;
-    if(auto rc = transaction_handle_.execute(*e, rs); rc != jogasaki::status::ok || !rs) {
-        channel_->send_ack(ERROR_CODE::UNKNOWN);
-        VLOG(log_debug) << "<-- UNKNOWN";
-        return false;
-    }
-    cursor.result_set_iterator_ = rs->iterator();
-
-    send_metadata(rid);
-    channel_->send_ack(ERROR_CODE::OK);
-    VLOG(log_debug) << "<-- OK";
-    return true;
 }
 
 void Worker::begin_ddl()
@@ -845,5 +580,274 @@ void Worker::withdraw_metadata(std::size_t table_id)
         VLOG(log_debug) << "<-- UNKNOWN";
     }
 }
+
+#if 0
+void Worker::execute_statement(std::string_view sql)
+{
+    if (!transaction_handle_) {
+        if(auto rc = db_.create_transaction(transaction_handle_); rc != jogasaki::status::ok) {
+            LOG(ERROR) << "fail to db_.create_transaction(transaction_handle_)";
+            channel_->send_ack(ERROR_CODE::UNKNOWN);
+            VLOG(log_debug) << "<-- UNKNOWN";
+            return;
+        }
+    }
+
+    std::unique_ptr<jogasaki::api::executable_statement> e{};
+    if(auto rc = db_.create_executable(sql, e); rc != jogasaki::status::ok) {
+        channel_->send_ack(ERROR_CODE::UNKNOWN);
+        VLOG(log_debug) << "<-- UNKNOWN";
+        return;
+    }
+    if(auto rc = transaction_handle_.execute(*e); rc != jogasaki::status::ok) {
+        channel_->send_ack(ERROR_CODE::UNKNOWN);
+        VLOG(log_debug) << "<-- UNKNOWN";
+        return;
+    }
+    channel_->send_ack(ERROR_CODE::OK);
+    VLOG(log_debug) << "<-- OK";
+}
+
+void Worker::send_metadata(std::size_t rid)
+{
+    auto metadata = cursors_.at(rid).result_set_->meta();
+    std::size_t n = metadata->field_count();
+    for (std::size_t i = 0; i < n; i++) {
+        switch(metadata->at(i).kind()) {
+        case jogasaki::api::field_type_kind::int4:
+            cursors_.at(rid).row_queue_->push_type(TYPE::INT32, 4);
+            break;
+        case jogasaki::api::field_type_kind::int8:
+            cursors_.at(rid).row_queue_->push_type(TYPE::INT64, 8);
+            break;
+        case jogasaki::api::field_type_kind::float4:
+            cursors_.at(rid).row_queue_->push_type(TYPE::FLOAT32, 4);
+            break;
+        case jogasaki::api::field_type_kind::float8:
+            cursors_.at(rid).row_queue_->push_type(TYPE::FLOAT64, 8);
+            break;
+        case jogasaki::api::field_type_kind::character:
+            cursors_.at(rid).row_queue_->push_type(TYPE::TEXT, INT32_MAX);
+            break;
+        default:
+            LOG(ERROR) << "unsurpported data type: " << metadata->at(i).kind();
+            break;
+        }
+    }
+}
+
+bool Worker::execute_query(std::string_view sql, std::size_t rid)
+{
+    if (!transaction_handle_) {
+        if(auto rc = db_.create_transaction(transaction_handle_); rc != jogasaki::status::ok) {
+            LOG(ERROR) << "fail to db_.create_transaction(transaction_handle_)";
+            return false;
+        }
+    }
+    if (cursors_.size() < (rid + 1)) {
+        cursors_.resize(rid + 1);
+    }
+
+    auto& cursor = cursors_.at(rid);
+    
+    cursor.row_queue_ = std::make_unique<ogawayama::common::RowQueue>
+        (shm4_row_queue_->shm_name(ogawayama::common::param::resultset, rid), shm4_row_queue_.get());
+    cursor.row_queue_->clear();
+
+    std::unique_ptr<jogasaki::api::executable_statement> e{};
+    if(auto rc = db_.create_executable(sql, e); rc != jogasaki::status::ok) {
+        channel_->send_ack(ERROR_CODE::UNKNOWN);
+        VLOG(log_debug) << "<-- UNKNOWN";
+        return false;
+    }
+    auto& rs =  cursor.result_set_;
+    if(auto rc = transaction_handle_.execute(*e, rs); rc != jogasaki::status::ok || !rs) {
+        channel_->send_ack(ERROR_CODE::UNKNOWN);
+        VLOG(log_debug) << "<-- UNKNOWN";
+        return false;
+    }
+    cursor.result_set_iterator_ = rs->iterator();
+
+    send_metadata(rid);
+    channel_->send_ack(ERROR_CODE::OK);
+    VLOG(log_debug) << "<-- OK";
+    return true;
+}
+
+void Worker::next(std::size_t rid)
+{
+    auto& cursor = cursors_.at(rid);
+    auto& rq = cursor.row_queue_;
+    auto& iterator = cursor.result_set_iterator_;
+
+    if (!iterator || rq->is_closed()) {
+        return;
+    }
+
+    std::size_t limit = rq->get_requested();
+    for(std::size_t i = 0; i < limit; i++) {
+        auto record = iterator->next();
+        if (record != nullptr) {
+            rq->resize_writing_row(rq->get_metadata_ptr()->get_types().size());
+            for (auto& t: rq->get_metadata_ptr()->get_types()) {
+                std::size_t cindex = rq->get_cindex();
+                if (record->is_null(cindex)) {
+                    rq->put_next_column(std::monostate());
+                } else {
+                    switch (t.get_type()) {
+                    case TYPE::INT32:
+                        rq->put_next_column(record->get_int4(cindex)); break;
+                    case TYPE::INT64:
+                        rq->put_next_column(record->get_int8(cindex)); break;
+                    case TYPE::FLOAT32:
+                        rq->put_next_column(record->get_float4(cindex)); break;
+                    case TYPE::FLOAT64:
+                        rq->put_next_column(record->get_float8(cindex)); break;
+                    case TYPE::TEXT:
+                        rq->put_next_column(record->get_character(cindex)); break;
+                    case TYPE::NULL_VALUE:
+                        LOG(ERROR) << "NULL_VALUE type should not be used"; break;
+                    }
+                }
+            }
+            rq->push_writing_row();
+        } else {
+            rq->push_writing_row();
+            cursor.clear();
+            rq->set_eor();
+            break;
+        }
+    }
+}
+
+void Worker::prepare(std::string_view sql, std::size_t sid)
+{
+    if (prepared_statements_.size() < (sid + 1)) {
+        prepared_statements_.resize(sid + 1);
+    }
+
+    if(auto rc = db_.prepare(sql, prepared_statements_.at(sid)); rc != jogasaki::status::ok) {
+        channel_->send_ack(ERROR_CODE::UNKNOWN);
+        VLOG(log_debug) << "<-- UNKNOWN";
+        return;
+    }
+    channel_->send_ack(ERROR_CODE::OK);    
+    VLOG(log_debug) << "<-- OK";
+}
+
+void Worker::set_params(std::unique_ptr<jogasaki::api::parameter_set>& p)
+{
+    auto& params = parameters_->get_params();
+    for(auto& param: params) {
+        std::size_t idx = &param - &params[0];
+        std::visit([&p, &idx](auto&& arg) {
+                using T = std::decay_t<decltype(arg)>;
+                std::string prefix = "p";
+                if constexpr (std::is_same_v<T, std::int32_t>) {
+                        p->set_int4(prefix + std::to_string(idx+1), arg);
+                    }
+                else if constexpr (std::is_same_v<T, std::int64_t>) {
+                        p->set_int8(prefix + std::to_string(idx+1), arg);
+                    }
+                else if constexpr (std::is_same_v<T, float>) {
+                        p->set_float4(prefix + std::to_string(idx+1), arg);
+                    }
+                else if constexpr (std::is_same_v<T, double>) {
+                        p->set_float8(prefix + std::to_string(idx+1), arg);
+                    }
+                else if constexpr (std::is_same_v<T, ogawayama::common::ShmString>) {
+                        p->set_character(prefix + std::to_string(idx+1), std::string_view(arg));
+                    }
+                else if constexpr (std::is_same_v<T, std::monostate>) {
+                        p->set_null(prefix + std::to_string(idx+1));
+                    }
+                else {
+                    LOG(ERROR) << "the type of parameter received cannot be handled";
+                }
+            }, param);
+    }
+}
+
+void Worker::execute_prepared_statement(std::size_t sid)
+{
+    if (sid >= prepared_statements_.size()) {
+        channel_->send_ack(ERROR_CODE::UNKNOWN);
+        VLOG(log_debug) << "<-- UNKNOWN";
+        return;
+    }
+
+    if (!transaction_handle_) {
+        if(auto rc = db_.create_transaction(transaction_handle_); rc != jogasaki::status::ok) {
+            LOG(ERROR) << "fail to db_.create_transaction(transaction_handle_)";
+            channel_->send_ack(ERROR_CODE::UNKNOWN);
+            VLOG(log_debug) << "<-- UNKNOWN";
+            return;
+        }
+    }
+    auto params = jogasaki::api::create_parameter_set();
+    set_params(params);
+
+    std::unique_ptr<jogasaki::api::executable_statement> e{};
+    if(auto rc = db_.resolve(cursors_.at(sid).prepared_, std::shared_ptr{std::move(params)}, e); rc != jogasaki::status::ok) {
+        channel_->send_ack(ERROR_CODE::UNKNOWN);
+        VLOG(log_debug) << "<-- UNKNOWN";
+        return;
+    }
+    if(auto rc = transaction_handle_.execute(*e); rc != jogasaki::status::ok) {
+        channel_->send_ack(ERROR_CODE::UNKNOWN);
+        VLOG(log_debug) << "<-- UNKNOWN";
+        return;
+    }
+    channel_->send_ack(ERROR_CODE::OK);
+    VLOG(log_debug) << "<-- OK";
+}
+
+bool Worker::execute_prepared_query(std::size_t sid, std::size_t rid)
+{
+    if (sid >= prepared_statements_.size()) {
+        channel_->send_ack(ERROR_CODE::UNKNOWN);
+        VLOG(log_debug) << "<-- UNKNOWN";
+        return false;
+    }
+
+    if (!transaction_handle_) {
+        if(auto rc = db_.create_transaction(transaction_handle_); rc != jogasaki::status::ok) {
+            LOG(ERROR) << "fail to db_.create_transaction(transaction_handle_)";
+            return false;
+        }
+    }
+    if (cursors_.size() < (rid + 1)) {
+        cursors_.resize(rid + 1);
+    }
+
+    auto& cursor = cursors_.at(rid);
+
+    cursor.row_queue_ = std::make_unique<ogawayama::common::RowQueue>
+        (shm4_row_queue_->shm_name(ogawayama::common::param::resultset, rid), shm4_row_queue_.get());
+    cursor.row_queue_->clear();
+
+    auto params = jogasaki::api::create_parameter_set();
+    set_params(params);
+
+    std::unique_ptr<jogasaki::api::executable_statement> e{};
+    if(auto rc = db_.resolve(cursors_.at(sid).prepared_, std::shared_ptr{std::move(params)}, e); rc != jogasaki::status::ok) {
+        channel_->send_ack(ERROR_CODE::UNKNOWN);
+        VLOG(log_debug) << "<-- UNKNOWN";
+        return false;
+    }
+    auto& rs =  cursor.result_set_;
+    if(auto rc = transaction_handle_.execute(*e, rs); rc != jogasaki::status::ok || !rs) {
+        channel_->send_ack(ERROR_CODE::UNKNOWN);
+        VLOG(log_debug) << "<-- UNKNOWN";
+        return false;
+    }
+    cursor.result_set_iterator_ = rs->iterator();
+
+    send_metadata(rid);
+    channel_->send_ack(ERROR_CODE::OK);
+    VLOG(log_debug) << "<-- OK";
+    return true;
+}
+#endif
 
 }  // ogawayama::bridge

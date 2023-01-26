@@ -1,0 +1,214 @@
+/*
+ * Copyright 2019-2019 tsurugi project.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+#include "result_setImpl.h"
+
+namespace ogawayama::stub {
+
+ResultSet::Impl::Impl(Transaction::Impl* manager, std::unique_ptr<tateyama::common::wire::session_wire_container::resultset_wires_container> resultset_wire, ::jogasaki::proto::sql::response::ResultSetMetadata metadata)
+    : manager_(manager), resultset_wire_(std::move(resultset_wire)), metadata_(metadata), column_number_(metadata_.columns_size())
+{
+}
+
+ResultSet::Impl::~Impl() {
+    manager_->receive_body();
+}
+
+/**
+ * @brief get metadata for the result set.
+ * @param metadata returns a MetadataPtr pointing to the metadata class
+ * @return error code defined in error_code.h
+ */
+ErrorCode ResultSet::Impl::get_metadata(MetadataPtr &metadata)
+{
+    if (!ogawayama_metadata_valid_) {
+        ogawayama_metadata_.clear();
+        for (int j = 0; j < column_number_; j++) {
+            const ::jogasaki::proto::sql::common::Column& column = metadata_.columns(j);
+            switch(column.type_info_case()) {
+            case ::jogasaki::proto::sql::common::Column::TypeInfoCase::kAtomType:
+                switch(column.atom_type()) {
+                case ::jogasaki::proto::sql::common::AtomType::INT4: ogawayama_metadata_.push(Metadata::ColumnType::Type::INT32); break;
+                case ::jogasaki::proto::sql::common::AtomType::INT8: ogawayama_metadata_.push(Metadata::ColumnType::Type::INT64); break;
+                case ::jogasaki::proto::sql::common::AtomType::FLOAT8: ogawayama_metadata_.push(Metadata::ColumnType::Type::FLOAT64); break;
+                case ::jogasaki::proto::sql::common::AtomType::DECIMAL: break;
+                case ::jogasaki::proto::sql::common::AtomType::CHARACTER: ogawayama_metadata_.push(Metadata::ColumnType::Type::TEXT); break;
+                case ::jogasaki::proto::sql::common::AtomType::OCTET: break;
+                case ::jogasaki::proto::sql::common::AtomType::BIT: break;
+                case ::jogasaki::proto::sql::common::AtomType::DATE: break;
+                case ::jogasaki::proto::sql::common::AtomType::TIME_OF_DAY: break;
+                case ::jogasaki::proto::sql::common::AtomType::TIME_POINT: break;
+                case ::jogasaki::proto::sql::common::AtomType::DATETIME_INTERVAL: break;
+                case ::jogasaki::proto::sql::common::AtomType::TIME_OF_DAY_WITH_TIME_ZONE: break;
+                case ::jogasaki::proto::sql::common::AtomType::TIME_POINT_WITH_TIME_ZONE: break;
+                case ::jogasaki::proto::sql::common::AtomType::CLOB: break;
+                case ::jogasaki::proto::sql::common::AtomType::BLOB: break;
+                case ::jogasaki::proto::sql::common::AtomType::UNKNOWN: break;
+                default: break;
+                }
+                break;
+            case ::jogasaki::proto::sql::common::Column::TypeInfoCase::kRowType: break;
+            case ::jogasaki::proto::sql::common::Column::TypeInfoCase::kUserType: break;
+            case ::jogasaki::proto::sql::common::Column::TypeInfoCase::TYPE_INFO_NOT_SET: break;
+            }
+        }
+        ogawayama_metadata_valid_ = true;
+    }
+    metadata = &ogawayama_metadata_;
+    return ErrorCode::OK;
+}
+
+/**
+ * @brief move to next row
+ * @return error code defined in error_code.h
+ */
+ErrorCode ResultSet::Impl::next()
+{
+    if (c_idx_ == column_number_) {
+        resultset_wire_->dispose();
+    }
+    c_idx_ = 0;
+    auto record = resultset_wire_->get_chunk();
+    if (record.size() == 0) {
+        return ErrorCode::END_OF_ROW;
+    }
+    buf_ = jogasaki::serializer::buffer_view(const_cast<char*>(record.data()), record.size());
+    iter_ = buf_.begin();
+    jogasaki::serializer::read_row_begin(iter_, buf_.end());
+    return ErrorCode::OK;
+}
+
+/**
+ * @brief get int64 value from the current row.
+ * @param value returns the value
+ * @return error code defined in error_code.h
+ */
+template<>
+ErrorCode ResultSet::Impl::next_column(std::int64_t &value) {
+    if (auto rv = next_column_common(); rv != ErrorCode::OK) {
+        return rv;
+    }
+    auto type = jogasaki::serializer::peek_type(iter_, buf_.end());
+    if (type == jogasaki::serializer::entry_type::end_of_contents) {
+        return ErrorCode::END_OF_ROW;
+    }
+    value = jogasaki::serializer::read_int(iter_, buf_.end());
+    return ErrorCode::OK;
+}
+
+/**
+ * @brief get float64 value from the current row.
+ * @param value returns the value
+ * @return error code defined in error_code.h
+ */
+template<>
+ErrorCode ResultSet::Impl::next_column(double &value) {
+    if (auto rv = next_column_common(); rv != ErrorCode::OK) {
+        return rv;
+    }
+    auto type = jogasaki::serializer::peek_type(iter_, buf_.end());
+    if (type == jogasaki::serializer::entry_type::end_of_contents) {
+        return ErrorCode::END_OF_ROW;
+    }
+    value = jogasaki::serializer::read_float8(iter_, buf_.end());
+    return ErrorCode::OK;
+}
+
+/**
+ * @brief get text value from the current row.
+ * @param value returns the value
+ * @return error code defined in error_code.h
+ */
+template<>
+ErrorCode ResultSet::Impl::next_column(std::string_view &value) {
+    if (auto rv = next_column_common(); rv != ErrorCode::OK) {
+        return rv;
+    }
+    auto type = jogasaki::serializer::peek_type(iter_, buf_.end());
+    if (type == jogasaki::serializer::entry_type::end_of_contents) {
+        return ErrorCode::END_OF_ROW;
+    }
+    value = jogasaki::serializer::read_character(iter_, buf_.end());
+    return ErrorCode::OK;
+}
+
+
+/**
+ * @brief constructor of ResultSet class
+ */
+ResultSet::ResultSet(std::unique_ptr<Impl> impl) : impl_(std::move(impl)) {}
+
+/**
+ * @brief destructor of ResultSet class
+ */
+ResultSet::~ResultSet() = default;
+
+/**
+ * @brief get metadata for the result set.
+ * @param metadata returns the metadata class
+ * @return error code defined in error_code.h
+ */
+ErrorCode ResultSet::get_metadata(MetadataPtr &metadata)
+{
+    return impl_->get_metadata(metadata);
+}
+
+ErrorCode ResultSet::next() { return impl_->next(); }
+// template<>
+// ErrorCode ResultSet::next_column(std::int16_t &value) { return impl_->next_column(value); }
+// template<>
+// ErrorCode ResultSet::next_column(std::int32_t &value) { return impl_->next_column(value); }
+template<>
+ErrorCode ResultSet::next_column(std::int64_t &value) { return impl_->next_column(value); }
+// template<>
+// ErrorCode ResultSet::next_column(float &value) { return impl_->next_column(value); }
+template<>
+ErrorCode ResultSet::next_column(double &value) { return impl_->next_column(value); }
+template<>
+ErrorCode ResultSet::next_column(std::string_view &value) { return impl_->next_column(value); }
+
+template<>
+ErrorCode ResultSet::next_column(short &value) {
+    std::int64_t v{};
+    auto rv = impl_->next_column(v);
+    value = v;
+    return rv;
+}
+template<>
+ErrorCode ResultSet::next_column(int &value) {
+    std::int64_t v{};
+    auto rv = impl_->next_column(v);
+    value = v;
+    return rv;
+}
+template<>
+ErrorCode ResultSet::next_column(float &value) {
+    double v{};
+    auto rv = impl_->next_column(v);
+    value = v;
+    return rv;
+}
+template<>
+ErrorCode ResultSet::next_column(std::string &value) {
+    std::string_view sv;
+    ErrorCode err = impl_->next_column(sv);
+    if( err == ErrorCode::OK) {
+        value = sv;
+    }
+    return err;
+}
+
+}  // namespace ogawayama::stub
