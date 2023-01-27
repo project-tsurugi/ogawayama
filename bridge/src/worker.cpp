@@ -90,7 +90,9 @@ void Worker::run()
             break;
         case ogawayama::common::CommandMessage::Type::ROLLBACK:
             if (!transaction_handle_) {
-                channel_->send_ack(ERROR_CODE::NO_TRANSACTION);
+                channel_->send_ack(ERROR_CODE::OK);  // rollback is immutable
+                VLOG(log_debug) << "<-- OK";
+                break;
             }
             transaction_handle_.abort();
             channel_->send_ack(ERROR_CODE::OK);
