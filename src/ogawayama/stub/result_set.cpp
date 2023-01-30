@@ -1,5 +1,5 @@
 /*
- * Copyright 2019-2019 tsurugi project.
+ * Copyright 2019-2023 tsurugi project.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -77,10 +77,10 @@ ErrorCode ResultSet::Impl::get_metadata(MetadataPtr &metadata)
  */
 ErrorCode ResultSet::Impl::next()
 {
-    if (c_idx_ == column_number_) {
+    if (c_idx_ != 0) {
         resultset_wire_->dispose();
+        c_idx_ = 0;
     }
-    c_idx_ = 0;
     auto record = resultset_wire_->get_chunk();
     if (record.size() == 0) {
         return ErrorCode::END_OF_ROW;

@@ -1,5 +1,5 @@
 /*
- * Copyright 2019-2019 tsurugi project.
+ * Copyright 2019-2023 tsurugi project.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -54,6 +54,7 @@ public:
             return ErrorCode::OK;
         }
         resultset_wire_->dispose();
+        c_idx_ = 0;
         return ErrorCode::END_OF_COLUMN;
     }
 
