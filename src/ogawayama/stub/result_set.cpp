@@ -32,7 +32,7 @@ ResultSet::Impl::~Impl() {
  * @param metadata returns a MetadataPtr pointing to the metadata class
  * @return error code defined in error_code.h
  */
-ErrorCode ResultSet::Impl::get_metadata(MetadataPtr &metadata)
+ErrorCode ResultSet::Impl::get_metadata(MetadataPtr& metadata)
 {
     if (!ogawayama_metadata_valid_) {
         ogawayama_metadata_.clear();
@@ -48,12 +48,12 @@ ErrorCode ResultSet::Impl::get_metadata(MetadataPtr &metadata)
                 case ::jogasaki::proto::sql::common::AtomType::CHARACTER: ogawayama_metadata_.push(Metadata::ColumnType::Type::TEXT); break;
                 case ::jogasaki::proto::sql::common::AtomType::OCTET: break;
                 case ::jogasaki::proto::sql::common::AtomType::BIT: break;
-                case ::jogasaki::proto::sql::common::AtomType::DATE: break;
-                case ::jogasaki::proto::sql::common::AtomType::TIME_OF_DAY: break;
-                case ::jogasaki::proto::sql::common::AtomType::TIME_POINT: break;
+                case ::jogasaki::proto::sql::common::AtomType::DATE: ogawayama_metadata_.push(Metadata::ColumnType::Type::DATE); break;
+                case ::jogasaki::proto::sql::common::AtomType::TIME_OF_DAY: ogawayama_metadata_.push(Metadata::ColumnType::Type::TIME); break;
+                case ::jogasaki::proto::sql::common::AtomType::TIME_POINT: ogawayama_metadata_.push(Metadata::ColumnType::Type::TIMESTAMP); break;
                 case ::jogasaki::proto::sql::common::AtomType::DATETIME_INTERVAL: break;
-                case ::jogasaki::proto::sql::common::AtomType::TIME_OF_DAY_WITH_TIME_ZONE: break;
-                case ::jogasaki::proto::sql::common::AtomType::TIME_POINT_WITH_TIME_ZONE: break;
+                case ::jogasaki::proto::sql::common::AtomType::TIME_OF_DAY_WITH_TIME_ZONE: ogawayama_metadata_.push(Metadata::ColumnType::Type::TIMETZ); break;
+                case ::jogasaki::proto::sql::common::AtomType::TIME_POINT_WITH_TIME_ZONE: ogawayama_metadata_.push(Metadata::ColumnType::Type::TIMESTAMPTZ); break;
                 case ::jogasaki::proto::sql::common::AtomType::CLOB: break;
                 case ::jogasaki::proto::sql::common::AtomType::BLOB: break;
                 case ::jogasaki::proto::sql::common::AtomType::UNKNOWN: break;
@@ -97,7 +97,7 @@ ErrorCode ResultSet::Impl::next()
  * @return error code defined in error_code.h
  */
 template<>
-ErrorCode ResultSet::Impl::next_column(std::int64_t &value) {
+ErrorCode ResultSet::Impl::next_column(std::int64_t& value) {
     if (auto rv = next_column_common(); rv != ErrorCode::OK) {
         return rv;
     }
@@ -115,7 +115,7 @@ ErrorCode ResultSet::Impl::next_column(std::int64_t &value) {
  * @return error code defined in error_code.h
  */
 template<>
-ErrorCode ResultSet::Impl::next_column(double &value) {
+ErrorCode ResultSet::Impl::next_column(double& value) {
     if (auto rv = next_column_common(); rv != ErrorCode::OK) {
         return rv;
     }
@@ -127,13 +127,35 @@ ErrorCode ResultSet::Impl::next_column(double &value) {
     return ErrorCode::OK;
 }
 
+template<>
+ErrorCode ResultSet::Impl::next_column(short& value) {
+    std::int64_t v{};
+    auto rv = next_column(v);
+    value = v;
+    return rv;
+}
+template<>
+ErrorCode ResultSet::Impl::next_column(int& value) {
+    std::int64_t v{};
+    auto rv = next_column(v);
+    value = v;
+    return rv;
+}
+template<>
+ErrorCode ResultSet::Impl::next_column(float& value) {
+    double v{};
+    auto rv = next_column(v);
+    value = v;
+    return rv;
+}
+
 /**
  * @brief get text value from the current row.
  * @param value returns the value
  * @return error code defined in error_code.h
  */
 template<>
-ErrorCode ResultSet::Impl::next_column(std::string_view &value) {
+ErrorCode ResultSet::Impl::next_column(std::string_view& value) {
     if (auto rv = next_column_common(); rv != ErrorCode::OK) {
         return rv;
     }
@@ -142,6 +164,107 @@ ErrorCode ResultSet::Impl::next_column(std::string_view &value) {
         return ErrorCode::END_OF_ROW;
     }
     value = jogasaki::serializer::read_character(iter_, buf_.end());
+    return ErrorCode::OK;
+}
+
+template<>
+ErrorCode ResultSet::Impl::next_column(std::string& value) {
+    std::string_view sv;
+    ErrorCode err = next_column(sv);
+    if( err == ErrorCode::OK) {
+        value = sv;
+    }
+    return err;
+}
+
+
+/**
+ * @brief get date value from the current row.
+ * @param value returns the value
+ * @return error code defined in error_code.h
+ */
+template<>
+ErrorCode ResultSet::Impl::next_column(takatori::datetime::date& value) {
+    if (auto rv = next_column_common(); rv != ErrorCode::OK) {
+        return rv;
+    }
+    auto type = jogasaki::serializer::peek_type(iter_, buf_.end());
+    if (type == jogasaki::serializer::entry_type::end_of_contents) {
+        return ErrorCode::END_OF_ROW;
+    }
+    value = jogasaki::serializer::read_date(iter_, buf_.end());
+    return ErrorCode::OK;
+}
+
+/**
+ * @brief get time_of_day value from the current row.
+ * @param value returns the value
+ * @return error code defined in error_code.h
+ */
+template<>
+ErrorCode ResultSet::Impl::next_column(takatori::datetime::time_of_day& value) {
+    if (auto rv = next_column_common(); rv != ErrorCode::OK) {
+        return rv;
+    }
+    auto type = jogasaki::serializer::peek_type(iter_, buf_.end());
+    if (type == jogasaki::serializer::entry_type::end_of_contents) {
+        return ErrorCode::END_OF_ROW;
+    }
+    value = jogasaki::serializer::read_time_of_day(iter_, buf_.end());
+    return ErrorCode::OK;
+}
+
+/**
+ * @brief get time_point value from the current row.
+ * @param value returns the value
+ * @return error code defined in error_code.h
+ */
+template<>
+ErrorCode ResultSet::Impl::next_column(takatori::datetime::time_point& value) {
+    if (auto rv = next_column_common(); rv != ErrorCode::OK) {
+        return rv;
+    }
+    auto type = jogasaki::serializer::peek_type(iter_, buf_.end());
+    if (type == jogasaki::serializer::entry_type::end_of_contents) {
+        return ErrorCode::END_OF_ROW;
+    }
+    value = jogasaki::serializer::read_time_point(iter_, buf_.end());
+    return ErrorCode::OK;
+}
+
+/**
+  @brief get time_of_day_with_offset value from the current row.
+ * @param value returns the value
+ * @return error code defined in error_code.h
+ */
+template<>
+ErrorCode ResultSet::Impl::next_column(std::pair<takatori::datetime::time_of_day, std::int32_t>& value) {
+    if (auto rv = next_column_common(); rv != ErrorCode::OK) {
+        return rv;
+    }
+    auto type = jogasaki::serializer::peek_type(iter_, buf_.end());
+    if (type == jogasaki::serializer::entry_type::end_of_contents) {
+        return ErrorCode::END_OF_ROW;
+    }
+    value = jogasaki::serializer::read_time_of_day_with_offset(iter_, buf_.end());
+    return ErrorCode::OK;
+}
+
+/**
+ * @brief get time_point_with_offset value from the current row.
+ * @param value returns the value
+ * @return error code defined in error_code.h
+ */
+template<>
+ErrorCode ResultSet::Impl::next_column(std::pair<takatori::datetime::time_point, std::int32_t>& value) {
+    if (auto rv = next_column_common(); rv != ErrorCode::OK) {
+        return rv;
+    }
+    auto type = jogasaki::serializer::peek_type(iter_, buf_.end());
+    if (type == jogasaki::serializer::entry_type::end_of_contents) {
+        return ErrorCode::END_OF_ROW;
+    }
+    value = jogasaki::serializer::read_time_point_with_offset(iter_, buf_.end());
     return ErrorCode::OK;
 }
 
@@ -161,54 +284,35 @@ ResultSet::~ResultSet() = default;
  * @param metadata returns the metadata class
  * @return error code defined in error_code.h
  */
-ErrorCode ResultSet::get_metadata(MetadataPtr &metadata)
+ErrorCode ResultSet::get_metadata(MetadataPtr& metadata)
 {
     return impl_->get_metadata(metadata);
 }
 
 ErrorCode ResultSet::next() { return impl_->next(); }
-// template<>
-// ErrorCode ResultSet::next_column(std::int16_t &value) { return impl_->next_column(value); }
-// template<>
-// ErrorCode ResultSet::next_column(std::int32_t &value) { return impl_->next_column(value); }
 template<>
-ErrorCode ResultSet::next_column(std::int64_t &value) { return impl_->next_column(value); }
-// template<>
-// ErrorCode ResultSet::next_column(float &value) { return impl_->next_column(value); }
+ErrorCode ResultSet::next_column(std::int16_t& value) { return impl_->next_column(value); }
 template<>
-ErrorCode ResultSet::next_column(double &value) { return impl_->next_column(value); }
+ErrorCode ResultSet::next_column(std::int32_t& value) { return impl_->next_column(value); }
 template<>
-ErrorCode ResultSet::next_column(std::string_view &value) { return impl_->next_column(value); }
-
+ErrorCode ResultSet::next_column(std::int64_t& value) { return impl_->next_column(value); }
 template<>
-ErrorCode ResultSet::next_column(short &value) {
-    std::int64_t v{};
-    auto rv = impl_->next_column(v);
-    value = v;
-    return rv;
-}
+ErrorCode ResultSet::next_column(float& value) { return impl_->next_column(value); }
 template<>
-ErrorCode ResultSet::next_column(int &value) {
-    std::int64_t v{};
-    auto rv = impl_->next_column(v);
-    value = v;
-    return rv;
-}
+ErrorCode ResultSet::next_column(double& value) { return impl_->next_column(value); }
 template<>
-ErrorCode ResultSet::next_column(float &value) {
-    double v{};
-    auto rv = impl_->next_column(v);
-    value = v;
-    return rv;
-}
+ErrorCode ResultSet::next_column(std::string_view& value) { return impl_->next_column(value); }
 template<>
-ErrorCode ResultSet::next_column(std::string &value) {
-    std::string_view sv;
-    ErrorCode err = impl_->next_column(sv);
-    if( err == ErrorCode::OK) {
-        value = sv;
-    }
-    return err;
-}
+ErrorCode ResultSet::next_column(std::string& value) { return impl_->next_column(value); }
+template<>
+ErrorCode ResultSet::next_column(takatori::datetime::date& value) { return impl_->next_column(value); }
+template<>
+ErrorCode ResultSet::next_column(takatori::datetime::time_of_day& value) { return impl_->next_column(value); }
+template<>
+ErrorCode ResultSet::next_column(takatori::datetime::time_point& value) { return impl_->next_column(value); }
+template<>
+ErrorCode ResultSet::next_column(std::pair<takatori::datetime::time_of_day, std::int32_t>& value) { return impl_->next_column(value); }
+template<>
+ErrorCode ResultSet::next_column(std::pair<takatori::datetime::time_point, std::int32_t>& value) { return impl_->next_column(value); }
 
 }  // namespace ogawayama::stub

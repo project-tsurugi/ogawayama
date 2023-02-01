@@ -17,16 +17,14 @@
 
 #include <cstddef>
 #include <vector>
-#include <variant>
+
+#include <takatori/value/date.h>
+#include <takatori/value/time_of_day.h>
+#include <takatori/value/time_point.h>
 
 #include "ogawayama/stub/error_code.h"
 
 namespace ogawayama::stub {
-
-/**
- * @brief variant used to pass value from server to stub. It's index() should be consistent with Metadata::ColumnType::Type.
- */
-using ColumnValueType = std::variant<std::monostate, std::int16_t, std::int32_t, std::int64_t, float, double, std::string>;
 
 /**
  * @brief Provides semantic information of a ResultSet.
@@ -42,7 +40,6 @@ public:
          * @brief represents a type.
          */
         enum class Type {
-
             /**
              * @brief Pseudotype representing that the column is NULL.
              */
@@ -77,6 +74,31 @@ public:
              * @brief text type.
              */
             TEXT = 6,
+
+            /**
+             * @brief date type.
+             */
+            DATE = 7,
+
+            /**
+             * @brief time type.
+             */
+            TIME = 8,
+
+            /**
+             * @brief timestamp type.
+             */
+            TIMESTAMP = 9,
+
+            /**
+             * @brief timetz type.
+             */
+            TIMETZ = 10,
+
+            /**
+             * @brief timestamptz type.
+             */
+            TIMESTAMPTZ = 11,
         };
         
         /**
@@ -84,8 +106,7 @@ public:
          * @param type tag for the column type
          * @param byte length for the column data
          */
-        ColumnType(Type type, std::size_t length) : type_(type), length_(length) {}
-        ColumnType(Type type) : ColumnType(type, 0) {}
+        ColumnType(Type type) : type_(type) {}
         
         /**
          * @brief Copy and move constructers.
@@ -107,15 +128,8 @@ public:
          */
         ColumnType::Type get_type() const { return type_; }
     
-        /**
-         * @brief get type for this column.
-         * @return Type of this column
-         */
-        std::size_t get_length() const { return length_; }
-
     private:
         Type type_{};
-        std::size_t length_{};
     };
 
     /**
@@ -143,13 +157,6 @@ public:
     /**
      * @brief push a column type.
      * @param t the type of the column
-     * @param l the data length of the columns
-     */
-    void push(ColumnType::Type t, std::size_t l) { columns_.emplace_back(ColumnType(t, l)); } 
-
-    /**
-     * @brief push a column type.
-     * @param t the type of the column
      */
     void push(ColumnType::Type t) { columns_.emplace_back(ColumnType(t)); } 
 
@@ -161,5 +168,11 @@ public:
 private:
     SetOfTypeData columns_;
 };
+
+using date_type = takatori::datetime::date;
+using time_type = takatori::datetime::time_of_day;
+using timestamp_type = takatori::datetime::time_point;
+using timetz_type = std::pair<takatori::datetime::time_of_day, std::int32_t>;
+using timestamptz_type = std::pair<takatori::datetime::time_point, std::int32_t>;
 
 }  // namespace ogawayama::stub
