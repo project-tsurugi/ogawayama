@@ -16,7 +16,7 @@
 
 #include <vector>
 #include <optional>
-#include <sstream>
+#include <string>
 #include <boost/foreach.hpp>
 #include <boost/property_tree/json_parser.hpp>
 
@@ -265,6 +265,9 @@ void Worker::deploy_metadata(std::size_t table_id)
                 is_funcexpr = is_funcexpr_opt.value();
                 if (is_funcexpr) {
                     LOG(ERROR) << " default value in function form is not currentry surported";
+                    channel_->send_ack(ERROR_CODE::UNSUPPORTED);  // default value in function form is not currentry surported
+                    VLOG(log_debug) << "<-- INVALID_PARAMETER";
+                    return;
                 }
             }
 
@@ -277,7 +280,10 @@ void Worker::deploy_metadata(std::size_t table_id)
             } else {  // this is value column
                 value_columns.emplace_back(column_number_value);
             }
-            VLOG(log_debug) << " found column: name = " << name_value << ", data_type_id = " << static_cast<std::size_t>(data_type_id_value) << ", is_not_null = " << (is_not_null_value ? "not_null" : "nullable");  // NOLINT
+            VLOG(log_debug) << " found column: name = " << name_value <<                // NOLINT
+                ", data_type_id = " << static_cast<std::size_t>(data_type_id_value) <<  // NOLINT
+                ", is_not_null = " << (is_not_null_value ? "not_null" : "nullable"      // NOLINT
+                );                                                                      // NOLINT
 
             switch(data_type_id_value) {  // build yugawara::storage::column
             case manager::metadata::DataTypes::DataTypesId::INT32:
@@ -285,8 +291,7 @@ void Worker::deploy_metadata(std::size_t table_id)
                 // int column default value
                 yugawara::storage::column_value default_value{};
                 if (!default_expression_value.empty()) {
-                    std::int32_t value{};
-                    std::istringstream(default_expression_value) >> value;
+                    std::int32_t value = stoi(default_expression_value);
                     default_value = yugawara::storage::column_value(std::make_shared<::takatori::value::int4>(value));
                 }
                 columns.emplace_back(yugawara::storage::column(name_value, takatori::type::int4(), yugawara::variable::nullity(!is_not_null_value), default_value));
@@ -297,8 +302,7 @@ void Worker::deploy_metadata(std::size_t table_id)
                 // bigint column default value
                 yugawara::storage::column_value default_value{};
                 if (!default_expression_value.empty()) {
-                    std::int64_t value{};
-                    std::istringstream(default_expression_value) >> value;
+                    std::int64_t value = stol(default_expression_value);
                     default_value = yugawara::storage::column_value(std::make_shared<::takatori::value::int8>(value));
                 }
                 columns.emplace_back(yugawara::storage::column(name_value, takatori::type::int8(), yugawara::variable::nullity(!is_not_null_value), default_value));
@@ -309,7 +313,7 @@ void Worker::deploy_metadata(std::size_t table_id)
                 // real column default value
                 yugawara::storage::column_value default_value{};
                 if (!default_expression_value.empty()) {
-                    float value{};
+                    float value = stof(default_expression_value);
                     std::istringstream(default_expression_value) >> value;
                     yugawara::storage::column_value default_value = yugawara::storage::column_value(std::make_shared<::takatori::value::float4>(value));
                 }
@@ -321,8 +325,7 @@ void Worker::deploy_metadata(std::size_t table_id)
                 // double precision column default value
                 yugawara::storage::column_value default_value{};
                 if (!default_expression_value.empty()) {
-                    double value{};
-                    std::istringstream(default_expression_value) >> value;
+                    double value = stod(default_expression_value);
                     yugawara::storage::column_value default_value = yugawara::storage::column_value(std::make_shared<::takatori::value::float8>(value));
                 }
                 columns.emplace_back(yugawara::storage::column(name_value, takatori::type::float8(), yugawara::variable::nullity(!is_not_null_value), default_value));
@@ -373,7 +376,7 @@ void Worker::deploy_metadata(std::size_t table_id)
                         VLOG(log_debug) << "<-- INVALID_PARAMETER";
                         return;
                     }
-                    default_value = yugawara::storage::column_value(std::make_shared<::takatori::value::character const>(default_expression_value.substr(1, default_expression_value.length() - index)));
+                    default_value = yugawara::storage::column_value(std::make_shared<::takatori::value::character const>(default_expression_value.substr(1, index - 2)));
                 }
                 columns.emplace_back(yugawara::storage::column(name_value,
                                                                (use_default_length ?
@@ -414,31 +417,143 @@ void Worker::deploy_metadata(std::size_t table_id)
             }
             case manager::metadata::DataTypes::DataTypesId::DATE:  // date
             {
+                // date column default value
+                yugawara::storage::column_value default_value{};
+                if (!default_expression_value.empty()) {
+                    std::size_t index = default_expression_value.rfind("::date");
+                    if (index == std::string::npos) {
+                        channel_->send_ack(ERROR_CODE::INVALID_PARAMETER);
+                        VLOG(log_debug) << "<-- INVALID_PARAMETER";
+                        return;
+                    }
+                    std::string dvs = default_expression_value.substr(1, index - 2);
+                    struct tm tm;
+                    memset(&tm, 0, sizeof(struct tm));
+                    if (auto ts = strptime(dvs.c_str(), "%Y-%m-%d", &tm); ts == nullptr) {
+                        channel_->send_ack(ERROR_CODE::INVALID_PARAMETER);
+                        VLOG(log_debug) << "<-- INVALID_PARAMETER";
+                        return;
+                    }
+                    default_value = yugawara::storage::column_value(std::make_shared<::takatori::value::date const>(tm.tm_year + 1900, tm.tm_mon + 1, tm.tm_mday));
+                }
                 columns.emplace_back(yugawara::storage::column(name_value,
                                                                takatori::type::date(),
-                                                               yugawara::variable::nullity(!is_not_null_value)));
+                                                               yugawara::variable::nullity(!is_not_null_value),
+                                                               default_value));
                 break;
             }
             case manager::metadata::DataTypes::DataTypesId::TIME:  // time_of_day
+            {
+                // time column default value
+                yugawara::storage::column_value default_value{};
+                if (!default_expression_value.empty()) {
+                    std::size_t index = default_expression_value.rfind("::time without time zone");
+                    if (index == std::string::npos) {
+                        channel_->send_ack(ERROR_CODE::INVALID_PARAMETER);
+                        VLOG(log_debug) << "<-- INVALID_PARAMETER";
+                        return;
+                    }
+                    std::string dvs = default_expression_value.substr(1, index - 2);
+                    struct tm tm;
+                    memset(&tm, 0, sizeof(struct tm));
+                    if (auto ts = strptime(dvs.c_str(), "%H:%M:%S", &tm); ts == nullptr) {
+                        channel_->send_ack(ERROR_CODE::INVALID_PARAMETER);
+                        VLOG(log_debug) << "<-- INVALID_PARAMETER";
+                        return;
+                    }
+                    default_value = yugawara::storage::column_value(std::make_shared<::takatori::value::time_of_day const>(tm.tm_hour, tm.tm_min, tm.tm_sec));
+                }
+                columns.emplace_back(yugawara::storage::column(name_value,
+                                                               takatori::type::time_of_day(~takatori::type::with_time_zone),
+                                                               yugawara::variable::nullity(!is_not_null_value),
+                                                               default_value));
+                break;
+            }
             case manager::metadata::DataTypes::DataTypesId::TIMETZ:  // time_of_day
             {
+                // time column default value
+                yugawara::storage::column_value default_value{};
+                if (!default_expression_value.empty()) {
+                    std::size_t index = default_expression_value.rfind("::time with time zone");
+                    if (index == std::string::npos) {
+                        channel_->send_ack(ERROR_CODE::INVALID_PARAMETER);
+                        VLOG(log_debug) << "<-- INVALID_PARAMETER";
+                        return;
+                    }
+                    std::string dvs = default_expression_value.substr(1, index - 2);
+                    std::string dvs_t = dvs.substr(0, index - 5);
+                    struct tm tm;
+                    memset(&tm, 0, sizeof(struct tm));
+                    if (auto ts = strptime(dvs_t.c_str(), "%H:%M:%S", &tm); ts == nullptr) {
+                        channel_->send_ack(ERROR_CODE::INVALID_PARAMETER);
+                        VLOG(log_debug) << "<-- INVALID_PARAMETER";
+                        return;
+                    }
+                    auto td = stoi(dvs.substr(index - 5, index - 2));  // FIXME use time differnce value
+                    VLOG(log_debug) << "  time difference is " << td;
+                    default_value = yugawara::storage::column_value(std::make_shared<::takatori::value::time_of_day const>(tm.tm_hour, tm.tm_min, tm.tm_sec));
+                }
                 columns.emplace_back(yugawara::storage::column(name_value,
-                                                               takatori::type::time_of_day(
-                                                                   data_type_id_value == manager::metadata::DataTypes::DataTypesId::TIMETZ ?
-                                                                   takatori::type::with_time_zone : ~takatori::type::with_time_zone
-                                                               ),
-                                                               yugawara::variable::nullity(!is_not_null_value)));
+                                                               takatori::type::time_of_day(takatori::type::with_time_zone),
+                                                               yugawara::variable::nullity(!is_not_null_value),
+                                                               default_value));
                 break;
             }
             case manager::metadata::DataTypes::DataTypesId::TIMESTAMP:  // time_point
+            {
+                // time column default value
+                yugawara::storage::column_value default_value{};
+                if (!default_expression_value.empty()) {
+                    std::size_t index = default_expression_value.rfind("::timestamp without time zone");
+                    if (index == std::string::npos) {
+                        channel_->send_ack(ERROR_CODE::INVALID_PARAMETER);
+                        VLOG(log_debug) << "<-- INVALID_PARAMETER";
+                        return;
+                    }
+                    std::string dvs = default_expression_value.substr(1, index - 2);
+                    struct tm tm;
+                    memset(&tm, 0, sizeof(struct tm));
+                    if (auto ts = strptime(dvs.c_str(), "%Y-%m-%d %H:%M:%S", &tm); ts == nullptr) {
+                        channel_->send_ack(ERROR_CODE::INVALID_PARAMETER);
+                        VLOG(log_debug) << "<-- INVALID_PARAMETER";
+                        return;
+                    }
+                    default_value = yugawara::storage::column_value(std::make_shared<::takatori::value::time_point const>(tm.tm_year + 1900, tm.tm_mon + 1, tm.tm_mday, tm.tm_hour, tm.tm_min, tm.tm_sec));
+                }
+                columns.emplace_back(yugawara::storage::column(name_value,
+                                                               takatori::type::time_point(~takatori::type::with_time_zone),
+                                                               yugawara::variable::nullity(!is_not_null_value),
+                                                               default_value));
+                break;
+            }
             case manager::metadata::DataTypes::DataTypesId::TIMESTAMPTZ:  // time_point
             {
+                // time column default value
+                yugawara::storage::column_value default_value{};
+                if (!default_expression_value.empty()) {
+                    std::size_t index = default_expression_value.rfind("::timestamp with time zone");
+                    if (index == std::string::npos) {
+                        channel_->send_ack(ERROR_CODE::INVALID_PARAMETER);
+                        VLOG(log_debug) << "<-- INVALID_PARAMETER";
+                        return;
+                    }
+                    std::string dvs = default_expression_value.substr(1, index - 2);
+                    std::string dvs_t = dvs.substr(0, index - 5);
+                    struct tm tm;
+                    memset(&tm, 0, sizeof(struct tm));
+                    if (auto ts = strptime(dvs_t.c_str(), "%Y-%m-%d %H:%M:%S", &tm); ts == nullptr) {
+                        channel_->send_ack(ERROR_CODE::INVALID_PARAMETER);
+                        VLOG(log_debug) << "<-- INVALID_PARAMETER";
+                        return;
+                    }
+                    auto td = stoi(dvs.substr(index - 5, index - 2));  // FIXME use time differnce value
+                    VLOG(log_debug) << "  time difference is " << td;
+                    default_value = yugawara::storage::column_value(std::make_shared<::takatori::value::time_point const>(tm.tm_year + 1900, tm.tm_mon + 1, tm.tm_mday, tm.tm_hour, tm.tm_min, tm.tm_sec));
+                }
                 columns.emplace_back(yugawara::storage::column(name_value,
-                                                               takatori::type::time_point(
-                                                                   data_type_id_value == manager::metadata::DataTypes::DataTypesId::TIMESTAMPTZ ?
-                                                                   takatori::type::with_time_zone : ~takatori::type::with_time_zone
-                                                               ),
-                                                               yugawara::variable::nullity(!is_not_null_value)));
+                                                               takatori::type::time_point(takatori::type::with_time_zone),
+                                                               yugawara::variable::nullity(!is_not_null_value),
+                                                               default_value));
                 break;
             }
             case manager::metadata::DataTypes::DataTypesId::INTERVAL:  // datetime_interval

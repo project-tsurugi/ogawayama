@@ -16,6 +16,7 @@
 #include <iostream>
 
 #include "gflags/gflags.h"
+#include <glog/logging.h>
 
 #include "ogawayama/common/channel_stream.h"
 #include "ogawayama/stub/api.h"
@@ -37,6 +38,8 @@ void prt_err(int line, ERROR_CODE err)
 }
 
 int main(int argc, char **argv) {
+    google::InstallFailureSignalHandler();
+
     // command arguments
     gflags::SetUsageMessage("a cli tool for ogawayama database server");
     gflags::ParseCommandLineFlags(&argc, &argv, true);
@@ -189,6 +192,7 @@ int main(int argc, char **argv) {
                     }
                     case TYPE::TIMESTAMP: {
                         ogawayama::stub::timestamp_type v;  // using timestamp_type = takatori::datetime::time_point;
+                        err = result_set->next_column(v);
                         auto seconds_since_epoch = v.seconds_since_epoch();  // using offset_type = std::chrono::duration<std::int64_t>;
                         switch (err) {
                         case ERROR_CODE::OK: std::cout << seconds_since_epoch.count() << " | "; break;
@@ -197,9 +201,9 @@ int main(int argc, char **argv) {
                         }
                         break;
                     }
-
                     case TYPE::TIMETZ: {
                         ogawayama::stub::timetz_type v;  // using timetz_type = std::pair<takatori::datetime::time_of_day, std::int32_t>;
+                        err = result_set->next_column(v);
                         auto time = v.first;
                         auto offset = v.second;
                         auto time_since_epoch = time.time_since_epoch();  // using time_unit = std::chrono::duration<std::uint64_t, std::nano>;
@@ -211,9 +215,9 @@ int main(int argc, char **argv) {
                         }
                         break;
                     }
-
                     case TYPE::TIMESTAMPTZ: {
                         ogawayama::stub::timestamptz_type v;  // using timestamptz_type = std::pair<takatori::datetime::time_point, std::int32_t>;
+                        err = result_set->next_column(v);
                         auto timestamp = v.first;
                         auto offset = v.second;
                         auto seconds_since_epoch = timestamp.seconds_since_epoch();  // using offset_type = std::chrono::duration<std::int64_t>;
@@ -224,10 +228,8 @@ int main(int argc, char **argv) {
                         }
                         break;
                     }
-                        
-                    default: {
+                    default:
                         prt_err(__LINE__); return 1;
-                    }
                     }
                 }
                 std::cout << std::endl;
@@ -236,16 +238,15 @@ int main(int argc, char **argv) {
             case ERROR_CODE::END_OF_ROW: {
                 std::cout << "=== end of row ===" << std::endl;
                 err = transaction->commit();
-                if (err != ERROR_CODE::OK) { prt_err(__LINE__, err); return 1; }
-                goto finish;
+                if (err != ERROR_CODE::OK) {
+                    prt_err(__LINE__, err); return 1;
+                }
+                return 0;
             }
-            default: {
+            default:
                 prt_err(__LINE__); return 1;
-            }
             }
         }
     }
-  finish:
-
     return 0;
 }
