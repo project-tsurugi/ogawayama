@@ -21,6 +21,7 @@
 #include <takatori/value/date.h>
 #include <takatori/value/time_of_day.h>
 #include <takatori/value/time_point.h>
+#include <takatori/value/decimal.h>
 
 #include "ogawayama/stub/error_code.h"
 
@@ -99,6 +100,11 @@ public:
              * @brief timestamptz type.
              */
             TIMESTAMPTZ = 11,
+
+            /**
+             * @brief decimal type.
+             */
+            DECIMAL = 12,
         };
         
         /**
@@ -174,5 +180,6 @@ using time_type = takatori::datetime::time_of_day;
 using timestamp_type = takatori::datetime::time_point;
 using timetz_type = std::pair<takatori::datetime::time_of_day, std::int32_t>;
 using timestamptz_type = std::pair<takatori::datetime::time_point, std::int32_t>;
+using decimal_type = takatori::decimal::triple;
 
 }  // namespace ogawayama::stub

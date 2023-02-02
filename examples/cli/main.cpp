@@ -228,6 +228,16 @@ int main(int argc, char **argv) {
                         }
                         break;
                     }
+                    case TYPE::DECIMAL: {
+                        ogawayama::stub::decimal_type v;  // using timestamptz_type = std::pair<takatori::datetime::time_point, std::int32_t>;
+                        err = result_set->next_column(v);
+                        switch (err) {
+                        case ERROR_CODE::OK: std::cout << v.sign() << ":" << v.coefficient_high() << ":" << v.coefficient_low() << ":" << v.exponent() << " | "; break;
+                        case ERROR_CODE::COLUMN_WAS_NULL: std::cout << "(null) | "; break;
+                        default: prt_err(__LINE__, err); return 1;
+                        }
+                        break;
+                    }
                     default:
                         prt_err(__LINE__); return 1;
                     }

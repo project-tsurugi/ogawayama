@@ -326,6 +326,31 @@ ErrorCode ResultSet::Impl::next_column(std::pair<takatori::datetime::time_point,
     }
 }
 
+/**
+ * @brief get time_point_with_offset value from the current row.
+ * @param value returns the value
+ * @return error code defined in error_code.h
+ */
+template<>
+ErrorCode ResultSet::Impl::next_column(takatori::decimal::triple& value) {
+    if (auto rv = next_column_common(); rv != ErrorCode::OK) {
+        return rv;
+    }
+    switch (jogasaki::serializer::peek_type(iter_, buf_.end())) {
+    case jogasaki::serializer::entry_type::end_of_contents:
+        jogasaki::serializer::read_end_of_contents(iter_, buf_.end());
+        return ErrorCode::END_OF_ROW;
+    case jogasaki::serializer::entry_type::null:
+        jogasaki::serializer::read_null(iter_, buf_.end());
+        return ErrorCode::COLUMN_WAS_NULL;
+    case jogasaki::serializer::entry_type::decimal:
+        value = jogasaki::serializer::read_decimal(iter_, buf_.end());
+        return ErrorCode::OK;
+    default:
+        return ErrorCode::COLUMN_TYPE_MISMATCH;
+    }
+}
+
 
 /**
  * @brief constructor of ResultSet class
@@ -372,5 +397,7 @@ template<>
 ErrorCode ResultSet::next_column(std::pair<takatori::datetime::time_of_day, std::int32_t>& value) { return impl_->next_column(value); }
 template<>
 ErrorCode ResultSet::next_column(std::pair<takatori::datetime::time_point, std::int32_t>& value) { return impl_->next_column(value); }
+template<>
+ErrorCode ResultSet::next_column(takatori::decimal::triple& value) { return impl_->next_column(value); }
 
 }  // namespace ogawayama::stub
