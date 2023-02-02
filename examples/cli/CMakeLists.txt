@@ -27,10 +27,10 @@ set_target_properties(cli
 
 target_include_directories(cli
     PRIVATE ${CMAKE_SOURCE_DIR}/common/include
-    PRIVATE ${CMAKE_SOURCE_DIR}/stub/include
-    PRIVATE ${CMAKE_SOURCE_DIR}/stub/include/tateyama/transport
-    PRIVATE ${CMAKE_SOURCE_DIR}/stub/src/ogawayama/stub
-    PRIVATE ${CMAKE_BINARY_DIR}/stub/src
+    PRIVATE ${CMAKE_SOURCE_DIR}/include
+    PRIVATE ${CMAKE_SOURCE_DIR}/src/include
+    PRIVATE ${CMAKE_SOURCE_DIR}/src/ogawayama/stub
+    PRIVATE ${CMAKE_BINARY_DIR}/src
 )
 
 target_link_libraries(cli

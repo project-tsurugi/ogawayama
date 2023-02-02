@@ -50,11 +50,16 @@ int main(int argc, char **argv) {
     if (FLAGS_schema >= 0) {
         ConnectionPtr connection;
         ERROR_CODE err;
+        manager::message::Status manager_err(manager::message::ErrorCode::SUCCESS, 0);
 
         err = stub->get_connection(connection, 12);
         if (err != ERROR_CODE::OK) { prt_err(__LINE__, err); return 1; }
-        err = connection->get_impl()->create_table(static_cast<std::size_t>(FLAGS_schema));
-        if (err != ERROR_CODE::OK) { prt_err(__LINE__, err); return 1; }
+        manager_err = connection->receive_begin_ddl(0);  // mode 0 is dummy
+        if (manager_err.get_error_code() != manager::message::ErrorCode::SUCCESS) { prt_err(__LINE__, static_cast<ERROR_CODE>(manager_err.get_sub_error_code())); return 1; }
+        manager_err = connection->receive_create_table(static_cast<manager::metadata::ObjectIdType>(FLAGS_schema));
+        if (manager_err.get_error_code() != manager::message::ErrorCode::SUCCESS) { prt_err(__LINE__, static_cast<ERROR_CODE>(manager_err.get_sub_error_code())); return 1; }
+        manager_err = connection->receive_end_ddl();
+        if (manager_err.get_error_code() != manager::message::ErrorCode::SUCCESS) { prt_err(__LINE__, static_cast<ERROR_CODE>(manager_err.get_sub_error_code())); return 1; }
     }
 
     if (FLAGS_statement != "") {
@@ -159,6 +164,67 @@ int main(int argc, char **argv) {
                         }
                         break;
                     }
+                    case TYPE::DATE: {
+                        ogawayama::stub::date_type v;  // takatori::datetime::date
+                        err = result_set->next_column(v);
+                        auto days_since_epoch = v.days_since_epoch();  // using difference_type = std::int64_t;
+                        switch (err) {
+                        case ERROR_CODE::OK: std::cout << days_since_epoch << " | "; break;
+                        case ERROR_CODE::COLUMN_WAS_NULL: std::cout << "(null) | "; break;
+                        default: prt_err(__LINE__, err); return 1;
+                        }
+                        break;
+                    }
+                    case TYPE::TIME: {
+                        ogawayama::stub::time_type v;  // takatori::datetime::time_of_day
+                        err = result_set->next_column(v);
+                        auto time_since_epoch = v.time_since_epoch();  // using time_unit = std::chrono::duration<std::uint64_t, std::nano>;
+                        std::chrono::seconds sec = std::chrono::duration_cast<std::chrono::seconds>(time_since_epoch);
+                        switch (err) {
+                        case ERROR_CODE::OK: std::cout << sec.count() << " | "; break;
+                        case ERROR_CODE::COLUMN_WAS_NULL: std::cout << "(null) | "; break;
+                        default: prt_err(__LINE__, err); return 1;
+                        }
+                        break;
+                    }
+                    case TYPE::TIMESTAMP: {
+                        ogawayama::stub::timestamp_type v;  // using timestamp_type = takatori::datetime::time_point;
+                        auto seconds_since_epoch = v.seconds_since_epoch();  // using offset_type = std::chrono::duration<std::int64_t>;
+                        switch (err) {
+                        case ERROR_CODE::OK: std::cout << seconds_since_epoch.count() << " | "; break;
+                        case ERROR_CODE::COLUMN_WAS_NULL: std::cout << "(null) | "; break;
+                        default: prt_err(__LINE__, err); return 1;
+                        }
+                        break;
+                    }
+
+                    case TYPE::TIMETZ: {
+                        ogawayama::stub::timetz_type v;  // using timetz_type = std::pair<takatori::datetime::time_of_day, std::int32_t>;
+                        auto time = v.first;
+                        auto offset = v.second;
+                        auto time_since_epoch = time.time_since_epoch();  // using time_unit = std::chrono::duration<std::uint64_t, std::nano>;
+                        std::chrono::seconds sec = std::chrono::duration_cast<std::chrono::seconds>(time_since_epoch);
+                        switch (err) {
+                        case ERROR_CODE::OK: std::cout << sec.count() << ", " << offset << " | "; break;
+                        case ERROR_CODE::COLUMN_WAS_NULL: std::cout << "(null) | "; break;
+                        default: prt_err(__LINE__, err); return 1;
+                        }
+                        break;
+                    }
+
+                    case TYPE::TIMESTAMPTZ: {
+                        ogawayama::stub::timestamptz_type v;  // using timestamptz_type = std::pair<takatori::datetime::time_point, std::int32_t>;
+                        auto timestamp = v.first;
+                        auto offset = v.second;
+                        auto seconds_since_epoch = timestamp.seconds_since_epoch();  // using offset_type = std::chrono::duration<std::int64_t>;
+                        switch (err) {
+                        case ERROR_CODE::OK: std::cout << seconds_since_epoch.count() << ", " << offset << " | "; break;
+                        case ERROR_CODE::COLUMN_WAS_NULL: std::cout << "(null) | "; break;
+                        default: prt_err(__LINE__, err); return 1;
+                        }
+                        break;
+                    }
+                        
                     default: {
                         prt_err(__LINE__); return 1;
                     }

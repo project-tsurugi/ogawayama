@@ -12,6 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# add_subdirectory(cli)
+add_subdirectory(cli)
 # add_subdirectory(tpcc_loader)
-## add_subdirectory(tpcc)
+# add_subdirectory(tpcc)
