@@ -184,7 +184,7 @@ int main(int argc, char **argv) {
                         auto time_since_epoch = v.time_since_epoch();  // using time_unit = std::chrono::duration<std::uint64_t, std::nano>;
                         std::chrono::seconds sec = std::chrono::duration_cast<std::chrono::seconds>(time_since_epoch);
                         switch (err) {
-                        case ERROR_CODE::OK: std::cout << sec.count() << " | "; break;
+                        case ERROR_CODE::OK: std::cout << sec.count() << "," << std::chrono::duration_cast<std::chrono::microseconds>(v.subsecond()).count() << " | "; break;
                         case ERROR_CODE::COLUMN_WAS_NULL: std::cout << "(null) | "; break;
                         default: prt_err(__LINE__, err); return 1;
                         }
@@ -195,7 +195,7 @@ int main(int argc, char **argv) {
                         err = result_set->next_column(v);
                         auto seconds_since_epoch = v.seconds_since_epoch();  // using offset_type = std::chrono::duration<std::int64_t>;
                         switch (err) {
-                        case ERROR_CODE::OK: std::cout << seconds_since_epoch.count() << " | "; break;
+                        case ERROR_CODE::OK: std::cout << seconds_since_epoch.count() << "," << std::chrono::duration_cast<std::chrono::microseconds>(v.subsecond()).count() << " | "; break;
                         case ERROR_CODE::COLUMN_WAS_NULL: std::cout << "(null) | "; break;
                         default: prt_err(__LINE__, err); return 1;
                         }
@@ -209,7 +209,7 @@ int main(int argc, char **argv) {
                         auto time_since_epoch = time.time_since_epoch();  // using time_unit = std::chrono::duration<std::uint64_t, std::nano>;
                         std::chrono::seconds sec = std::chrono::duration_cast<std::chrono::seconds>(time_since_epoch);
                         switch (err) {
-                        case ERROR_CODE::OK: std::cout << sec.count() << ", " << offset << " | "; break;
+                        case ERROR_CODE::OK: std::cout << sec.count() << "," << std::chrono::duration_cast<std::chrono::microseconds>(time.subsecond()).count()  << ", " << offset << " | "; break;
                         case ERROR_CODE::COLUMN_WAS_NULL: std::cout << "(null) | "; break;
                         default: prt_err(__LINE__, err); return 1;
                         }
@@ -222,7 +222,7 @@ int main(int argc, char **argv) {
                         auto offset = v.second;
                         auto seconds_since_epoch = timestamp.seconds_since_epoch();  // using offset_type = std::chrono::duration<std::int64_t>;
                         switch (err) {
-                        case ERROR_CODE::OK: std::cout << seconds_since_epoch.count() << ", " << offset << " | "; break;
+                        case ERROR_CODE::OK: std::cout << seconds_since_epoch.count() << "," << std::chrono::duration_cast<std::chrono::microseconds>(timestamp.subsecond()).count() << ", " << offset << " | "; break;
                         case ERROR_CODE::COLUMN_WAS_NULL: std::cout << "(null) | "; break;
                         default: prt_err(__LINE__, err); return 1;
                         }

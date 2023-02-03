@@ -17,6 +17,8 @@
 #include <vector>
 #include <optional>
 #include <string>
+#include <chrono>
+
 #include <boost/foreach.hpp>
 #include <boost/property_tree/json_parser.hpp>
 
@@ -456,12 +458,14 @@ void Worker::deploy_metadata(std::size_t table_id)
                     std::string dvs = default_expression_value.substr(1, index - 2);
                     struct tm tm;
                     memset(&tm, 0, sizeof(struct tm));
-                    if (auto ts = strptime(dvs.c_str(), "%H:%M:%S", &tm); ts == nullptr) {
+                    if (auto ts = strptime(dvs.c_str(), "%H:%M:%S", &tm); ts != nullptr) {
+                        std::string rem(ts);
+                        default_value = yugawara::storage::column_value(std::make_shared<::takatori::value::time_of_day const>(tm.tm_hour, tm.tm_min, tm.tm_sec, std::chrono::nanoseconds(!rem.empty() ? static_cast<std::size_t>(stod(rem) * 1000000000.) : 0)));
+                    } else {
                         channel_->send_ack(ERROR_CODE::INVALID_PARAMETER);
                         VLOG(log_debug) << "<-- INVALID_PARAMETER";
                         return;
                     }
-                    default_value = yugawara::storage::column_value(std::make_shared<::takatori::value::time_of_day const>(tm.tm_hour, tm.tm_min, tm.tm_sec));
                 }
                 columns.emplace_back(yugawara::storage::column(name_value,
                                                                takatori::type::time_of_day(~takatori::type::with_time_zone),
@@ -484,14 +488,17 @@ void Worker::deploy_metadata(std::size_t table_id)
                     std::string dvs_t = dvs.substr(0, index - 5);
                     struct tm tm;
                     memset(&tm, 0, sizeof(struct tm));
-                    if (auto ts = strptime(dvs_t.c_str(), "%H:%M:%S", &tm); ts == nullptr) {
+                    if (auto ts = strptime(dvs_t.c_str(), "%H:%M:%S", &tm); ts != nullptr) {
+                        auto td = stoi(dvs.substr(index - 5, index - 2));  // FIXME use time differnce value
+                        VLOG(log_debug) << "  time difference is " << td;  // to suppress not use warning
+
+                        std::string rem(ts);
+                        default_value = yugawara::storage::column_value(std::make_shared<::takatori::value::time_of_day const>(tm.tm_hour, tm.tm_min, tm.tm_sec, std::chrono::nanoseconds(!rem.empty() ? static_cast<std::size_t>(stod(rem) * 1000000000.) : 0)));
+                    } else {
                         channel_->send_ack(ERROR_CODE::INVALID_PARAMETER);
                         VLOG(log_debug) << "<-- INVALID_PARAMETER";
                         return;
                     }
-                    auto td = stoi(dvs.substr(index - 5, index - 2));  // FIXME use time differnce value
-                    VLOG(log_debug) << "  time difference is " << td;
-                    default_value = yugawara::storage::column_value(std::make_shared<::takatori::value::time_of_day const>(tm.tm_hour, tm.tm_min, tm.tm_sec));
                 }
                 columns.emplace_back(yugawara::storage::column(name_value,
                                                                takatori::type::time_of_day(takatori::type::with_time_zone),
@@ -513,12 +520,14 @@ void Worker::deploy_metadata(std::size_t table_id)
                     std::string dvs = default_expression_value.substr(1, index - 2);
                     struct tm tm;
                     memset(&tm, 0, sizeof(struct tm));
-                    if (auto ts = strptime(dvs.c_str(), "%Y-%m-%d %H:%M:%S", &tm); ts == nullptr) {
+                    if (auto ts = strptime(dvs.c_str(), "%Y-%m-%d %H:%M:%S", &tm); ts != nullptr) {
+                        std::string rem(ts);
+                        default_value = yugawara::storage::column_value(std::make_shared<::takatori::value::time_point const>(tm.tm_year + 1900, tm.tm_mon + 1, tm.tm_mday, tm.tm_hour, tm.tm_min, tm.tm_sec, std::chrono::nanoseconds(!rem.empty() ? static_cast<std::size_t>(stod(rem) * 1000000000.) : 0)));
+                    } else {
                         channel_->send_ack(ERROR_CODE::INVALID_PARAMETER);
                         VLOG(log_debug) << "<-- INVALID_PARAMETER";
                         return;
                     }
-                    default_value = yugawara::storage::column_value(std::make_shared<::takatori::value::time_point const>(tm.tm_year + 1900, tm.tm_mon + 1, tm.tm_mday, tm.tm_hour, tm.tm_min, tm.tm_sec));
                 }
                 columns.emplace_back(yugawara::storage::column(name_value,
                                                                takatori::type::time_point(~takatori::type::with_time_zone),
@@ -541,14 +550,17 @@ void Worker::deploy_metadata(std::size_t table_id)
                     std::string dvs_t = dvs.substr(0, index - 5);
                     struct tm tm;
                     memset(&tm, 0, sizeof(struct tm));
-                    if (auto ts = strptime(dvs_t.c_str(), "%Y-%m-%d %H:%M:%S", &tm); ts == nullptr) {
+                    if (auto ts = strptime(dvs_t.c_str(), "%Y-%m-%d %H:%M:%S", &tm); ts != nullptr) {
+                        auto td = stoi(dvs.substr(index - 5, index - 2));  // FIXME use time differnce value
+                        VLOG(log_debug) << "  time difference is " << td;  // to suppress not use warning
+
+                        std::string rem(ts);
+                        default_value = yugawara::storage::column_value(std::make_shared<::takatori::value::time_point const>(tm.tm_year + 1900, tm.tm_mon + 1, tm.tm_mday, tm.tm_hour, tm.tm_min, tm.tm_sec, std::chrono::nanoseconds(!rem.empty() ? static_cast<std::size_t>(stod(rem) * 1000000000.) : 0)));
+                    } else {
                         channel_->send_ack(ERROR_CODE::INVALID_PARAMETER);
                         VLOG(log_debug) << "<-- INVALID_PARAMETER";
                         return;
                     }
-                    auto td = stoi(dvs.substr(index - 5, index - 2));  // FIXME use time differnce value
-                    VLOG(log_debug) << "  time difference is " << td;
-                    default_value = yugawara::storage::column_value(std::make_shared<::takatori::value::time_point const>(tm.tm_year + 1900, tm.tm_mon + 1, tm.tm_mday, tm.tm_hour, tm.tm_min, tm.tm_sec));
                 }
                 columns.emplace_back(yugawara::storage::column(name_value,
                                                                takatori::type::time_point(takatori::type::with_time_zone),
