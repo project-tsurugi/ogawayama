@@ -62,9 +62,10 @@ ErrorCode Transaction::Impl::execute_statement(std::string_view statement) {
  * @param prepared statement object with parameters
  * @return error code defined in error_code.h
  */
-// ErrorCode Transaction::Impl::execute_statement(PreparedStatement* prepared) {
-//     return ErrorCode::OK;
-// }
+ErrorCode Transaction::Impl::execute_statement(PreparedStatement* prepared, const parameters_type& parameters) {
+    // FIXME implement
+    return ErrorCode::UNSUPPORTED;
+}
 
 /**
  * @brief connect to the DB and get Transaction class
@@ -105,10 +106,11 @@ ErrorCode Transaction::Impl::execute_query(std::string_view query, std::shared_p
  * @param connection returns a connection class
  * @return error code defined in error_code.h
  */
-// ErrorCode Transaction::Impl::execute_query(PreparedStatement* prepared, std::shared_ptr<ResultSet> &result_set)
-// {
-//     return ErrorCode::OK;
-// }
+ErrorCode Transaction::Impl::execute_query(PreparedStatement* prepared, const parameters_type& parameters, std::shared_ptr<ResultSet> &result_set)
+{
+    // FIXME implement
+    return ErrorCode::UNSUPPORTED;
+}
 
 /**
  * @brief commit the current transaction.
@@ -174,10 +176,9 @@ ErrorCode Transaction::execute_statement(std::string_view statement)
     return impl_->execute_statement(statement);
 }
 
-ErrorCode Transaction::execute_statement(PreparedStatement* prepared)
+ErrorCode Transaction::execute_statement(PreparedStatement* prepared, parameters_type& parameters)
 {
-//    return impl_->execute_statement(prepared);
-    return ErrorCode::UNSUPPORTED;
+    return impl_->execute_statement(prepared, parameters);
 }
 
 ErrorCode Transaction::execute_query(std::string_view query, std::shared_ptr<ResultSet> &result_set)
@@ -185,10 +186,9 @@ ErrorCode Transaction::execute_query(std::string_view query, std::shared_ptr<Res
     return impl_->execute_query(query, result_set);
 }
 
-ErrorCode Transaction::execute_query(PreparedStatement* prepared, std::shared_ptr<ResultSet> &result_set)
+ErrorCode Transaction::execute_query(PreparedStatement* prepared, parameters_type& parameters, std::shared_ptr<ResultSet> &result_set)
 {
-//     return impl_->execute_query(prepared, result_set);
-    return ErrorCode::UNSUPPORTED;
+    return impl_->execute_query(prepared, parameters, result_set);
 }
 
 ErrorCode Transaction::commit()

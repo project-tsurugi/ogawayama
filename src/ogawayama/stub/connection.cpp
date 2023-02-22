@@ -1,5 +1,5 @@
 /*
- * Copyright 2019-2019 tsurugi project.
+ * Copyright 2019-2023 tsurugi project.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -13,6 +13,8 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
+#include <boost/foreach.hpp>
 
 #include "connectionImpl.h"
 
@@ -62,15 +64,57 @@ ErrorCode Connection::Impl::begin(TransactionPtr& transaction)
         return ErrorCode::OK;
     }
     return ErrorCode::SERVER_FAILURE;
-    
+}
+
+/**
+ * @brief begin transaction
+ * @param option the transaction option
+ * @param reference to a TransactionPtr
+ * @return error code defined in error_code.h
+ */
+ErrorCode Connection::Impl::begin(const boost::property_tree::ptree& option, TransactionPtr& transaction)
+{
+    ::jogasaki::proto::sql::request::Begin request{};
+
+    auto* topt = request.mutable_option();
+    auto ttype = option.get_optional<std::int64_t>(TRANSACTION_TYPE);
+    if (ttype) {
+        topt->set_type(static_cast<::jogasaki::proto::sql::request::TransactionType>(ttype.value()));
+    }
+    auto tprio = option.get_optional<std::int64_t>(TRANSACTION_PRIORITY);
+    if (tprio) {
+        topt->set_priority(static_cast<::jogasaki::proto::sql::request::TransactionPriority>(tprio.value()));
+    }
+    auto tlabel = option.get_optional<std::string>(TRANSACTION_LABEL);
+    if (tlabel) {
+        topt->set_label(tlabel.value());
+    }
+    BOOST_FOREACH (const auto& wp_node, option.get_child(WRITE_PRESERVE)) {
+        auto wp = wp_node.second.get_optional<std::string>(TABLE_NAME);
+        if (wp) {
+            topt->add_write_preserves()->set_table_name(wp.value());
+        }
+    }
+
+    auto response_opt = transport_.send(request);
+    if (!response_opt) {
+        return ErrorCode::SERVER_FAILURE;
+    }
+    auto response_begin = response_opt.value();
+    if (response_begin.has_success()) {
+        transaction = std::make_unique<Transaction>(std::make_unique<Transaction::Impl>(this, transport_, response_begin.success().transaction_handle()));
+        return ErrorCode::OK;
+    }
+    return ErrorCode::SERVER_FAILURE;
 }
 
 /**
  * @brief prepare statement
  */
-ErrorCode Connection::Impl::prepare(std::string_view sql, PreparedStatementPtr& prepared)
+ErrorCode Connection::Impl::prepare(std::string_view sql, const pralceholders_type& placeholders, PreparedStatementPtr& prepared)
 {
-    return ErrorCode::OK;
+    // FIXME implement
+    return ErrorCode::UNSUPPORTED;
 }
 
 /**
@@ -134,9 +178,14 @@ Connection::~Connection() = default;
 ErrorCode Connection::begin(TransactionPtr &transaction) { return impl_->begin(transaction); }
 
 /**
+ * @brief get transaction object, meaning transaction begin
+ */
+ErrorCode Connection::begin(const boost::property_tree::ptree& option, TransactionPtr &transaction) { return impl_->begin(option, transaction); }
+
+/**
  * @brief prepare statement
  */
-ErrorCode Connection::prepare(std::string_view sql, PreparedStatementPtr &prepared) { return impl_->prepare(sql, prepared); }
+ErrorCode Connection::prepare(std::string_view sql, const pralceholders_type& placeholders, PreparedStatementPtr &prepared) { return impl_->prepare(sql, placeholders, prepared); }
 
 /**
  * @brief receive a begin_ddl message from manager
