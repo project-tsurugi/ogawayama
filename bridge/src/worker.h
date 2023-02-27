@@ -21,8 +21,6 @@
 #include <jogasaki/api.h>
 #include <ogawayama/stub/api.h>
 #include <ogawayama/common/channel_stream.h>
-#include <ogawayama/common/row_queue.h>
-#include <ogawayama/common/parameter_set.h>
 #include <manager/metadata/tables.h>
 #include <manager/metadata/metadata.h>
 #include <manager/metadata/error_code.h>
@@ -40,7 +38,6 @@ class Worker {
             result_set_iterator_ = nullptr;
         }
     private:
-        std::unique_ptr<ogawayama::common::RowQueue> row_queue_{};
         std::unique_ptr<jogasaki::api::result_set> result_set_{};
         std::unique_ptr<jogasaki::api::result_set_iterator> result_set_iterator_{};
         jogasaki::api::statement_handle prepared_{};
@@ -81,7 +78,7 @@ class Worker {
 
     std::unique_ptr<ogawayama::common::SharedMemory> shm4_connection_;
     std::unique_ptr<ogawayama::common::ChannelStream> channel_;
-    std::unique_ptr<ogawayama::common::ParameterSet> parameters_;
+//    std::unique_ptr<ogawayama::common::ParameterSet> parameters_;
 
     jogasaki::api::transaction_handle transaction_handle_{};
     std::vector<Cursor> cursors_;
@@ -91,7 +88,7 @@ class Worker {
     std::future<void> future_;
     std::thread thread_{};
 
-    std::unique_ptr<ogawayama::common::SharedMemory> shm4_row_queue_;
+//    std::unique_ptr<ogawayama::common::SharedMemory> shm4_row_queue_;
 
     void send_metadata(std::size_t);
     void set_params(std::unique_ptr<jogasaki::api::parameter_set>&);
@@ -106,7 +103,7 @@ class Worker {
     }
     void clear_all() {
         clear_transaction();
-        shm4_row_queue_ = nullptr;
+//        shm4_row_queue_ = nullptr;
         prepared_statements_.clear();
     }
 };

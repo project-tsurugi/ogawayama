@@ -26,14 +26,17 @@ set_target_properties(cli
 )
 
 target_include_directories(cli
-    PRIVATE ../../common/include
-    PRIVATE ../../stub/include
-    PRIVATE ../../stub/src
+    PRIVATE ${CMAKE_SOURCE_DIR}/common/include
+    PRIVATE ${CMAKE_SOURCE_DIR}/include
+    PRIVATE ${CMAKE_SOURCE_DIR}/src/include
+    PRIVATE ${CMAKE_SOURCE_DIR}/src/ogawayama/stub
+    PRIVATE ${CMAKE_BINARY_DIR}/src
 )
 
 target_link_libraries(cli
     PRIVATE stub
     PRIVATE message-manager-interface
+    PRIVATE glog::glog
     PRIVATE gflags::gflags
     PRIVATE rt
 )

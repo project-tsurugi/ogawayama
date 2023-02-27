@@ -14,4 +14,4 @@
 
 add_subdirectory(cli)
 # add_subdirectory(tpcc_loader)
-add_subdirectory(tpcc)
+# add_subdirectory(tpcc)

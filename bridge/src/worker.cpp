@@ -1,5 +1,5 @@
 /*
- * Copyright 2019-2021 tsurugi project.
+ * Copyright 2019-2023 tsurugi project.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,6 +16,9 @@
 
 #include <vector>
 #include <optional>
+#include <string>
+#include <chrono>
+
 #include <boost/foreach.hpp>
 #include <boost/property_tree/json_parser.hpp>
 
@@ -25,8 +28,16 @@
 #include <ogawayama/logging.h>
 
 #include <takatori/type/int.h>
+#include <takatori/value/int.h>
 #include <takatori/type/float.h>
+#include <takatori/value/float.h>
 #include <takatori/type/character.h>
+#include <takatori/value/character.h>
+#include <takatori/type/decimal.h>
+#include <takatori/type/date.h>
+#include <takatori/type/time_of_day.h>
+#include <takatori/type/time_point.h>
+#include <takatori/type/datetime_interval.h>
 #include <yugawara/storage/configurable_provider.h>
 
 #include "worker.h"
@@ -41,8 +52,6 @@ Worker::Worker(jogasaki::api::database& db, std::string& dbname, std::string_vie
     name += "-" + std::to_string(id);
     shm4_connection_ = std::make_unique<ogawayama::common::SharedMemory>(name, ogawayama::common::param::SheredMemoryType::SHARED_MEMORY_CONNECTION);
     channel_ = std::make_unique<ogawayama::common::ChannelStream>(ogawayama::common::param::channel, shm4_connection_.get());
-    parameters_ = std::make_unique<ogawayama::common::ParameterSet>(ogawayama::common::param::prepared, shm4_connection_.get());
-    shm4_row_queue_ = std::make_unique<ogawayama::common::SharedMemory>(name, ogawayama::common::param::SheredMemoryType::SHARED_MEMORY_ROW_QUEUE);
     channel_->send_ack(ERROR_CODE::OK);
 }
 
@@ -64,55 +73,6 @@ void Worker::run()
         }
 
         switch (type) {
-        case ogawayama::common::CommandMessage::Type::EXECUTE_STATEMENT:
-            execute_statement(string);
-            break;
-        case ogawayama::common::CommandMessage::Type::EXECUTE_QUERY:
-            if(execute_query(string, ivalue)) {
-                next(ivalue);
-            }
-            break;
-        case ogawayama::common::CommandMessage::Type::NEXT:
-            channel_->send_ack(ERROR_CODE::OK);
-            VLOG(log_debug) << "<-- OK";
-            next(ivalue);
-            break;
-        case ogawayama::common::CommandMessage::Type::COMMIT:
-            if (!transaction_handle_) {
-                channel_->send_ack(ERROR_CODE::NO_TRANSACTION);
-                VLOG(log_debug) << "<-- NO_TRANSACTION";
-                break;
-            }
-            transaction_handle_.commit();
-            channel_->send_ack(ERROR_CODE::OK);
-            VLOG(log_debug) << "<-- OK";
-            clear_transaction();
-            break;
-        case ogawayama::common::CommandMessage::Type::ROLLBACK:
-            if (!transaction_handle_) {
-                channel_->send_ack(ERROR_CODE::OK);  // rollback is immutable
-                VLOG(log_debug) << "<-- OK";
-                break;
-            }
-            transaction_handle_.abort();
-            channel_->send_ack(ERROR_CODE::OK);
-            VLOG(log_debug) << "<-- OK";
-            clear_transaction();
-            break;
-        case ogawayama::common::CommandMessage::Type::PREPARE:
-            prepare(string, ivalue);
-            break;
-        case ogawayama::common::CommandMessage::Type::EXECUTE_PREPARED_STATEMENT:
-            execute_prepared_statement(ivalue);
-            break;
-        case ogawayama::common::CommandMessage::Type::EXECUTE_PREPARED_QUERY:
-            {
-                std::size_t rid = std::stoi(std::string(string));
-                if(execute_prepared_query(ivalue, rid)) {
-                    next(rid);
-                }
-            }
-            break;
         case ogawayama::common::CommandMessage::Type::CREATE_TABLE:
             deploy_metadata(ivalue);
             break;
@@ -138,273 +98,6 @@ void Worker::run()
             return;
         }
     }
-}
-
-void Worker::execute_statement(std::string_view sql)
-{
-    if (!transaction_handle_) {
-        if(auto rc = db_.create_transaction(transaction_handle_); rc != jogasaki::status::ok) {
-            LOG(ERROR) << "fail to db_.create_transaction(transaction_handle_)";
-            channel_->send_ack(ERROR_CODE::UNKNOWN);
-            VLOG(log_debug) << "<-- UNKNOWN";
-            return;
-        }
-    }
-
-    std::unique_ptr<jogasaki::api::executable_statement> e{};
-    if(auto rc = db_.create_executable(sql, e); rc != jogasaki::status::ok) {
-        channel_->send_ack(ERROR_CODE::UNKNOWN);
-        VLOG(log_debug) << "<-- UNKNOWN";
-        return;
-    }
-    if(auto rc = transaction_handle_.execute(*e); rc != jogasaki::status::ok) {
-        channel_->send_ack(ERROR_CODE::UNKNOWN);
-        VLOG(log_debug) << "<-- UNKNOWN";
-        return;
-    }
-    channel_->send_ack(ERROR_CODE::OK);
-    VLOG(log_debug) << "<-- OK";
-}
-
-void Worker::send_metadata(std::size_t rid)
-{
-    auto metadata = cursors_.at(rid).result_set_->meta();
-    std::size_t n = metadata->field_count();
-    for (std::size_t i = 0; i < n; i++) {
-        switch(metadata->at(i).kind()) {
-        case jogasaki::api::field_type_kind::int4:
-            cursors_.at(rid).row_queue_->push_type(TYPE::INT32, 4);
-            break;
-        case jogasaki::api::field_type_kind::int8:
-            cursors_.at(rid).row_queue_->push_type(TYPE::INT64, 8);
-            break;
-        case jogasaki::api::field_type_kind::float4:
-            cursors_.at(rid).row_queue_->push_type(TYPE::FLOAT32, 4);
-            break;
-        case jogasaki::api::field_type_kind::float8:
-            cursors_.at(rid).row_queue_->push_type(TYPE::FLOAT64, 8);
-            break;
-        case jogasaki::api::field_type_kind::character:
-            cursors_.at(rid).row_queue_->push_type(TYPE::TEXT, INT32_MAX);
-            break;
-        default:
-            LOG(ERROR) << "unsurpported data type: " << metadata->at(i).kind();
-            break;
-        }
-    }
-}
-
-bool Worker::execute_query(std::string_view sql, std::size_t rid)
-{
-    if (!transaction_handle_) {
-        if(auto rc = db_.create_transaction(transaction_handle_); rc != jogasaki::status::ok) {
-            LOG(ERROR) << "fail to db_.create_transaction(transaction_handle_)";
-            return false;
-        }
-    }
-    if (cursors_.size() < (rid + 1)) {
-        cursors_.resize(rid + 1);
-    }
-
-    auto& cursor = cursors_.at(rid);
-    
-    cursor.row_queue_ = std::make_unique<ogawayama::common::RowQueue>
-        (shm4_row_queue_->shm_name(ogawayama::common::param::resultset, rid), shm4_row_queue_.get());
-    cursor.row_queue_->clear();
-
-    std::unique_ptr<jogasaki::api::executable_statement> e{};
-    if(auto rc = db_.create_executable(sql, e); rc != jogasaki::status::ok) {
-        channel_->send_ack(ERROR_CODE::UNKNOWN);
-        VLOG(log_debug) << "<-- UNKNOWN";
-        return false;
-    }
-    auto& rs =  cursor.result_set_;
-    if(auto rc = transaction_handle_.execute(*e, rs); rc != jogasaki::status::ok || !rs) {
-        channel_->send_ack(ERROR_CODE::UNKNOWN);
-        VLOG(log_debug) << "<-- UNKNOWN";
-        return false;
-    }
-    cursor.result_set_iterator_ = rs->iterator();
-
-    send_metadata(rid);
-    channel_->send_ack(ERROR_CODE::OK);
-    VLOG(log_debug) << "<-- OK";
-    return true;
-}
-
-void Worker::next(std::size_t rid)
-{
-    auto& cursor = cursors_.at(rid);
-    auto& rq = cursor.row_queue_;
-    auto& iterator = cursor.result_set_iterator_;
-
-    if (!iterator || rq->is_closed()) {
-        return;
-    }
-
-    std::size_t limit = rq->get_requested();
-    for(std::size_t i = 0; i < limit; i++) {
-        auto record = iterator->next();
-        if (record != nullptr) {
-            rq->resize_writing_row(rq->get_metadata_ptr()->get_types().size());
-            for (auto& t: rq->get_metadata_ptr()->get_types()) {
-                std::size_t cindex = rq->get_cindex();
-                if (record->is_null(cindex)) {
-                    rq->put_next_column(std::monostate());
-                } else {
-                    switch (t.get_type()) {
-                    case TYPE::INT32:
-                        rq->put_next_column(record->get_int4(cindex)); break;
-                    case TYPE::INT64:
-                        rq->put_next_column(record->get_int8(cindex)); break;
-                    case TYPE::FLOAT32:
-                        rq->put_next_column(record->get_float4(cindex)); break;
-                    case TYPE::FLOAT64:
-                        rq->put_next_column(record->get_float8(cindex)); break;
-                    case TYPE::TEXT:
-                        rq->put_next_column(record->get_character(cindex)); break;
-                    case TYPE::NULL_VALUE:
-                        LOG(ERROR) << "NULL_VALUE type should not be used"; break;
-                    }
-                }
-            }
-            rq->push_writing_row();
-        } else {
-            rq->push_writing_row();
-            cursor.clear();
-            rq->set_eor();
-            break;
-        }
-    }
-}
-
-void Worker::prepare(std::string_view sql, std::size_t sid)
-{
-    if (prepared_statements_.size() < (sid + 1)) {
-        prepared_statements_.resize(sid + 1);
-    }
-
-    if(auto rc = db_.prepare(sql, prepared_statements_.at(sid)); rc != jogasaki::status::ok) {
-        channel_->send_ack(ERROR_CODE::UNKNOWN);
-        VLOG(log_debug) << "<-- UNKNOWN";
-        return;
-    }
-    channel_->send_ack(ERROR_CODE::OK);    
-    VLOG(log_debug) << "<-- OK";
-}
-
-void Worker::set_params(std::unique_ptr<jogasaki::api::parameter_set>& p)
-{
-    auto& params = parameters_->get_params();
-    for(auto& param: params) {
-        std::size_t idx = &param - &params[0];
-        std::visit([&p, &idx](auto&& arg) {
-                using T = std::decay_t<decltype(arg)>;
-                std::string prefix = "p";
-                if constexpr (std::is_same_v<T, std::int32_t>) {
-                        p->set_int4(prefix + std::to_string(idx+1), arg);
-                    }
-                else if constexpr (std::is_same_v<T, std::int64_t>) {
-                        p->set_int8(prefix + std::to_string(idx+1), arg);
-                    }
-                else if constexpr (std::is_same_v<T, float>) {
-                        p->set_float4(prefix + std::to_string(idx+1), arg);
-                    }
-                else if constexpr (std::is_same_v<T, double>) {
-                        p->set_float8(prefix + std::to_string(idx+1), arg);
-                    }
-                else if constexpr (std::is_same_v<T, ogawayama::common::ShmString>) {
-                        p->set_character(prefix + std::to_string(idx+1), std::string_view(arg));
-                    }
-                else if constexpr (std::is_same_v<T, std::monostate>) {
-                        p->set_null(prefix + std::to_string(idx+1));
-                    }
-                else {
-                    LOG(ERROR) << "the type of parameter received cannot be handled";
-                }
-            }, param);
-    }
-}
-
-void Worker::execute_prepared_statement(std::size_t sid)
-{
-    if (sid >= prepared_statements_.size()) {
-        channel_->send_ack(ERROR_CODE::UNKNOWN);
-        VLOG(log_debug) << "<-- UNKNOWN";
-        return;
-    }
-
-    if (!transaction_handle_) {
-        if(auto rc = db_.create_transaction(transaction_handle_); rc != jogasaki::status::ok) {
-            LOG(ERROR) << "fail to db_.create_transaction(transaction_handle_)";
-            channel_->send_ack(ERROR_CODE::UNKNOWN);
-            VLOG(log_debug) << "<-- UNKNOWN";
-            return;
-        }
-    }
-    auto params = jogasaki::api::create_parameter_set();
-    set_params(params);
-
-    std::unique_ptr<jogasaki::api::executable_statement> e{};
-    if(auto rc = db_.resolve(cursors_.at(sid).prepared_, std::shared_ptr{std::move(params)}, e); rc != jogasaki::status::ok) {
-        channel_->send_ack(ERROR_CODE::UNKNOWN);
-        VLOG(log_debug) << "<-- UNKNOWN";
-        return;
-    }
-    if(auto rc = transaction_handle_.execute(*e); rc != jogasaki::status::ok) {
-        channel_->send_ack(ERROR_CODE::UNKNOWN);
-        VLOG(log_debug) << "<-- UNKNOWN";
-        return;
-    }
-    channel_->send_ack(ERROR_CODE::OK);
-    VLOG(log_debug) << "<-- OK";
-}
-
-bool Worker::execute_prepared_query(std::size_t sid, std::size_t rid)
-{
-    if (sid >= prepared_statements_.size()) {
-        channel_->send_ack(ERROR_CODE::UNKNOWN);
-        VLOG(log_debug) << "<-- UNKNOWN";
-        return false;
-    }
-
-    if (!transaction_handle_) {
-        if(auto rc = db_.create_transaction(transaction_handle_); rc != jogasaki::status::ok) {
-            LOG(ERROR) << "fail to db_.create_transaction(transaction_handle_)";
-            return false;
-        }
-    }
-    if (cursors_.size() < (rid + 1)) {
-        cursors_.resize(rid + 1);
-    }
-
-    auto& cursor = cursors_.at(rid);
-
-    cursor.row_queue_ = std::make_unique<ogawayama::common::RowQueue>
-        (shm4_row_queue_->shm_name(ogawayama::common::param::resultset, rid), shm4_row_queue_.get());
-    cursor.row_queue_->clear();
-
-    auto params = jogasaki::api::create_parameter_set();
-    set_params(params);
-
-    std::unique_ptr<jogasaki::api::executable_statement> e{};
-    if(auto rc = db_.resolve(cursors_.at(sid).prepared_, std::shared_ptr{std::move(params)}, e); rc != jogasaki::status::ok) {
-        channel_->send_ack(ERROR_CODE::UNKNOWN);
-        VLOG(log_debug) << "<-- UNKNOWN";
-        return false;
-    }
-    auto& rs =  cursor.result_set_;
-    if(auto rc = transaction_handle_.execute(*e, rs); rc != jogasaki::status::ok || !rs) {
-        channel_->send_ack(ERROR_CODE::UNKNOWN);
-        VLOG(log_debug) << "<-- UNKNOWN";
-        return false;
-    }
-    cursor.result_set_iterator_ = rs->iterator();
-
-    send_metadata(rid);
-    channel_->send_ack(ERROR_CODE::OK);
-    VLOG(log_debug) << "<-- OK";
-    return true;
 }
 
 void Worker::begin_ddl()
@@ -435,6 +128,13 @@ void Worker::end_ddl()
     }
     channel_->send_ack(err_code);
     VLOG(log_debug) << "<-- " << ogawayama::stub::error_name(err_code);
+}
+
+static void get_data_length_vector(const boost::property_tree::ptree& column, std::vector<boost::optional<int64_t>>& data_length_vector) {
+    boost::property_tree::ptree data_length_array = column.get_child(manager::metadata::Column::DATA_LENGTH);
+    BOOST_FOREACH (const boost::property_tree::ptree::value_type& node, data_length_array) {
+        data_length_vector.emplace_back(node.second.get_value_optional<int64_t>());
+    }
 }
 
 void Worker::deploy_metadata(std::size_t table_id)
@@ -552,6 +252,27 @@ void Worker::deploy_metadata(std::size_t table_id)
             auto data_type_id_value = static_cast<manager::metadata::DataTypes::DataTypesId>(data_type_id.value());
             auto name_value = name.value();
 
+            // handling default value parameter for the column
+            std::string default_expression_value{};
+            bool is_funcexpr{};
+            auto default_expression = column.get_optional<std::string>(manager::metadata::Column::DEFAULT_EXPR);
+            if (default_expression) {
+                default_expression_value = default_expression.value();
+                auto is_funcexpr_opt = column.get_optional<bool>(manager::metadata::Column::IS_FUNCEXPR);
+                if (!is_funcexpr_opt) {
+                    channel_->send_ack(ERROR_CODE::INVALID_PARAMETER);  // IS_FUNCEXPR is necessary when default_expression is given
+                    VLOG(log_debug) << "<-- INVALID_PARAMETER";
+                    return;
+                }
+                is_funcexpr = is_funcexpr_opt.value();
+                if (is_funcexpr) {
+                    LOG(ERROR) << " default value in function form is not currentry surported";
+                    channel_->send_ack(ERROR_CODE::UNSUPPORTED);  // default value in function form is not currentry surported
+                    VLOG(log_debug) << "<-- INVALID_PARAMETER";
+                    return;
+                }
+            }
+
             if (auto itr = std::find(pk_columns.begin(), pk_columns.end(), column_number_value); itr != pk_columns.end()) {  // is this pk_column ?
                 if(!is_not_null_value) {
                     channel_->send_ack(ERROR_CODE::INVALID_PARAMETER);  // pk_column must be is_not_null
@@ -561,25 +282,60 @@ void Worker::deploy_metadata(std::size_t table_id)
             } else {  // this is value column
                 value_columns.emplace_back(column_number_value);
             }
-            VLOG(log_debug) << " found column, name : data_type_id : is_not_null " << name_value << " : " << static_cast<std::size_t>(data_type_id_value) <<  " : " << (is_not_null_value ? "not_null" : "nullable");  // NOLINT
+            VLOG(log_debug) << " found column: name = " << name_value <<                // NOLINT
+                ", data_type_id = " << static_cast<std::size_t>(data_type_id_value) <<  // NOLINT
+                ", is_not_null = " << (is_not_null_value ? "not_null" : "nullable"      // NOLINT
+                );                                                                      // NOLINT
 
             switch(data_type_id_value) {  // build yugawara::storage::column
             case manager::metadata::DataTypes::DataTypesId::INT32:
-                columns.emplace_back(yugawara::storage::column(name_value, takatori::type::int4(), yugawara::variable::nullity(!is_not_null_value)));
+            {
+                // int column default value
+                yugawara::storage::column_value default_value{};
+                if (!default_expression_value.empty()) {
+                    std::int32_t value = stoi(default_expression_value);
+                    default_value = yugawara::storage::column_value(std::make_shared<::takatori::value::int4>(value));
+                }
+                columns.emplace_back(yugawara::storage::column(name_value, takatori::type::int4(), yugawara::variable::nullity(!is_not_null_value), default_value));
                 break;
+            }
             case manager::metadata::DataTypes::DataTypesId::INT64:
-                columns.emplace_back(yugawara::storage::column(name_value, takatori::type::int8(), yugawara::variable::nullity(!is_not_null_value)));
+            {
+                // bigint column default value
+                yugawara::storage::column_value default_value{};
+                if (!default_expression_value.empty()) {
+                    std::int64_t value = stol(default_expression_value);
+                    default_value = yugawara::storage::column_value(std::make_shared<::takatori::value::int8>(value));
+                }
+                columns.emplace_back(yugawara::storage::column(name_value, takatori::type::int8(), yugawara::variable::nullity(!is_not_null_value), default_value));
                 break;
+            }
             case manager::metadata::DataTypes::DataTypesId::FLOAT32:
-                columns.emplace_back(yugawara::storage::column(name_value, takatori::type::float4(), yugawara::variable::nullity(!is_not_null_value)));
+            {
+                // real column default value
+                yugawara::storage::column_value default_value{};
+                if (!default_expression_value.empty()) {
+                    float value = stof(default_expression_value);
+                    std::istringstream(default_expression_value) >> value;
+                    yugawara::storage::column_value default_value = yugawara::storage::column_value(std::make_shared<::takatori::value::float4>(value));
+                }
+                columns.emplace_back(yugawara::storage::column(name_value, takatori::type::float4(), yugawara::variable::nullity(!is_not_null_value), default_value));
                 break;
+            }
             case manager::metadata::DataTypes::DataTypesId::FLOAT64:
-                columns.emplace_back(yugawara::storage::column(name_value, takatori::type::float8(), yugawara::variable::nullity(!is_not_null_value)));
+            {
+                // double precision column default value
+                yugawara::storage::column_value default_value{};
+                if (!default_expression_value.empty()) {
+                    double value = stod(default_expression_value);
+                    yugawara::storage::column_value default_value = yugawara::storage::column_value(std::make_shared<::takatori::value::float8>(value));
+                }
+                columns.emplace_back(yugawara::storage::column(name_value, takatori::type::float8(), yugawara::variable::nullity(!is_not_null_value), default_value));
                 break;
+            }
             case manager::metadata::DataTypes::DataTypesId::CHAR:
             case manager::metadata::DataTypes::DataTypesId::VARCHAR:
             {
-                std::size_t data_length_value{1};  // for CHAR
                 auto varying = column.get_optional<bool>(manager::metadata::Column::VARYING);
                 if(!varying) {  // varying field is necessary for CHAR/VARCHRA
                     channel_->send_ack(ERROR_CODE::INVALID_PARAMETER);
@@ -590,36 +346,240 @@ void Worker::deploy_metadata(std::size_t table_id)
                 if((!varying_value && (data_type_id_value != manager::metadata::DataTypes::DataTypesId::CHAR)) ||
                    (varying_value && (data_type_id_value != manager::metadata::DataTypes::DataTypesId::VARCHAR))) {
                     channel_->send_ack(ERROR_CODE::INVALID_PARAMETER);
-                    VLOG(log_debug) << "<-- INVALID_PARAMETER";
+                    VLOG(log_debug) << "<-- INVALID_PARAMETER";  // type and attributes are inconsistent
                     return;
                 }
 
+                std::size_t data_length_value{1};  // for CHAR
+                bool use_default_length = false;
                 std::vector<boost::optional<int64_t>> data_length_vector;
-                boost::property_tree::ptree data_length_array = column.get_child(manager::metadata::Column::DATA_LENGTH);
-                BOOST_FOREACH (const boost::property_tree::ptree::value_type& node, data_length_array) {
-                    const boost::property_tree::ptree& value = node.second;
-                    data_length_vector.emplace_back(value.get_value_optional<int64_t>());
+                get_data_length_vector(column, data_length_vector);
+                if (data_length_vector.size() == 0) {
+                    if(varying_value) {  // no data_length field, use default
+                        use_default_length = true;
+                    }
+                } else {
+                    auto data_length = data_length_vector.at(0);
+                    if (!data_length) {
+                        if(varying_value) {  // no data_length_value, use default
+                            use_default_length = true;
+                        }
+                    } else {
+                        data_length_value = data_length.value();
+                    }
                 }
-                auto data_length = data_length_vector.at(0);
-                if (!data_length) {
-                    if(varying_value) {  // data_length field is necessary for VARCHAR
+
+                // character column default value
+                yugawara::storage::column_value default_value{};
+                if (!default_expression_value.empty()) {
+                    std::size_t index = default_expression_value.rfind((data_type_id_value == manager::metadata::DataTypes::DataTypesId::CHAR) ? "::bpchar" : "::character varying");
+                    if (index == std::string::npos) {
+                        channel_->send_ack(ERROR_CODE::INVALID_PARAMETER);
+                        VLOG(log_debug) << "<-- INVALID_PARAMETER";
+                        return;
+                    }
+                    default_value = yugawara::storage::column_value(std::make_shared<::takatori::value::character const>(default_expression_value.substr(1, index - 2)));
+                }
+                columns.emplace_back(yugawara::storage::column(name_value,
+                                                               (use_default_length ?
+                                                                takatori::type::character(takatori::type::varying_t(varying_value)) :
+                                                                takatori::type::character(takatori::type::varying_t(varying_value), data_length_value)),
+                                                               yugawara::variable::nullity(!is_not_null_value),
+                                                               default_value));
+                break;
+            }
+            case manager::metadata::DataTypes::DataTypesId::NUMERIC:  // decimal
+            {
+                std::size_t p{}, s{};
+                std::vector<boost::optional<int64_t>> data_length_vector;
+                get_data_length_vector(column, data_length_vector);
+                if (data_length_vector.size() == 0) {
+                    columns.emplace_back(yugawara::storage::column(name_value,
+                                                                   takatori::type::decimal(),
+                                                                   yugawara::variable::nullity(!is_not_null_value)));
+                } else {
+                    auto po = data_length_vector.at(0);
+                    if (!po) {
                         channel_->send_ack(ERROR_CODE::UNSUPPORTED);
                         VLOG(log_debug) << "<-- UNSUPPORTED";
                         return;
                     }
-                } else {
-                    data_length_value = data_length.value();
+                    p = po.value();
+                    if (data_length_vector.size() >= 2) {
+                        auto so = data_length_vector.at(0);
+                        if (!so) {
+                            s = so.value();
+                        }
+                    }
+                    columns.emplace_back(yugawara::storage::column(name_value,
+                                                                   takatori::type::decimal(p, s),
+                                                                   yugawara::variable::nullity(!is_not_null_value)));
+                }
+                break;
+            }
+            case manager::metadata::DataTypes::DataTypesId::DATE:  // date
+            {
+                // date column default value
+                yugawara::storage::column_value default_value{};
+                if (!default_expression_value.empty()) {
+                    std::size_t index = default_expression_value.rfind("::date");
+                    if (index == std::string::npos) {
+                        channel_->send_ack(ERROR_CODE::INVALID_PARAMETER);
+                        VLOG(log_debug) << "<-- INVALID_PARAMETER";
+                        return;
+                    }
+                    std::string dvs = default_expression_value.substr(1, index - 2);
+                    struct tm tm;
+                    memset(&tm, 0, sizeof(struct tm));
+                    if (auto ts = strptime(dvs.c_str(), "%Y-%m-%d", &tm); ts == nullptr) {
+                        channel_->send_ack(ERROR_CODE::INVALID_PARAMETER);
+                        VLOG(log_debug) << "<-- INVALID_PARAMETER";
+                        return;
+                    }
+                    default_value = yugawara::storage::column_value(std::make_shared<::takatori::value::date const>(tm.tm_year + 1900, tm.tm_mon + 1, tm.tm_mday));
                 }
                 columns.emplace_back(yugawara::storage::column(name_value,
-                                                                    takatori::type::character(takatori::type::varying_t(varying_value), data_length_value),
-                                                                    yugawara::variable::nullity(!is_not_null_value)));
+                                                               takatori::type::date(),
+                                                               yugawara::variable::nullity(!is_not_null_value),
+                                                               default_value));
+                break;
+            }
+            case manager::metadata::DataTypes::DataTypesId::TIME:  // time_of_day
+            {
+                // time column default value
+                yugawara::storage::column_value default_value{};
+                if (!default_expression_value.empty()) {
+                    std::size_t index = default_expression_value.rfind("::time without time zone");
+                    if (index == std::string::npos) {
+                        channel_->send_ack(ERROR_CODE::INVALID_PARAMETER);
+                        VLOG(log_debug) << "<-- INVALID_PARAMETER";
+                        return;
+                    }
+                    std::string dvs = default_expression_value.substr(1, index - 2);
+                    struct tm tm;
+                    memset(&tm, 0, sizeof(struct tm));
+                    if (auto ts = strptime(dvs.c_str(), "%H:%M:%S", &tm); ts != nullptr) {
+                        std::string rem(ts);
+                        default_value = yugawara::storage::column_value(std::make_shared<::takatori::value::time_of_day const>(tm.tm_hour, tm.tm_min, tm.tm_sec, std::chrono::nanoseconds(!rem.empty() ? static_cast<std::size_t>(stod(rem) * 1000000000.) : 0)));
+                    } else {
+                        channel_->send_ack(ERROR_CODE::INVALID_PARAMETER);
+                        VLOG(log_debug) << "<-- INVALID_PARAMETER";
+                        return;
+                    }
+                }
+                columns.emplace_back(yugawara::storage::column(name_value,
+                                                               takatori::type::time_of_day(~takatori::type::with_time_zone),
+                                                               yugawara::variable::nullity(!is_not_null_value),
+                                                               default_value));
+                break;
+            }
+            case manager::metadata::DataTypes::DataTypesId::TIMETZ:  // time_of_day
+            {
+                // time column default value
+                yugawara::storage::column_value default_value{};
+                if (!default_expression_value.empty()) {
+                    std::size_t index = default_expression_value.rfind("::time with time zone");
+                    if (index == std::string::npos) {
+                        channel_->send_ack(ERROR_CODE::INVALID_PARAMETER);
+                        VLOG(log_debug) << "<-- INVALID_PARAMETER";
+                        return;
+                    }
+                    std::string dvs = default_expression_value.substr(1, index - 2);
+                    std::string dvs_t = dvs.substr(0, index - 5);
+                    struct tm tm;
+                    memset(&tm, 0, sizeof(struct tm));
+                    if (auto ts = strptime(dvs_t.c_str(), "%H:%M:%S", &tm); ts != nullptr) {
+                        auto td = stoi(dvs.substr(index - 5, index - 2));  // FIXME use time differnce value
+                        VLOG(log_debug) << "  time difference is " << td;  // to suppress not use warning
+
+                        std::string rem(ts);
+                        default_value = yugawara::storage::column_value(std::make_shared<::takatori::value::time_of_day const>(tm.tm_hour, tm.tm_min, tm.tm_sec, std::chrono::nanoseconds(!rem.empty() ? static_cast<std::size_t>(stod(rem) * 1000000000.) : 0)));
+                    } else {
+                        channel_->send_ack(ERROR_CODE::INVALID_PARAMETER);
+                        VLOG(log_debug) << "<-- INVALID_PARAMETER";
+                        return;
+                    }
+                }
+                columns.emplace_back(yugawara::storage::column(name_value,
+                                                               takatori::type::time_of_day(takatori::type::with_time_zone),
+                                                               yugawara::variable::nullity(!is_not_null_value),
+                                                               default_value));
+                break;
+            }
+            case manager::metadata::DataTypes::DataTypesId::TIMESTAMP:  // time_point
+            {
+                // time column default value
+                yugawara::storage::column_value default_value{};
+                if (!default_expression_value.empty()) {
+                    std::size_t index = default_expression_value.rfind("::timestamp without time zone");
+                    if (index == std::string::npos) {
+                        channel_->send_ack(ERROR_CODE::INVALID_PARAMETER);
+                        VLOG(log_debug) << "<-- INVALID_PARAMETER";
+                        return;
+                    }
+                    std::string dvs = default_expression_value.substr(1, index - 2);
+                    struct tm tm;
+                    memset(&tm, 0, sizeof(struct tm));
+                    if (auto ts = strptime(dvs.c_str(), "%Y-%m-%d %H:%M:%S", &tm); ts != nullptr) {
+                        std::string rem(ts);
+                        default_value = yugawara::storage::column_value(std::make_shared<::takatori::value::time_point const>(tm.tm_year + 1900, tm.tm_mon + 1, tm.tm_mday, tm.tm_hour, tm.tm_min, tm.tm_sec, std::chrono::nanoseconds(!rem.empty() ? static_cast<std::size_t>(stod(rem) * 1000000000.) : 0)));
+                    } else {
+                        channel_->send_ack(ERROR_CODE::INVALID_PARAMETER);
+                        VLOG(log_debug) << "<-- INVALID_PARAMETER";
+                        return;
+                    }
+                }
+                columns.emplace_back(yugawara::storage::column(name_value,
+                                                               takatori::type::time_point(~takatori::type::with_time_zone),
+                                                               yugawara::variable::nullity(!is_not_null_value),
+                                                               default_value));
+                break;
+            }
+            case manager::metadata::DataTypes::DataTypesId::TIMESTAMPTZ:  // time_point
+            {
+                // time column default value
+                yugawara::storage::column_value default_value{};
+                if (!default_expression_value.empty()) {
+                    std::size_t index = default_expression_value.rfind("::timestamp with time zone");
+                    if (index == std::string::npos) {
+                        channel_->send_ack(ERROR_CODE::INVALID_PARAMETER);
+                        VLOG(log_debug) << "<-- INVALID_PARAMETER";
+                        return;
+                    }
+                    std::string dvs = default_expression_value.substr(1, index - 2);
+                    std::string dvs_t = dvs.substr(0, index - 5);
+                    struct tm tm;
+                    memset(&tm, 0, sizeof(struct tm));
+                    if (auto ts = strptime(dvs_t.c_str(), "%Y-%m-%d %H:%M:%S", &tm); ts != nullptr) {
+                        auto td = stoi(dvs.substr(index - 5, index - 2));  // FIXME use time differnce value
+                        VLOG(log_debug) << "  time difference is " << td;  // to suppress not use warning
+
+                        std::string rem(ts);
+                        default_value = yugawara::storage::column_value(std::make_shared<::takatori::value::time_point const>(tm.tm_year + 1900, tm.tm_mon + 1, tm.tm_mday, tm.tm_hour, tm.tm_min, tm.tm_sec, std::chrono::nanoseconds(!rem.empty() ? static_cast<std::size_t>(stod(rem) * 1000000000.) : 0)));
+                    } else {
+                        channel_->send_ack(ERROR_CODE::INVALID_PARAMETER);
+                        VLOG(log_debug) << "<-- INVALID_PARAMETER";
+                        return;
+                    }
+                }
+                columns.emplace_back(yugawara::storage::column(name_value,
+                                                               takatori::type::time_point(takatori::type::with_time_zone),
+                                                               yugawara::variable::nullity(!is_not_null_value),
+                                                               default_value));
+                break;
+            }
+            case manager::metadata::DataTypes::DataTypesId::INTERVAL:  // datetime_interval
+            {
+                columns.emplace_back(yugawara::storage::column(name_value,
+                                                               takatori::type::datetime_interval(),
+                                                               yugawara::variable::nullity(!is_not_null_value)));
                 break;
             }
             default:
                 std::abort();  // FIXME
-            }
+            }  // switch(data_type_id_value) {
             column_number_value++;
-        }
+        }  // for(auto &&e : columns_map) {
 
         auto t = std::make_shared<yugawara::storage::table>(
             std::make_optional(static_cast<yugawara::storage::table::definition_id_type>(table_id)),
