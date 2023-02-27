@@ -1,5 +1,5 @@
 /*
- * Copyright 2019-2022 tsurugi project.
+ * Copyright 2019-2023 tsurugi project.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -474,61 +474,58 @@ public:
         unidirectional_simple_wire& operator = (unidirectional_simple_wire&&) = delete;
 
         /**
-         * @brief begin new record which will be flushed on commit
-         */
-        void brand_new() {
-            std::size_t length = length_header::size;
-            if (length > room()) { wait_to_write(length); }
-            pushed_.fetch_add(length);
-        }
-
-        /**
          * @brief push an unit of data into the wire.
-         *  used by server only
+         *  used by server
          */
         void write(const char* from, std::size_t length) {
-            if (!continued_) {
-                brand_new();
-                continued_ = true;
+            if (!closed_ && (length > 0)) {
+                if (!continued_) {
+                    brand_new();
+                    continued_ = true;
+                }
+                write(get_bip_address(managed_shm_ptr_), from, length);
             }
-            write(get_bip_address(managed_shm_ptr_), from, length);
         }
+        /**
+         * @brief mark the record boundary and notify the clinet of the record arrival.
+         *  used by server
+         */
         void flush() noexcept {
             if (continued_) {
                 flush(get_bip_address(managed_shm_ptr_));
             }
         }
+        /**
+         * @brief check whether data of length can be written.
+         *  used by server
+         * @return true if the buffer has the room for data
+         */
+        [[nodiscard]] bool check_room(std::size_t length) noexcept {
+            if (continued_) {
+                return room() >= length;
+            }
+            return room() >= (length + length_header::size);
+        }
+        /**
+         * @brief wait data of length can be written.
+         *  used by server
+         * @return true if the buffer is closed by the client
+         */
+        [[nodiscard]] bool wait_room(std::size_t length) {
+            if (!continued_) {
+                length += length_header::size;
+            }
+            wait_to_resultset_write(length);
+            return closed_;
+        }
 
         /**
-         * @brief provide the current chunk
+         * @brief provide the current chunk.
+         *  used by clinet
          */
-        std::string_view get_chunk(char* base, std::string_view& wrap_around, std::int64_t timeout = 0) {
+        std::string_view get_chunk(char* base, std::string_view& wrap_around) {
             copy_header(base);
             auto length = header_received_.get_length();
-
-            if (!(stored_valid() >= (length + length_header::size))) {
-                if (timeout <= 0) {
-                    boost::interprocess::scoped_lock lock(m_mutex_);
-                    wait_for_read_ = true;
-                    std::atomic_thread_fence(std::memory_order_acq_rel);
-                    c_empty_.wait(lock, [this, length](){ return stored_valid() >= (length + length_header::size); });
-                    wait_for_read_ = false;
-                } else {
-                    boost::interprocess::scoped_lock lock(m_mutex_);
-                    wait_for_read_ = true;
-                    std::atomic_thread_fence(std::memory_order_acq_rel);
-                    if (!c_empty_.timed_wait(lock,
-#ifdef BOOST_DATE_TIME_HAS_NANOSECONDS
-                                             boost::get_system_time() + boost::posix_time::nanoseconds(timeout),
-#else
-                                             boost::get_system_time() + boost::posix_time::microseconds(((timeout-500)/1000)+1),
-#endif
-                                             [this, length](){ return stored_valid() >= (length + length_header::size); })) {
-                        throw std::runtime_error("record has not been received within the specified time");
-                    }
-                    wait_for_read_ = false;
-                }
-            }
 
             // If end is on a boundary, it is considered to be on the same page.
             if (((poped_.load() + length_header::size) / capacity_) == ((poped_.load() + length_header::size + length - 1) / capacity_)) {
@@ -540,7 +537,8 @@ public:
             return std::string_view(read_address(base, length_header::size), first_length);
         }
         /**
-         * @brief dispose of data that has completed read and is no longer needed
+         * @brief dispose of data that has completed read and is no longer needed.
+         *  used by clinet
          */
         void dispose(char* base) {
             copy_header(base);
@@ -552,9 +550,10 @@ public:
             }
         }
         /**
-         * @brief check this wire has record
+         * @brief check this wire has record.
+         *  used by clinet
          */
-        [[nodiscard]] bool has_record() const { return pushed_valid_.load() > poped_.load(); }
+        [[nodiscard]] bool has_record() const { return stored_valid() > 0; }
 
         void attach_buffer(boost::interprocess::managed_shared_memory::handle_t handle, std::size_t capacity) noexcept {
             buffer_handle_ = handle;
@@ -567,29 +566,25 @@ public:
         bool equal(boost::interprocess::managed_shared_memory::handle_t handle) {
             return handle == buffer_handle_;
         }
-        void reset_handle() noexcept { buffer_handle_ = 0; }
-        [[nodiscard]] boost::interprocess::managed_shared_memory::handle_t get_handle() const { return buffer_handle_; }
+        void reset_handle() noexcept {
+            buffer_handle_ = 0;
+        }
+        [[nodiscard]] boost::interprocess::managed_shared_memory::handle_t get_handle() const {
+            return buffer_handle_;
+        }
 
     private:
+        void brand_new() {
+            std::size_t length = length_header::size;
+            if (length > room()) {
+                wait_to_resultset_write(length);
+            }
+            pushed_.fetch_add(length);
+        }
+
         void write(char* base, const char* from, std::size_t length) {
-            if ((length) > room()) {
-                boost::interprocess::scoped_lock lock(m_mutex_);
-                wait_for_write_ = true;
-                std::atomic_thread_fence(std::memory_order_acq_rel);
-                c_full_.wait(lock, [this, length](){ return (room() >= length) || closed_; });
-                wait_for_write_ = false;
-            }
-            if (!closed_) {
-                write_in_buffer(base, buffer_address(base, pushed_.load()), from, length);
-                pushed_.fetch_add(length);
-                std::atomic_thread_fence(std::memory_order_acq_rel);
-                if (wait_for_read_) {
-                    boost::interprocess::scoped_lock lock(m_mutex_);
-                    c_empty_.notify_one();
-                } else {
-                    envelope_->notify_record_arrival();
-                }
-            }
+            write_in_buffer(base, buffer_address(base, pushed_.load()), from, length);
+            pushed_.fetch_add(length);
         }
 
         void flush(char* base) noexcept {
@@ -597,11 +592,16 @@ public:
             write_in_buffer(base, buffer_address(base, pushed_valid_.load()), header.get_buffer(), length_header::size);
             pushed_valid_.store(pushed_.load());
             std::atomic_thread_fence(std::memory_order_acq_rel);
-            if (wait_for_read_) {
-                boost::interprocess::scoped_lock lock(m_mutex_);
-                c_empty_.notify_one();
-            }
+            envelope_->notify_record_arrival();
             continued_ = false;
+        }
+
+        void wait_to_resultset_write(std::size_t length) {
+            boost::interprocess::scoped_lock lock(m_mutex_);
+            wait_for_write_ = true;
+            std::atomic_thread_fence(std::memory_order_acq_rel);
+            c_full_.wait(lock, [this, length](){ return (room() >= length) || closed_; });
+            wait_for_write_ = false;
         }
 
         void set_closed() noexcept {
@@ -620,22 +620,22 @@ public:
         [[nodiscard]] std::size_t stored_valid() const { return (pushed_valid_.load() - poped_.load()); }
 
         boost::interprocess::managed_shared_memory* managed_shm_ptr_{};  // used by server only
-        std::atomic_ulong pushed_valid_{0};
-        std::atomic_bool closed_{};  // written by client, read by server
-        bool continued_{};  // used by server only
-        unidirectional_simple_wires* envelope_{};
+        std::atomic_ulong pushed_valid_{0};                              // used by server only
+        std::atomic_bool closed_{};                                      // written by client, read by server
+        bool continued_{};                                               // used by server only
+        unidirectional_simple_wires* envelope_{};                        // used by server only
     };
 
 
     /**
      * @brief unidirectional_simple_wires constructer
      */
-    unidirectional_simple_wires(boost::interprocess::managed_shared_memory* managed_shm_ptr, std::size_t count)
-        : managed_shm_ptr_(managed_shm_ptr), unidirectional_simple_wires_(count, managed_shm_ptr->get_segment_manager()) {
+    unidirectional_simple_wires(boost::interprocess::managed_shared_memory* managed_shm_ptr, std::size_t count, std::size_t buffer_size)
+        : managed_shm_ptr_(managed_shm_ptr), unidirectional_simple_wires_(count, managed_shm_ptr->get_segment_manager()), buffer_size_(buffer_size) {
         for (auto&& wire: unidirectional_simple_wires_) {
             wire.set_environments(this, managed_shm_ptr);
         }
-        reserved_ = static_cast<char*>(managed_shm_ptr->allocate_aligned(wire_size, Alignment));
+        reserved_ = static_cast<char*>(managed_shm_ptr->allocate_aligned(buffer_size_, Alignment));
         if (!reserved_) {
             throw std::runtime_error("cannot allocate shared memory");
         }
@@ -663,7 +663,7 @@ public:
     unidirectional_simple_wire* acquire() {
         if (count_using_ == 0) {
             count_using_ = next_index_ = 1;
-            unidirectional_simple_wires_.at(0).attach_buffer(managed_shm_ptr_->get_handle_from_address(reserved_), wire_size);
+            unidirectional_simple_wires_.at(0).attach_buffer(managed_shm_ptr_->get_handle_from_address(reserved_), buffer_size_);
             reserved_ = nullptr;
             only_one_buffer_ = true;
             return &unidirectional_simple_wires_.at(0);
@@ -674,13 +674,13 @@ public:
             buffer = reserved_;
             reserved_ = nullptr;
         } else {
-            buffer = static_cast<char*>(managed_shm_ptr_->allocate_aligned(wire_size, Alignment));
+            buffer = static_cast<char*>(managed_shm_ptr_->allocate_aligned(buffer_size_, Alignment));
             if (!buffer) {
                 throw std::runtime_error("cannot allocate shared memory");
             }
         }
         auto index = search_free_wire();
-        unidirectional_simple_wires_.at(index).attach_buffer(managed_shm_ptr_->get_handle_from_address(buffer), wire_size);
+        unidirectional_simple_wires_.at(index).attach_buffer(managed_shm_ptr_->get_handle_from_address(buffer), buffer_size_);
         only_one_buffer_ = false;
         return &unidirectional_simple_wires_.at(index);
     }
@@ -696,6 +696,10 @@ public:
         count_using_--;
     }
 
+    /**
+     * @brief search a wire that has record sent by the server
+     *  used by clinet
+     */
     unidirectional_simple_wire* active_wire(std::int64_t timeout = 0) {
         do {
             for (auto&& wire: unidirectional_simple_wires_) {
@@ -703,46 +707,40 @@ public:
                     return &wire;
                 }
             }
-            if (timeout <= 0) {
+            {
                 boost::interprocess::scoped_lock lock(m_record_);
                 wait_for_record_ = true;
                 std::atomic_thread_fence(std::memory_order_acq_rel);
                 unidirectional_simple_wire* active_wire = nullptr;
-                c_record_.wait(lock,
-                               [this, &active_wire](){
-                                   for (auto&& wire: unidirectional_simple_wires_) {
-                                       if (wire.has_record()) {
-                                           active_wire = &wire;
-                                           return true;
+                if (timeout <= 0) {
+                    c_record_.wait(lock,
+                                   [this, &active_wire](){
+                                       for (auto&& wire: unidirectional_simple_wires_) {
+                                           if (wire.has_record()) {
+                                               active_wire = &wire;
+                                               return true;
+                                           }
                                        }
-                                   }
-                                   return is_eor();
-                               });
-                wait_for_record_ = false;
-                if (active_wire != nullptr) {
-                    return active_wire;
-                }
-            } else {
-                boost::interprocess::scoped_lock lock(m_record_);
-                wait_for_record_ = true;
-                std::atomic_thread_fence(std::memory_order_acq_rel);
-                unidirectional_simple_wire* active_wire = nullptr;
-                if (!c_record_.timed_wait(lock,
+                                       return is_eor();
+                                   });
+                } else {
+                    if (!c_record_.timed_wait(lock,
 #ifdef BOOST_DATE_TIME_HAS_NANOSECONDS
-                                                boost::get_system_time() + boost::posix_time::nanoseconds(timeout),
+                                              boost::get_system_time() + boost::posix_time::nanoseconds(timeout),
 #else
-                                                boost::get_system_time() + boost::posix_time::microseconds(((timeout-500)/1000)+1),
+                                              boost::get_system_time() + boost::posix_time::microseconds(((timeout-500)/1000)+1),
 #endif
-                                          [this, &active_wire](){
-                                              for (auto&& wire: unidirectional_simple_wires_) {
-                                                  if (wire.has_record()) {
-                                                      active_wire = &wire;
-                                                      return true;
+                                              [this, &active_wire](){
+                                                  for (auto&& wire: unidirectional_simple_wires_) {
+                                                      if (wire.has_record()) {
+                                                          active_wire = &wire;
+                                                          return true;
+                                                      }
                                                   }
-                                              }
-                                              return is_eor();
-                                          })) {
-                    throw std::runtime_error("record has not been received within the specified time");
+                                                  return is_eor();
+                                              })) {
+                        throw std::runtime_error("record has not been received within the specified time");
+                    }
                 }
                 wait_for_record_ = false;
                 if (active_wire != nullptr) {
@@ -756,6 +754,7 @@ public:
 
     /**
      * @brief notify that the client does not read record any more
+     *  used by clinet
      */
     void set_closed() noexcept {
         for (auto&& wire: unidirectional_simple_wires_) {
@@ -763,10 +762,16 @@ public:
         }
         closed_ = true;
     }
-    [[nodiscard]] bool is_closed() const { return closed_; }
-
+    /**
+     * @brief returns that the client has closed the result set wire
+     *  used by server
+     */
+    [[nodiscard]] bool is_closed() const {
+        return closed_;
+    }
     /**
      * @brief mark the end of the result set by the sql service
+     *  used by server
      */
     void set_eor() noexcept {
         eor_ = true;
@@ -776,7 +781,13 @@ public:
             c_record_.notify_one();
         }
     }
-    [[nodiscard]] bool is_eor() const { return eor_; }
+    /**
+     * @brief returns that the server has marked the end of the result set
+     *  used by client
+     */
+    [[nodiscard]] bool is_eor() const {
+        return eor_;
+    }
 
 private:
     std::size_t search_free_wire() noexcept {
@@ -803,6 +814,7 @@ private:
 
     /**
      * @brief notify the arrival of a record
+     *  used by server
      */
     void notify_record_arrival() noexcept {
         if (wait_for_record_) {
@@ -811,12 +823,12 @@ private:
         }
     }
 
-    static constexpr std::size_t wire_size = (1<<16);  // 64K bytes (tentative)  //NOLINT
     static constexpr std::size_t Alignment = 64;
     using allocator = boost::interprocess::allocator<unidirectional_simple_wire, boost::interprocess::managed_shared_memory::segment_manager>;
 
     boost::interprocess::managed_shared_memory* managed_shm_ptr_;  // used by server only
     std::vector<unidirectional_simple_wire, allocator> unidirectional_simple_wires_;
+    std::size_t buffer_size_;
 
     char* reserved_{};
     std::size_t count_using_{};
@@ -850,8 +862,10 @@ public:
         }
         if (flock(fd, LOCK_EX | LOCK_NB) == 0) {  // NOLINT
             flock(fd, LOCK_UN);
+            close(fd);
             return false;
         }
+        close(fd);
         return true;
     }
 
@@ -933,7 +947,7 @@ public:
         element& operator = (element const&) = delete;
         element& operator = (element&& e) noexcept { session_id_ = e.session_id_; return *this; }
 
-        void session_id(std::size_t session_id) {
+        void accept(std::size_t session_id) {
             session_id_ = session_id;
             std::atomic_thread_fence(std::memory_order_acq_rel);
             {
@@ -941,7 +955,7 @@ public:
                 c_accepted_.notify_one();
             }
         }
-        [[nodiscard]] std::size_t session_id(std::int64_t timeout = 0) {
+        [[nodiscard]] std::size_t wait(std::int64_t timeout = 0) {
             std::atomic_thread_fence(std::memory_order_acq_rel);
             if (timeout <= 0) {
                 boost::interprocess::scoped_lock lock(m_accepted_);
@@ -998,9 +1012,8 @@ public:
     }
     std::size_t wait(std::size_t id, std::int64_t timeout = 0) {
         auto& e = v_requested_.at(id);
-        auto rv = e.session_id(timeout);
+        auto rv = e.wait(timeout);
         e.reuse();
-        q_free_.push(id);
         return rv;
     }
     bool check(std::size_t id) {
@@ -1011,10 +1024,14 @@ public:
         q_requested_.wait(terminate_);
         return ++session_id_;
     }
-    void accept(std::size_t session_id) {
+    std::size_t accept(std::size_t session_id) {
         std::size_t id = q_requested_.pop();
         auto& request = v_requested_.at(id);
-        request.session_id(session_id);
+        request.accept(session_id);
+        return id;
+    }
+    void disconnect(std::size_t id) {
+        q_free_.push(id);
     }
 
     // for terminate
