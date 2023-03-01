@@ -32,6 +32,7 @@ Connection::Impl::Impl(Stub::Impl* manager, std::string_view session_id, std::si
 
 Connection::Impl::~Impl()
 {
+    transport_.close();
     // for old-fashioned link
     channel_->send_req(ogawayama::common::CommandMessage::Type::DISCONNECT);
     channel_->wait();

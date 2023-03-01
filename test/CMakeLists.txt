@@ -13,7 +13,7 @@
 # limitations under the License.
 
 file(GLOB TEST_SOURCES
-    "*.cpp"
+    "ogawayama/stub/*Test.cpp"
 )
 
 register_tests(
@@ -29,5 +29,6 @@ register_tests(
       glog::glog
       gflags::gflags
       rt
+      protobuf::libprotobuf
     SOURCES ${TEST_SOURCES}
 )
