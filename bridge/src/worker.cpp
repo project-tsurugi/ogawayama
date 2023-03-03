@@ -316,8 +316,7 @@ void Worker::deploy_metadata(std::size_t table_id)
                 yugawara::storage::column_value default_value{};
                 if (!default_expression_value.empty()) {
                     float value = stof(default_expression_value);
-                    std::istringstream(default_expression_value) >> value;
-                    yugawara::storage::column_value default_value = yugawara::storage::column_value(std::make_shared<::takatori::value::float4>(value));
+                    default_value = yugawara::storage::column_value(std::make_shared<::takatori::value::float4>(value));
                 }
                 columns.emplace_back(yugawara::storage::column(name_value, takatori::type::float4(), yugawara::variable::nullity(!is_not_null_value), default_value));
                 break;
@@ -328,7 +327,7 @@ void Worker::deploy_metadata(std::size_t table_id)
                 yugawara::storage::column_value default_value{};
                 if (!default_expression_value.empty()) {
                     double value = stod(default_expression_value);
-                    yugawara::storage::column_value default_value = yugawara::storage::column_value(std::make_shared<::takatori::value::float8>(value));
+                    default_value = yugawara::storage::column_value(std::make_shared<::takatori::value::float8>(value));
                 }
                 columns.emplace_back(yugawara::storage::column(name_value, takatori::type::float8(), yugawara::variable::nullity(!is_not_null_value), default_value));
                 break;
