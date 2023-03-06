@@ -35,6 +35,8 @@ constexpr static std::size_t MESSAGE_VERSION = 1;
 constexpr inline std::uint32_t SERVICE_ID_SQL = 3;  // from tateyama/framework/component_ids.h
 
 class transport {
+constexpr static std::size_t query_index = 1;
+
 public:
     transport() = delete;
 
@@ -89,7 +91,7 @@ public:
     std::optional<::jogasaki::proto::sql::response::ExecuteQuery> send(::jogasaki::proto::sql::request::ExecuteQuery& execute_query_request) {
         ::jogasaki::proto::sql::request::Request request{};
         *(request.mutable_execute_query()) = execute_query_request;
-        auto response_opt = send<::jogasaki::proto::sql::response::Response>(request);
+        auto response_opt = send<::jogasaki::proto::sql::response::Response>(request, query_index);
         request.clear_execute_query();
         if (response_opt) {
             auto response_message = response_opt.value();
@@ -108,7 +110,7 @@ public:
  * @return std::optional of ::jogasaki::proto::sql::request::ResultOnly
  */
     std::optional<::jogasaki::proto::sql::response::ResultOnly> receive_body() {
-        return receive<::jogasaki::proto::sql::response::ResultOnly>();
+        return receive<::jogasaki::proto::sql::response::ResultOnly>(query_index);
     }
     
 /**
@@ -169,7 +171,9 @@ private:
     tateyama::common::wire::session_wire_container& wire_;
     ::tateyama::proto::framework::request::Header header_{};
     ::jogasaki::proto::sql::common::Session session_{};
-
+    std::string query_result_{};
+    std::string statement_result_{};
+    
     template <typename T>
     std::optional<T> send(::jogasaki::proto::sql::request::Request& request, tateyama::common::wire::message_header::index_type index = 0) {
         std::stringstream ss{};
@@ -187,31 +191,54 @@ private:
         wire_.write(ss.str(), index);
         request.clear_session_handle();
 
-        return receive<T>();
+        return receive<T>(index);
     }
 
     template <typename T>
-    std::optional<T> receive() {
+    std::optional<T> receive(tateyama::common::wire::message_header::index_type index) {
         auto& response_wire = wire_.get_response_wire();
 
-        response_wire.await();
-        std::string response_message{};
-        response_message.resize(response_wire.get_length());
-        response_wire.read(response_message.data());
-        ::tateyama::proto::framework::response::Header header{};
-        google::protobuf::io::ArrayInputStream in{response_message.data(), static_cast<int>(response_message.length())};
-        if(auto res = tateyama::utils::ParseDelimitedFromZeroCopyStream(std::addressof(header), std::addressof(in), nullptr); ! res) {
-            return std::nullopt;
+        while (true) {
+            std::string response_message{};
+
+            if (index == 0 && !statement_result_.empty()) {
+                response_message = statement_result_;
+                statement_result_.clear();
+            } else if (index > 0 && !query_result_.empty()) {
+                response_message = query_result_;
+                query_result_.clear();
+            } else {                
+                response_wire.await();
+                auto slot = response_wire.get_idx();
+                if (slot == index) {
+                    response_message.resize(response_wire.get_length());
+                    response_wire.read(response_message.data());
+                } else {
+                    if (slot == 0) {
+                        statement_result_.resize(response_wire.get_length());
+                        response_wire.read(statement_result_.data());
+                    } else {
+                        query_result_.resize(response_wire.get_length());
+                        response_wire.read(query_result_.data());
+                    }
+                    continue;
+                }
+            }
+            ::tateyama::proto::framework::response::Header header{};
+            google::protobuf::io::ArrayInputStream in{response_message.data(), static_cast<int>(response_message.length())};
+            if(auto res = tateyama::utils::ParseDelimitedFromZeroCopyStream(std::addressof(header), std::addressof(in), nullptr); ! res) {
+                return std::nullopt;
+            }
+            std::string_view payload{};
+            if (auto res = tateyama::utils::GetDelimitedBodyFromZeroCopyStream(std::addressof(in), nullptr, payload); ! res) {
+                return std::nullopt;
+            }
+            T response{};
+            if(auto res = response.ParseFromArray(payload.data(), payload.length()); ! res) {
+                return std::nullopt;
+            }
+            return response;
         }
-        std::string_view payload{};
-        if (auto res = tateyama::utils::GetDelimitedBodyFromZeroCopyStream(std::addressof(in), nullptr, payload); ! res) {
-            return std::nullopt;
-        }
-        T response{};
-        if(auto res = response.ParseFromArray(payload.data(), payload.length()); ! res) {
-            return std::nullopt;
-        }
-        return response;
     }
 };
 
