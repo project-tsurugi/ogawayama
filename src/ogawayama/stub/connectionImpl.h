@@ -43,12 +43,20 @@ public:
     ErrorCode begin(TransactionPtr&);
 
     /**
+     * @brief begin transaction
+     * @param ptree the transaction option
+     * @param reference to a TransactionPtr
+     * @return error code defined in error_code.h
+     */
+    ErrorCode begin(const boost::property_tree::ptree&, TransactionPtr&);
+
+    /**
      * @brief prepare statement
      * @param sql statement
      * @param reference to a PreparedSatementPtr
      * @return error code defined in error_code.h
      */
-    ErrorCode prepare(std::string_view, PreparedStatementPtr&);
+    ErrorCode prepare(std::string_view, const pralceholders_type&, PreparedStatementPtr&);
 
     /**
      * @brief relay a create tabe message from the frontend to the server

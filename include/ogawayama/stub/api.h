@@ -1,5 +1,5 @@
 /*
- * Copyright 2019-2019 tsurugi project.
+ * Copyright 2019-2023 tsurugi project.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -19,14 +19,18 @@
 #include <memory>
 #include <string>
 #include <string_view>
+#include <vector>
+#include <variant>
+#include <boost/property_tree/ptree.hpp>
 
-#include "ogawayama/stub/metadata.h"
-#include "ogawayama/stub/error_code.h"
-#include "ogawayama/stub/Command.h"
+#include <ogawayama/stub/metadata.h>
+#include <ogawayama/stub/error_code.h>
+#include <ogawayama/stub/transaction_option.h>
+#include <ogawayama/stub/Command.h>
 
-#include "manager/message/receiver.h"
-#include "manager/message/message.h"
-#include "manager/message/status.h"
+#include <manager/message/receiver.h>
+#include <manager/message/message.h>
+#include <manager/message/status.h>
 
 using MetadataPtr = ogawayama::stub::Metadata const*;
 using TYPE = ogawayama::stub::Metadata::ColumnType::Type;
@@ -101,6 +105,9 @@ using ResultSetPtr = std::shared_ptr<ogawayama::stub::ResultSet>;
 
 namespace ogawayama::stub {
 
+using value_type = std::variant<std::monostate, std::int32_t, std::int64_t, float, double, std::string, date_type, time_type, timestamp_type>;
+using parameters_type = std::vector<std::pair<std::string, value_type>>;
+
 /**
  * @brief Information about a parameter set for a prepared statement.
  */
@@ -117,14 +124,6 @@ public:
      * @brief destructs this object.
      */
     ~PreparedStatement();
-
-    void set_parameter(std::int16_t);
-    void set_parameter(std::int32_t);
-    void set_parameter(std::int64_t);
-    void set_parameter(float);
-    void set_parameter(double);
-    void set_parameter(std::string_view);
-    void set_parameter();
 
 private:
     std::unique_ptr<Impl> impl_;
@@ -145,6 +144,8 @@ using PreparedStatementPtr = std::unique_ptr<ogawayama::stub::PreparedStatement>
 
 
 namespace ogawayama::stub {
+
+
 
 /**
  * @brief Information about a transaction.
@@ -173,9 +174,10 @@ public:
     /**
      * @brief execute a prepared statement.
      * @param pointer to the prepared statement
+     * @param the parameters to be used for execution of the prepared statement
      * @return error code defined in error_code.h
      */
-    ErrorCode execute_statement(PreparedStatement*);
+    ErrorCode execute_statement(PreparedStatement*, parameters_type&);
 
     /**
      * @brief execute a query.
@@ -188,10 +190,11 @@ public:
     /**
      * @brief execute a prepared query.
      * @param pointer to the prepared query
+     * @param the parameters to be used for execution of the prepared statement
      * @param result_set returns a result set of the query
      * @return error code defined in error_code.h
      */
-    ErrorCode execute_query(PreparedStatement*, ResultSetPtr&);
+    ErrorCode execute_query(PreparedStatement*, parameters_type&, ResultSetPtr&);
 
     /**
      * @brief commit the current transaction.
@@ -227,6 +230,8 @@ using TransactionPtr = std::unique_ptr<ogawayama::stub::Transaction>;
 
 namespace ogawayama::stub {
 
+using pralceholders_type = std::vector<std::pair<std::string, Metadata::ColumnType>>;
+
 /**
  * @brief Information about a connection.
  */
@@ -252,12 +257,20 @@ public:
     ErrorCode begin(TransactionPtr&);
 
     /**
+     * @brief begin a transaction and get Transaction class.
+     * @param ptree the transaction option
+     * @param transaction returns a transaction class
+     * @return error code defined in error_code.h
+     */
+    ErrorCode begin(const boost::property_tree::ptree&, TransactionPtr&);
+
+    /**
      * @brief prepare SQL statement.
      * @param SQL statement
      * @param prepared statement returns a prepared statement class
      * @return error code defined in error_code.h
      */
-    ErrorCode prepare(std::string_view, PreparedStatementPtr&);
+    ErrorCode prepare(std::string_view, const pralceholders_type&, PreparedStatementPtr&);
 
     /**
      * @brief implements begin_ddl() procedure

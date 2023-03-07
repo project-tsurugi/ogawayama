@@ -44,9 +44,10 @@ public:
     /**
      * @brief execute a prepared statement.
      * @param pointer to the prepared statement
+     * @param the parameters to be used for execution of the prepared statement
      * @return error code defined in error_code.h
      */
-//    ErrorCode execute_statement(PreparedStatement *);
+    ErrorCode execute_statement(PreparedStatement*, const parameters_type& parameters);
 
     /**
      * @brief execute a query.
@@ -59,10 +60,11 @@ public:
     /**
      * @brief execute a query.
      * @param pointer to the prepared statement
+     * @param the parameters to be used for execution of the prepared statement
      * @param result_set returns a result set of the query
      * @return true in error, otherwise false
      */
-//    ErrorCode execute_query(PreparedStatement *, std::shared_ptr<ResultSet> &result_set);
+    ErrorCode execute_query(PreparedStatement* prepared, const parameters_type& parameters, std::shared_ptr<ResultSet> &result_set);
 
     /**
      * @brief commit the current transaction.

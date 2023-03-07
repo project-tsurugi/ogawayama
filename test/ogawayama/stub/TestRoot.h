@@ -1,0 +1,124 @@
+/*
+ * Copyright 2019-2019 tsurugi project.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+#include <stdexcept>
+#include <functional>
+
+#include <gtest/gtest.h>
+#include <glog/logging.h>
+#include <ogawayama/logging.h>
+
+#include <unordered_map>
+#include <jogasaki/api.h>
+#include <ogawayama/stub/api.h>
+#include <ogawayama/bridge/service.h>
+#include <tateyama/framework/server.h>
+#include <tateyama/utils/protobuf_utils.h>
+#include <jogasaki/proto/sql/common.pb.h>
+#include <jogasaki/proto/sql/request.pb.h>
+#include <jogasaki/proto/sql/response.pb.h>
+
+#include "server_wires_impl.h"
+#include "endpoint_proto_utils.h"
+#include "stubImpl.h"
+#include "connectionImpl.h"
+#include "transactionImpl.h"
+#include "result_setImpl.h"
+#include "channel_stream.h"
+#include "endpoint.h"
+
+namespace ogawayama::testing {
+
+class server {
+    constexpr static std::string_view resultset_name = "resultset_for_test";  // NOLINT
+
+public:
+    server(std::string name) : name_(name), endpoint_(name_), channel_stream_(name_) {
+    }
+    ~server() {
+        endpoint_.terminate();
+        channel_stream_.terminate();
+        remove_shm();
+    }
+
+    template<typename T>
+    void response_message(T& reply) = delete;
+
+    void response_with_resultset(jogasaki::proto::sql::response::ResultSetMetadata& metadata, std::queue<std::string>& resultset, jogasaki::proto::sql::response::ResultOnly& ro) {
+        // body_head
+        jogasaki::proto::sql::response::ExecuteQuery e{};
+        jogasaki::proto::sql::response::Response rh{};
+        e.set_name(std::string(resultset_name));
+        e.set_allocated_record_meta(&metadata);
+        rh.set_allocated_execute_query(&e);
+        // body
+        jogasaki::proto::sql::response::Response rb{};
+        rb.set_allocated_result_only(&ro);
+        // set response
+        endpoint_.worker_->response_message(rh, resultset_name, resultset, rb);
+        // release
+        rb.release_result_only();
+        rh.release_execute_query();
+        e.release_record_meta();
+    }
+
+    std::optional<jogasaki::proto::sql::request::Request> request_message() {
+        auto request_packet = endpoint_.worker_->request_message();
+
+        ::tateyama::proto::framework::request::Header header{};
+        google::protobuf::io::ArrayInputStream in{request_packet.data(), static_cast<int>(request_packet.length())};
+        if(auto res = tateyama::utils::ParseDelimitedFromZeroCopyStream(std::addressof(header), std::addressof(in), nullptr); ! res) {
+            return std::nullopt;
+        }
+        std::string_view payload{};
+        if (auto res = tateyama::utils::GetDelimitedBodyFromZeroCopyStream(std::addressof(in), nullptr, payload); ! res) {
+            return std::nullopt;
+        }
+        jogasaki::proto::sql::request::Request request{};
+        if(auto res = request.ParseFromArray(payload.data(), payload.length()); ! res) {
+            return std::nullopt;
+        }
+        return request;
+    }
+private:
+    std::string name_;
+    endpoint endpoint_;
+    channel_stream channel_stream_;
+
+    void remove_shm() {
+        std::string cmd = "if [ -f /dev/shm/" + name_ + " ]; then rm -f /dev/shm/" + name_ + "*; fi";
+        if (system(cmd.c_str())) {
+            throw std::runtime_error("error in clearing shared memory file");
+        }
+    }
+};
+
+template<>
+inline void server::response_message<jogasaki::proto::sql::response::Begin>(jogasaki::proto::sql::response::Begin& b) {
+    jogasaki::proto::sql::response::Response r{};
+    r.set_allocated_begin(&b);
+    endpoint_.worker_->response_message(r);
+    r.release_begin();
+}
+template<>
+inline void server::response_message<jogasaki::proto::sql::response::ResultOnly>(jogasaki::proto::sql::response::ResultOnly& ro) {
+    jogasaki::proto::sql::response::Response r{};
+    r.set_allocated_result_only(&ro);
+    endpoint_.worker_->response_message(r);
+    r.release_result_only();
+}
+
+}  // namespace ogawayama::testing

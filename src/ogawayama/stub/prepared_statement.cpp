@@ -28,26 +28,4 @@ PreparedStatement::PreparedStatement(std::unique_ptr<Impl> impl) : impl_(std::mo
  */
 PreparedStatement::~PreparedStatement() = default;
 
-void PreparedStatement::set_parameter(std::int16_t param) {
-    get_impl()->set_parameter<std::int16_t>(param);
-}
-void PreparedStatement::set_parameter(std::int32_t param) {
-    get_impl()->set_parameter<std::int32_t>(param);
-}
-void PreparedStatement::set_parameter(std::int64_t param) {
-    get_impl()->set_parameter<std::int64_t>(param);
-}
-void PreparedStatement::set_parameter(float param) {
-    get_impl()->set_parameter<float>(param);
-}
-void PreparedStatement::set_parameter(double param) {
-    get_impl()->set_parameter<double>(param);
-}
-void PreparedStatement::set_parameter(std::string_view param) {
-    get_impl()->set_parameter<std::string_view>(param);
-}
-void PreparedStatement::set_parameter() {
-    get_impl()->set_parameter<std::monostate>(std::monostate());
-}
-
 }  // namespace ogawayama::stub

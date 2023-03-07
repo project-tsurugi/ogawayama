@@ -1,5 +1,5 @@
 /*
- * Copyright 2019-2019 tsurugi project.
+ * Copyright 2019-2023 tsurugi project.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -28,24 +28,16 @@ namespace ogawayama::stub {
 class PreparedStatement::Impl
 {
 public:
-    Impl(PreparedStatement *prepared_statement, std::size_t sid, ogawayama::common::ParameterSet* parameters)
-        : envelope_(prepared_statement), sid_(sid), parameters_(parameters) {}
+    Impl(PreparedStatement *prepared_statement, std::size_t id)
+        : envelope_(prepared_statement), id_(id) {}
     ~Impl() = default;
 
-    auto get_sid() { return sid_; }
-    void clear() {
-        parameters_->get_params().clear();
-    }
-    template<typename T>
-    void set_parameter(T param) {
-        parameters_->set_parameter(param);
-    }
+    auto get_id() { return id_; }
 
 private:
     PreparedStatement *envelope_;
 
-    ogawayama::common::ParameterSet* parameters_;
-    std::size_t sid_;
+    std::size_t id_;
 };
 
 }  // namespace ogawayama::stub
