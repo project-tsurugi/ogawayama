@@ -59,18 +59,20 @@ public:
 
     void response_with_resultset(jogasaki::proto::sql::response::ResultSetMetadata& metadata, std::queue<std::string>& resultset, jogasaki::proto::sql::response::ResultOnly& ro) {
         // body_head
+        jogasaki::proto::sql::response::ExecuteQuery e{};
         jogasaki::proto::sql::response::Response rh{};
-        auto* exexute_query = rh.mutable_execute_query();
-        exexute_query->set_name(std::string(resultset_name));
-        exexute_query->set_allocated_record_meta(&metadata);
+        e.set_name(std::string(resultset_name));
+        e.set_allocated_record_meta(&metadata);
+        rh.set_allocated_execute_query(&e);
         // body
         jogasaki::proto::sql::response::Response rb{};
         rb.set_allocated_result_only(&ro);
         // set response
         endpoint_.worker_->response_message(rh, resultset_name, resultset, rb);
         // release
-        rh.release_execute_query();
         rb.release_result_only();
+        rh.release_execute_query();
+        e.release_record_meta();
     }
 
     std::optional<jogasaki::proto::sql::request::Request> request_message() {
