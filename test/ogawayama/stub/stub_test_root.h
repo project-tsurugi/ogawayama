@@ -1,5 +1,5 @@
 /*
- * Copyright 2019-2019 tsurugi project.
+ * Copyright 2019-2023 tsurugi project.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -37,8 +37,8 @@
 #include "connectionImpl.h"
 #include "transactionImpl.h"
 #include "result_setImpl.h"
-#include "channel_stream.h"
 #include "endpoint.h"
+#include "channel_stream_for_test.h"
 
 namespace ogawayama::testing {
 

@@ -141,13 +141,6 @@ void Worker::deploy_metadata(std::size_t table_id)
 {
     manager::metadata::ErrorCode error;
 
-    auto datatypes = std::make_unique<manager::metadata::DataTypes>(dbname_);
-    error = datatypes->Metadata::load();
-    if (error != manager::metadata::ErrorCode::OK) {
-        channel_->send_ack(ERROR_CODE::FILE_IO_ERROR);
-        VLOG(log_debug) << "<-- FILE_IO_ERROR";
-        return;
-    }
     auto tables = std::make_unique<manager::metadata::Tables>(dbname_);
     error = tables->Metadata::load();
     if (error != manager::metadata::ErrorCode::OK) {
@@ -155,9 +148,21 @@ void Worker::deploy_metadata(std::size_t table_id)
         VLOG(log_debug) << "<-- FILE_IO_ERROR";
         return;
     }
-
     boost::property_tree::ptree table;
     if (error = tables->get(table_id, table); error == manager::metadata::ErrorCode::OK) {
+        auto rc = do_deploy_metadata(db_, table_id, table);
+        channel_->send_ack(rc);
+    } else {
+        channel_->send_ack(ERROR_CODE::UNKNOWN);
+        VLOG(log_debug) << "<-- UNKNOWN";
+    }
+}
+
+ERROR_CODE Worker::do_deploy_metadata(jogasaki::api::database& db, std::size_t table_id, boost::property_tree::ptree& table)
+{
+    manager::metadata::ErrorCode error;
+
+    {
         if (FLAGS_v >= log_debug) {
             std::ostringstream oss;
             boost::property_tree::json_parser::write_json(oss, table);
@@ -171,9 +176,8 @@ void Worker::deploy_metadata(std::size_t table_id)
         auto id = table.get_optional<manager::metadata::ObjectIdType>(manager::metadata::Tables::ID);
         auto table_name = table.get_optional<std::string>(manager::metadata::Tables::NAME);
         if (!id || !table_name || (id.value() != table_id)) {
-            channel_->send_ack(ERROR_CODE::INVALID_PARAMETER);
             VLOG(log_debug) << "<-- INVALID_PARAMETER";
-            return;
+            return ERROR_CODE::INVALID_PARAMETER;
         }
 
         VLOG(log_debug) << " name is " << table_name.value();
@@ -219,9 +223,8 @@ void Worker::deploy_metadata(std::size_t table_id)
         BOOST_FOREACH (const boost::property_tree::ptree::value_type& node, table.get_child(manager::metadata::Tables::COLUMNS_NODE)) {
             auto column_number = node.second.get_optional<uint64_t>(manager::metadata::Column::COLUMN_NUMBER);
             if (!column_number) {
-                channel_->send_ack(ERROR_CODE::INVALID_PARAMETER);
                 VLOG(log_debug) << "<-- INVALID_PARAMETER";
-                return;
+                return ERROR_CODE::INVALID_PARAMETER;
             }
             columns_map[column_number.value()] = &node.second;
             VLOG(log_debug) << " found column metadata, column_number " << column_number.value();
@@ -233,9 +236,8 @@ void Worker::deploy_metadata(std::size_t table_id)
         std::size_t column_number_value = 1;
         for(auto &&e : columns_map) {
             if (column_number_value != e.first) {
-                channel_->send_ack(ERROR_CODE::INVALID_PARAMETER);
                 VLOG(log_debug) << "<-- INVALID_PARAMETER";
-                return;
+                return ERROR_CODE::INVALID_PARAMETER;
             }
             const boost::property_tree::ptree& column = *e.second;
             
@@ -244,9 +246,8 @@ void Worker::deploy_metadata(std::size_t table_id)
             auto name = column.get_optional<std::string>(manager::metadata::Column::NAME);
             auto column_number = column.get_optional<uint64_t>(manager::metadata::Column::COLUMN_NUMBER);
             if (!is_not_null || !data_type_id || !name) {
-                channel_->send_ack(ERROR_CODE::INVALID_PARAMETER);
                 VLOG(log_debug) << "<-- INVALID_PARAMETER";
-                return;
+                return ERROR_CODE::INVALID_PARAMETER;
             }
             auto is_not_null_value = is_not_null.value();
             auto data_type_id_value = static_cast<manager::metadata::DataTypes::DataTypesId>(data_type_id.value());
@@ -260,24 +261,21 @@ void Worker::deploy_metadata(std::size_t table_id)
                 default_expression_value = default_expression.value();
                 auto is_funcexpr_opt = column.get_optional<bool>(manager::metadata::Column::IS_FUNCEXPR);
                 if (!is_funcexpr_opt) {
-                    channel_->send_ack(ERROR_CODE::INVALID_PARAMETER);  // IS_FUNCEXPR is necessary when default_expression is given
                     VLOG(log_debug) << "<-- INVALID_PARAMETER";
-                    return;
+                    return ERROR_CODE::INVALID_PARAMETER;  // IS_FUNCEXPR is necessary when default_expression is given
                 }
                 is_funcexpr = is_funcexpr_opt.value();
                 if (is_funcexpr) {
                     LOG(ERROR) << " default value in function form is not currentry surported";
-                    channel_->send_ack(ERROR_CODE::UNSUPPORTED);  // default value in function form is not currentry surported
                     VLOG(log_debug) << "<-- INVALID_PARAMETER";
-                    return;
+                    return ERROR_CODE::UNSUPPORTED;  // default value in function form is not currentry surported
                 }
             }
 
             if (auto itr = std::find(pk_columns.begin(), pk_columns.end(), column_number_value); itr != pk_columns.end()) {  // is this pk_column ?
                 if(!is_not_null_value) {
-                    channel_->send_ack(ERROR_CODE::INVALID_PARAMETER);  // pk_column must be is_not_null
                     VLOG(log_debug) << "<-- INVALID_PARAMETER";
-                    return;
+                    return ERROR_CODE::INVALID_PARAMETER;  // pk_column must be is_not_null
                 }
             } else {  // this is value column
                 value_columns.emplace_back(column_number_value);
@@ -337,16 +335,14 @@ void Worker::deploy_metadata(std::size_t table_id)
             {
                 auto varying = column.get_optional<bool>(manager::metadata::Column::VARYING);
                 if(!varying) {  // varying field is necessary for CHAR/VARCHRA
-                    channel_->send_ack(ERROR_CODE::INVALID_PARAMETER);
                     VLOG(log_debug) << "<-- INVALID_PARAMETER";
-                    return;
+                    return ERROR_CODE::INVALID_PARAMETER;
                 }
                 auto varying_value = varying.value();
                 if((!varying_value && (data_type_id_value != manager::metadata::DataTypes::DataTypesId::CHAR)) ||
                    (varying_value && (data_type_id_value != manager::metadata::DataTypes::DataTypesId::VARCHAR))) {
-                    channel_->send_ack(ERROR_CODE::INVALID_PARAMETER);
                     VLOG(log_debug) << "<-- INVALID_PARAMETER";  // type and attributes are inconsistent
-                    return;
+                    return ERROR_CODE::INVALID_PARAMETER;
                 }
 
                 std::size_t data_length_value{1};  // for CHAR
@@ -373,9 +369,8 @@ void Worker::deploy_metadata(std::size_t table_id)
                 if (!default_expression_value.empty()) {
                     std::size_t index = default_expression_value.rfind((data_type_id_value == manager::metadata::DataTypes::DataTypesId::CHAR) ? "::bpchar" : "::character varying");
                     if (index == std::string::npos) {
-                        channel_->send_ack(ERROR_CODE::INVALID_PARAMETER);
                         VLOG(log_debug) << "<-- INVALID_PARAMETER";
-                        return;
+                        return ERROR_CODE::INVALID_PARAMETER;
                     }
                     default_value = yugawara::storage::column_value(std::make_shared<::takatori::value::character const>(default_expression_value.substr(1, index - 2)));
                 }
@@ -399,9 +394,8 @@ void Worker::deploy_metadata(std::size_t table_id)
                 } else {
                     auto po = data_length_vector.at(0);
                     if (!po) {
-                        channel_->send_ack(ERROR_CODE::UNSUPPORTED);
                         VLOG(log_debug) << "<-- UNSUPPORTED";
-                        return;
+                        return ERROR_CODE::UNSUPPORTED;
                     }
                     p = po.value();
                     if (data_length_vector.size() >= 2) {
@@ -423,17 +417,15 @@ void Worker::deploy_metadata(std::size_t table_id)
                 if (!default_expression_value.empty()) {
                     std::size_t index = default_expression_value.rfind("::date");
                     if (index == std::string::npos) {
-                        channel_->send_ack(ERROR_CODE::INVALID_PARAMETER);
                         VLOG(log_debug) << "<-- INVALID_PARAMETER";
-                        return;
+                        return ERROR_CODE::INVALID_PARAMETER;
                     }
                     std::string dvs = default_expression_value.substr(1, index - 2);
                     struct tm tm;
                     memset(&tm, 0, sizeof(struct tm));
                     if (auto ts = strptime(dvs.c_str(), "%Y-%m-%d", &tm); ts == nullptr) {
-                        channel_->send_ack(ERROR_CODE::INVALID_PARAMETER);
                         VLOG(log_debug) << "<-- INVALID_PARAMETER";
-                        return;
+                        return ERROR_CODE::INVALID_PARAMETER;
                     }
                     default_value = yugawara::storage::column_value(std::make_shared<::takatori::value::date const>(tm.tm_year + 1900, tm.tm_mon + 1, tm.tm_mday));
                 }
@@ -450,9 +442,8 @@ void Worker::deploy_metadata(std::size_t table_id)
                 if (!default_expression_value.empty()) {
                     std::size_t index = default_expression_value.rfind("::time without time zone");
                     if (index == std::string::npos) {
-                        channel_->send_ack(ERROR_CODE::INVALID_PARAMETER);
                         VLOG(log_debug) << "<-- INVALID_PARAMETER";
-                        return;
+                        return ERROR_CODE::INVALID_PARAMETER;
                     }
                     std::string dvs = default_expression_value.substr(1, index - 2);
                     struct tm tm;
@@ -461,9 +452,8 @@ void Worker::deploy_metadata(std::size_t table_id)
                         std::string rem(ts);
                         default_value = yugawara::storage::column_value(std::make_shared<::takatori::value::time_of_day const>(tm.tm_hour, tm.tm_min, tm.tm_sec, std::chrono::nanoseconds(!rem.empty() ? static_cast<std::size_t>(stod(rem) * 1000000000.) : 0)));
                     } else {
-                        channel_->send_ack(ERROR_CODE::INVALID_PARAMETER);
                         VLOG(log_debug) << "<-- INVALID_PARAMETER";
-                        return;
+                        return ERROR_CODE::INVALID_PARAMETER;
                     }
                 }
                 columns.emplace_back(yugawara::storage::column(name_value,
@@ -479,9 +469,8 @@ void Worker::deploy_metadata(std::size_t table_id)
                 if (!default_expression_value.empty()) {
                     std::size_t index = default_expression_value.rfind("::time with time zone");
                     if (index == std::string::npos) {
-                        channel_->send_ack(ERROR_CODE::INVALID_PARAMETER);
                         VLOG(log_debug) << "<-- INVALID_PARAMETER";
-                        return;
+                        return ERROR_CODE::INVALID_PARAMETER;
                     }
                     std::string dvs = default_expression_value.substr(1, index - 2);
                     std::string dvs_t = dvs.substr(0, index - 5);
@@ -494,9 +483,8 @@ void Worker::deploy_metadata(std::size_t table_id)
                         std::string rem(ts);
                         default_value = yugawara::storage::column_value(std::make_shared<::takatori::value::time_of_day const>(tm.tm_hour, tm.tm_min, tm.tm_sec, std::chrono::nanoseconds(!rem.empty() ? static_cast<std::size_t>(stod(rem) * 1000000000.) : 0)));
                     } else {
-                        channel_->send_ack(ERROR_CODE::INVALID_PARAMETER);
                         VLOG(log_debug) << "<-- INVALID_PARAMETER";
-                        return;
+                        return ERROR_CODE::INVALID_PARAMETER;
                     }
                 }
                 columns.emplace_back(yugawara::storage::column(name_value,
@@ -512,9 +500,8 @@ void Worker::deploy_metadata(std::size_t table_id)
                 if (!default_expression_value.empty()) {
                     std::size_t index = default_expression_value.rfind("::timestamp without time zone");
                     if (index == std::string::npos) {
-                        channel_->send_ack(ERROR_CODE::INVALID_PARAMETER);
                         VLOG(log_debug) << "<-- INVALID_PARAMETER";
-                        return;
+                        return ERROR_CODE::INVALID_PARAMETER;
                     }
                     std::string dvs = default_expression_value.substr(1, index - 2);
                     struct tm tm;
@@ -523,9 +510,8 @@ void Worker::deploy_metadata(std::size_t table_id)
                         std::string rem(ts);
                         default_value = yugawara::storage::column_value(std::make_shared<::takatori::value::time_point const>(tm.tm_year + 1900, tm.tm_mon + 1, tm.tm_mday, tm.tm_hour, tm.tm_min, tm.tm_sec, std::chrono::nanoseconds(!rem.empty() ? static_cast<std::size_t>(stod(rem) * 1000000000.) : 0)));
                     } else {
-                        channel_->send_ack(ERROR_CODE::INVALID_PARAMETER);
                         VLOG(log_debug) << "<-- INVALID_PARAMETER";
-                        return;
+                        return ERROR_CODE::INVALID_PARAMETER;
                     }
                 }
                 columns.emplace_back(yugawara::storage::column(name_value,
@@ -541,9 +527,8 @@ void Worker::deploy_metadata(std::size_t table_id)
                 if (!default_expression_value.empty()) {
                     std::size_t index = default_expression_value.rfind("::timestamp with time zone");
                     if (index == std::string::npos) {
-                        channel_->send_ack(ERROR_CODE::INVALID_PARAMETER);
                         VLOG(log_debug) << "<-- INVALID_PARAMETER";
-                        return;
+                        return ERROR_CODE::INVALID_PARAMETER;
                     }
                     std::string dvs = default_expression_value.substr(1, index - 2);
                     std::string dvs_t = dvs.substr(0, index - 5);
@@ -556,9 +541,8 @@ void Worker::deploy_metadata(std::size_t table_id)
                         std::string rem(ts);
                         default_value = yugawara::storage::column_value(std::make_shared<::takatori::value::time_point const>(tm.tm_year + 1900, tm.tm_mon + 1, tm.tm_mday, tm.tm_hour, tm.tm_min, tm.tm_sec, std::chrono::nanoseconds(!rem.empty() ? static_cast<std::size_t>(stod(rem) * 1000000000.) : 0)));
                     } else {
-                        channel_->send_ack(ERROR_CODE::INVALID_PARAMETER);
                         VLOG(log_debug) << "<-- INVALID_PARAMETER";
-                        return;
+                        return ERROR_CODE::INVALID_PARAMETER;
                     }
                 }
                 columns.emplace_back(yugawara::storage::column(name_value,
@@ -585,12 +569,11 @@ void Worker::deploy_metadata(std::size_t table_id)
             yugawara::storage::table::simple_name_type(table_name.value()),
             std::move(columns)
         );
-        if (auto rc = db_.create_table(t); rc != jogasaki::status::ok) {
-            channel_->send_ack((rc == jogasaki::status::err_already_exists) ? ERROR_CODE::INVALID_PARAMETER : ERROR_CODE::UNKNOWN);
+        if (auto rc = db.create_table(t); rc != jogasaki::status::ok) {
             VLOG(log_debug) << "<-- " << ((rc == jogasaki::status::err_already_exists) ? "INVALID_PARAMETER" : "UNKNOWN");
-            return;
+            return (rc == jogasaki::status::err_already_exists) ? ERROR_CODE::INVALID_PARAMETER : ERROR_CODE::UNKNOWN;
         }
-        
+
         // build key metadata (yugawara::storage::index::key)
         std::vector<yugawara::storage::index::key> keys;
         keys.reserve(pk_columns.size());
@@ -625,10 +608,9 @@ void Worker::deploy_metadata(std::size_t table_id)
                 ::yugawara::storage::index_feature::primary,
             }
         );
-        if(db_.create_index(i) != jogasaki::status::ok) {
-            channel_->send_ack(ERROR_CODE::UNKNOWN);
+        if(db.create_index(i) != jogasaki::status::ok) {
             VLOG(log_debug) << "<-- UNKNOWN";
-            return;
+            return ERROR_CODE::UNKNOWN;
         }
 
         // secondary index from unique constraint
@@ -664,18 +646,14 @@ void Worker::deploy_metadata(std::size_t table_id)
                     ::yugawara::storage::index_feature::unique,
                 }
             );
-            if(db_.create_index(si) != jogasaki::status::ok) {
-                channel_->send_ack(ERROR_CODE::UNKNOWN);
+            if(db.create_index(si) != jogasaki::status::ok) {
                 VLOG(log_debug) << "<-- UNKNOWN";
-                return;
+                return ERROR_CODE::UNKNOWN;
             }
         }
 
-        channel_->send_ack(ERROR_CODE::OK);
         VLOG(log_debug) << "<-- OK";
-    } else {
-        channel_->send_ack(ERROR_CODE::UNKNOWN);
-        VLOG(log_debug) << "<-- UNKNOWN";
+        return ERROR_CODE::OK;
     }
 }
 
@@ -683,13 +661,6 @@ void Worker::withdraw_metadata(std::size_t table_id)
 {
     manager::metadata::ErrorCode error;
 
-    auto datatypes = std::make_unique<manager::metadata::DataTypes>(dbname_);
-    error = datatypes->Metadata::load();
-    if (error != manager::metadata::ErrorCode::OK) {
-        channel_->send_ack(ERROR_CODE::FILE_IO_ERROR);
-        VLOG(log_debug) << "<-- FILE_IO_ERROR";
-        return;
-    }
     auto tables = std::make_unique<manager::metadata::Tables>(dbname_);
     error = tables->Metadata::load();
     if (error != manager::metadata::ErrorCode::OK) {

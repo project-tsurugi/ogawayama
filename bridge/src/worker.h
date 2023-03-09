@@ -60,6 +60,8 @@ class Worker {
     void run();
     friend class listener;
 
+    static ERROR_CODE do_deploy_metadata(jogasaki::api::database&, std::size_t, boost::property_tree::ptree&);  // placed in public for testing convenience
+
  private:
     void execute_statement(std::string_view);
     bool execute_query(std::string_view, std::size_t);

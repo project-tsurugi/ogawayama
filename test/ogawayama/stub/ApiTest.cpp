@@ -18,7 +18,7 @@
 
 #include <jogasaki/serializer/value_output.h>
 
-#include "TestRoot.h"
+#include "stub_test_root.h"
 
 
 namespace ogawayama::testing {
