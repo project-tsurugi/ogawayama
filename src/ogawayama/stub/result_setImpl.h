@@ -28,7 +28,7 @@ namespace ogawayama::stub {
 class ResultSet::Impl
 {
 public:
-    Impl(Transaction::Impl*, std::unique_ptr<tateyama::common::wire::session_wire_container::resultset_wires_container>, ::jogasaki::proto::sql::response::ResultSetMetadata);
+    Impl(Transaction::Impl*, std::unique_ptr<tateyama::common::wire::session_wire_container::resultset_wires_container>, ::jogasaki::proto::sql::response::ResultSetMetadata, std::size_t query_index);
     ~Impl();
     ErrorCode get_metadata(MetadataPtr &);
     ErrorCode next();
@@ -40,6 +40,7 @@ public:
     std::unique_ptr<tateyama::common::wire::session_wire_container::resultset_wires_container> resultset_wire_;
     ::jogasaki::proto::sql::response::ResultSetMetadata metadata_;
     std::size_t column_number_;
+    std::size_t query_index_;
 
     ogawayama::stub::Metadata ogawayama_metadata_{};
     bool ogawayama_metadata_valid_{false};

@@ -27,7 +27,7 @@ static constexpr const char* shm_name = "api_test";
 
 class ApiTest : public ::testing::Test {
     virtual void SetUp() {
-        server_ = std::make_unique<server>("api_test");
+        server_ = std::make_unique<server>(shm_name);
     }
 protected:
     std::unique_ptr<server> server_{};

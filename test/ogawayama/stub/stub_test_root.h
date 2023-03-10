@@ -43,7 +43,7 @@
 namespace ogawayama::testing {
 
 class server {
-    constexpr static std::string_view resultset_name = "resultset_for_test";  // NOLINT
+    constexpr static std::string_view resultset_name_prefix = "resultset_for_test_";  // NOLINT
 
 public:
     server(std::string name) : name_(name), endpoint_(name_), channel_stream_(name_) {
@@ -57,7 +57,9 @@ public:
     template<typename T>
     void response_message(T& reply) = delete;
 
-    void response_with_resultset(jogasaki::proto::sql::response::ResultSetMetadata& metadata, std::queue<std::string>& resultset, jogasaki::proto::sql::response::ResultOnly& ro) {
+    void response_with_resultset(jogasaki::proto::sql::response::ResultSetMetadata& metadata, std::queue<std::string>& resultset, jogasaki::proto::sql::response::ResultOnly& ro, std::size_t index = 1) {
+        std::string resultset_name{resultset_name_prefix};
+        resultset_name += std::to_string(index);
         // body_head
         jogasaki::proto::sql::response::ExecuteQuery e{};
         jogasaki::proto::sql::response::Response rh{};
@@ -68,7 +70,7 @@ public:
         jogasaki::proto::sql::response::Response rb{};
         rb.set_allocated_result_only(&ro);
         // set response
-        endpoint_.worker_->response_message(rh, resultset_name, resultset, rb);
+        endpoint_.worker_->response_message(rh, resultset_name, resultset, rb, index);
         // release
         rb.release_result_only();
         rh.release_execute_query();

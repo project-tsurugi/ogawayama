@@ -18,13 +18,17 @@
 
 namespace ogawayama::stub {
 
-ResultSet::Impl::Impl(Transaction::Impl* manager, std::unique_ptr<tateyama::common::wire::session_wire_container::resultset_wires_container> resultset_wire, ::jogasaki::proto::sql::response::ResultSetMetadata metadata)
-    : manager_(manager), resultset_wire_(std::move(resultset_wire)), metadata_(metadata), column_number_(metadata_.columns_size())
+ResultSet::Impl::Impl(Transaction::Impl* manager, std::unique_ptr<tateyama::common::wire::session_wire_container::resultset_wires_container> resultset_wire, ::jogasaki::proto::sql::response::ResultSetMetadata metadata, std::size_t query_index)
+    : manager_(manager),
+      resultset_wire_(std::move(resultset_wire)),
+      metadata_(metadata),
+      column_number_(metadata_.columns_size()),
+      query_index_(query_index)
 {
 }
 
 ResultSet::Impl::~Impl() {
-    manager_->receive_body();
+    manager_->receive_body(query_index_);
 }
 
 /**
@@ -196,6 +200,9 @@ ErrorCode ResultSet::Impl::next_column(std::string& value) {
     std::string_view sv;
     ErrorCode err = next_column(sv);
     if( err == ErrorCode::OK) {
+        if (value.capacity() < (sv.length() + 1)) {
+            value.reserve(sv.length() + 1);
+        }
         value = sv;
     }
     return err;

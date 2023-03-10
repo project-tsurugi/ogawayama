@@ -17,6 +17,8 @@
 
 #include <sstream>
 #include <optional>
+#include <string>
+#include <vector>
 
 #include <tateyama/utils/protobuf_utils.h>
 #include <tateyama/proto/framework/request.pb.h>
@@ -35,8 +37,6 @@ constexpr static std::size_t MESSAGE_VERSION = 1;
 constexpr inline std::uint32_t SERVICE_ID_SQL = 3;  // from tateyama/framework/component_ids.h
 
 class transport {
-constexpr static std::size_t query_index = 1;
-
 public:
     transport() = delete;
 
@@ -88,7 +88,7 @@ public:
  * @param execute_query_request a execute query request message in ::jogasaki::proto::sql::request::Begin
  * @return std::optional of ::jogasaki::proto::sql::request::ExecuteQuery
  */
-    std::optional<::jogasaki::proto::sql::response::ExecuteQuery> send(::jogasaki::proto::sql::request::ExecuteQuery& execute_query_request) {
+    std::optional<::jogasaki::proto::sql::response::ExecuteQuery> send(::jogasaki::proto::sql::request::ExecuteQuery& execute_query_request, std::size_t query_index) {
         ::jogasaki::proto::sql::request::Request request{};
         *(request.mutable_execute_query()) = execute_query_request;
         auto response_opt = send<::jogasaki::proto::sql::response::Response>(request, query_index);
@@ -109,7 +109,7 @@ public:
  * @brief receive the receive_body describing the status of the execute_query processing.
  * @return std::optional of ::jogasaki::proto::sql::request::ResultOnly
  */
-    std::optional<::jogasaki::proto::sql::response::ResultOnly> receive_body() {
+    std::optional<::jogasaki::proto::sql::response::ResultOnly> receive_body(std::size_t query_index) {
         return receive<::jogasaki::proto::sql::response::ResultOnly>(query_index);
     }
     
@@ -171,8 +171,10 @@ private:
     tateyama::common::wire::session_wire_container& wire_;
     ::tateyama::proto::framework::request::Header header_{};
     ::jogasaki::proto::sql::common::Session session_{};
-    std::string query_result_{};
     std::string statement_result_{};
+    std::string query_result_for_the_one_{};
+    constexpr static std::size_t opt_index = 1;
+    std::vector<std::string> query_results_{};
     
     template <typename T>
     std::optional<T> send(::jogasaki::proto::sql::request::Request& request, tateyama::common::wire::message_header::index_type index = 0) {
@@ -204,10 +206,13 @@ private:
             if (index == 0 && !statement_result_.empty()) {
                 response_message = statement_result_;
                 statement_result_.clear();
-            } else if (index > 0 && !query_result_.empty()) {
-                response_message = query_result_;
-                query_result_.clear();
-            } else {                
+            } else if (index == opt_index && !query_result_for_the_one_.empty()) {
+                response_message = query_result_for_the_one_;
+                query_result_for_the_one_.clear();
+            } else if (index > opt_index && !query_results_at(index).empty()) {
+                response_message = query_results_at(index);
+                query_results_at(index).clear();
+            } else {
                 response_wire.await();
                 auto slot = response_wire.get_idx();
                 if (slot == index) {
@@ -218,8 +223,9 @@ private:
                         statement_result_.resize(response_wire.get_length());
                         response_wire.read(statement_result_.data());
                     } else {
-                        query_result_.resize(response_wire.get_length());
-                        response_wire.read(query_result_.data());
+                        std::string& body = (slot == opt_index) ? query_result_for_the_one_ : query_results_at(slot);
+                        body.resize(response_wire.get_length());
+                        response_wire.read(body.data());
                     }
                     continue;
                 }
@@ -239,6 +245,14 @@ private:
             }
             return response;
         }
+    }
+
+    std::string& query_results_at(std::size_t index) {
+        auto vector_index = index - (opt_index + 1);
+        if (query_results_.size() < (vector_index + 1)) {
+            query_results_.resize(vector_index + 1);
+        }
+        return query_results_.at(vector_index);
     }
 };
 
