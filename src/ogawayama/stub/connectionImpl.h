@@ -17,7 +17,7 @@
 
 #include "ogawayama/common/channel_stream.h"
 #include "ogawayama/common/parameter_set.h"
-#include "transport.h"
+#include "ogawayama/transport/transport.h"
 
 #include "transactionImpl.h"
 #include "stubImpl.h"

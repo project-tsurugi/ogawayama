@@ -21,7 +21,6 @@
 
 #include "connectionImpl.h"
 #include "result_setImpl.h"
-#include "transport.h"
 
 namespace ogawayama::stub {
 
