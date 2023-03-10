@@ -57,7 +57,7 @@ jobs:
           rm -rf build
           mkdir -p build
           cd build
-          cmake -DCMAKE_BUILD_TYPE=Debug -DBUILD_CPR=OFF -DCMAKE_INSTALL_PREFIX=${GITHUB_WORKSPACE}/.local ..
+          cmake -DCMAKE_BUILD_TYPE=Debug -DBUILD_TESTS=OFF -DBUILD_DOCUMENTS=OFF -DCMAKE_INSTALL_PREFIX=${GITHUB_WORKSPACE}/.local ..
           cmake --build . --target install --clean-first -- -j
 
       - id: Install_shirakami
@@ -67,7 +67,7 @@ jobs:
           rm -rf build
           mkdir -p build
           cd build
-          cmake -DCMAKE_BUILD_TYPE=Debug -DBUILD_CPR=OFF -DCMAKE_INSTALL_PREFIX=${GITHUB_WORKSPACE}/.local ..
+          cmake -DCMAKE_BUILD_TYPE=Debug -DBUILD_TESTS=OFF -DBUILD_DOCUMENTS=OFF -DBUILD_BENCHMARK=OFF -DBUILD_CPR=OFF -DCMAKE_INSTALL_PREFIX=${GITHUB_WORKSPACE}/.local ..
           cmake --build . --target install --clean-first -- -j
 
       - id: Install_sharksfin
@@ -127,7 +127,7 @@ jobs:
           rm -rf build
           mkdir -p build
           cd build
-          cmake -DCMAKE_BUILD_TYPE=Debug -DBUILD_TESTS=OFF -DBUILD_DOCUMENTS=OFF -DFORCE_INSTALL_RPATH=ON -DCMAKE_INSTALL_PREFIX=${GITHUB_WORKSPACE}/.local -DCMAKE_PREFIX_PATH="${{ matrix.additional_prefix_path }};${GITHUB_WORKSPACE}/.local" ..
+          cmake -DCMAKE_BUILD_TYPE=Debug -DBUILD_TESTS=OFF -DBUILD_DOCUMENTS=OFF -DBUILD_EXAMPLES=OFF -DFORCE_INSTALL_RPATH=ON -DCMAKE_INSTALL_PREFIX=${GITHUB_WORKSPACE}/.local -DCMAKE_PREFIX_PATH="${{ matrix.additional_prefix_path }};${GITHUB_WORKSPACE}/.local" ..
           cmake --build . --target install --clean-first -- -j
 
       - id: Install_performance_tools
@@ -167,7 +167,7 @@ jobs:
           rm -rf build
           mkdir -p build
           cd build
-          cmake -DCMAKE_BUILD_TYPE=Debug -DDATA_STORAGE=json -DFORCE_INSTALL_RPATH=ON -DCMAKE_INSTALL_PREFIX=${GITHUB_WORKSPACE}/.local ..
+          cmake -DCMAKE_BUILD_TYPE=Debug -DBUILD_TESTS=OFF -DDATA_STORAGE=json -DFORCE_INSTALL_RPATH=ON -DCMAKE_INSTALL_PREFIX=${GITHUB_WORKSPACE}/.local ..
           cmake --build . --target install --clean-first -- -j
 
       - id: Install_message-manager
@@ -177,7 +177,7 @@ jobs:
           rm -rf build
           mkdir -p build
           cd build
-          cmake -DCMAKE_BUILD_TYPE=Debug -DFORCE_INSTALL_RPATH=ON -DCMAKE_INSTALL_PREFIX=${GITHUB_WORKSPACE}/.local ..
+          cmake -DCMAKE_BUILD_TYPE=Debug -DBUILD_TESTS=OFF -DFORCE_INSTALL_RPATH=ON -DCMAKE_INSTALL_PREFIX=${GITHUB_WORKSPACE}/.local ..
           cmake --build . --target install --clean-first -- -j
 
       - id: Install_jogasaki
@@ -187,7 +187,7 @@ jobs:
           rm -rf build
           mkdir -p build
           cd build
-          cmake -DCMAKE_BUILD_TYPE=Debug -DSHARKSFIN_IMPLEMENTATION=shirakami -DCMAKE_EXPORT_COMPILE_COMMANDS=ON -DCMAKE_INSTALL_PREFIX=${GITHUB_WORKSPACE}/.local -DCMAKE_PREFIX_PATH=${GITHUB_WORKSPACE}/.local ..
+          cmake -DCMAKE_BUILD_TYPE=Debug -DSHARKSFIN_IMPLEMENTATION=shirakami -DBUILD_TESTS=OFF -DBUILD_DOCUMENTS=OFF -DBUILD_EXAMPLES=OFF -DCMAKE_EXPORT_COMPILE_COMMANDS=ON -DCMAKE_INSTALL_PREFIX=${GITHUB_WORKSPACE}/.local -DCMAKE_PREFIX_PATH=${GITHUB_WORKSPACE}/.local ..
           cmake --build . --target install --clean-first -- -j
 
       - id: CMake_Build
