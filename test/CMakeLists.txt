@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-file(GLOB TEST_SOURCES
+file(GLOB STUB_TEST_SOURCES
     "ogawayama/stub/*Test.cpp"
 )
 
@@ -21,14 +21,31 @@ register_tests(
     DEPENDS
       stub-impl
       bridge-impl
-      bridge
       message-manager-interface
       jogasaki-${SHARKSFIN_IMPLEMENTATION}-engine
-      tateyama-${SHARKSFIN_IMPLEMENTATION}-engine
       Boost::filesystem
       glog::glog
       gflags::gflags
       rt
       protobuf::libprotobuf
-    SOURCES ${TEST_SOURCES}
+    SOURCES ${STUB_TEST_SOURCES}
+)
+
+file(GLOB BRIDGE_TEST_SOURCES
+    "ogawayama/bridge/*Test.cpp"
+    "ogawayama/bridge/database_mock.cpp"
+)
+
+register_tests(
+    TARGET bridge
+    DEPENDS
+      stub-impl
+      bridge-impl
+      message-manager-interface
+      jogasaki-${SHARKSFIN_IMPLEMENTATION}-engine
+      Boost::filesystem
+      glog::glog
+      gflags::gflags
+      rt
+    SOURCES ${BRIDGE_TEST_SOURCES}
 )

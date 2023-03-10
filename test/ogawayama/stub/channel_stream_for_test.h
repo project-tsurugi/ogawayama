@@ -23,7 +23,7 @@
 #include <ogawayama/logging.h>
 
 #include <ogawayama/stub/api.h>
-#include <ogawayama/bridge/service.h>
+#include <ogawayama/common/channel_stream.h>
 
 namespace ogawayama::testing {
 
@@ -98,6 +98,9 @@ public:
         if (thread_.joinable()) {
             thread_.join();
         }
+    }
+    std::string_view get_shared_memory_name() {
+        return shared_memory_->get_name();
     }
     void operator()() {
         while(true) {
