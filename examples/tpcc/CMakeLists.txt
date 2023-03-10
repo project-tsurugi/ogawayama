@@ -27,9 +27,8 @@ set_target_properties(tpcc
 
 target_include_directories(tpcc
     PRIVATE .
-    PRIVATE ../../stub/include
-    PRIVATE ../../common/include
-    PRIVATE ../../stub/src
+    PRIVATE ${CMAKE_SOURCE_DIR}/common/include
+    PRIVATE ${CMAKE_SOURCE_DIR}/src
 )
 
 target_link_libraries(tpcc

@@ -79,7 +79,8 @@ ErrorCode Transaction::Impl::execute_query(std::string_view query, std::shared_p
         *(request.mutable_transaction_handle()) = transaction_handle_;
         *(request.mutable_sql()) = query;
         try {
-            auto response_opt = transport_.send(request);
+            std::size_t query_index = get_query_index();
+            auto response_opt = transport_.send(request, query_index);
             request.clear_sql();
             request.clear_transaction_handle();
             if (!response_opt) {
@@ -90,7 +91,8 @@ ErrorCode Transaction::Impl::execute_query(std::string_view query, std::shared_p
                 std::make_unique<ResultSet::Impl>(
                     this,
                     transport_.create_resultset_wire(response.name()),
-                    response.record_meta()
+                    response.record_meta(),
+                    query_index
                 )
             );
             return ErrorCode::OK;

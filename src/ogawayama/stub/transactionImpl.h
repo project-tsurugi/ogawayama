@@ -17,11 +17,11 @@
 
 #include <memory>
 #include <vector>
+#include <queue>
 #include <stdexcept>
 
 #include "connectionImpl.h"
 #include "result_setImpl.h"
-#include "transport.h"
 
 namespace ogawayama::stub {
 
@@ -83,6 +83,10 @@ private:
     tateyama::bootstrap::wire::transport& transport_;
     ::jogasaki::proto::sql::common::Transaction transaction_handle_;
 
+    constexpr static std::size_t opt_index = 1;
+    std::size_t max_query_index_{opt_index};
+    std::queue<std::size_t> query_index_queue_{};
+    bool query_in_processing_{false};
     bool alive_{true};
 
     /**
@@ -91,10 +95,31 @@ private:
      */
     auto get_manager() { return manager_; }
 
-    void receive_body() {
-        auto body_opt = transport_.receive_body();
+    void receive_body(std::size_t query_index) {
+        put_query_index(query_index);
+        auto body_opt = transport_.receive_body(query_index);
         if (!body_opt) {
             std::cerr << "error at " << __func__ << std::endl;
+        }
+    }
+
+    std::size_t get_query_index() {
+        if (!query_in_processing_) {
+            query_in_processing_ = true;
+            return opt_index;
+        }
+        if (!query_index_queue_.empty()) {
+            std::size_t rv = query_index_queue_.front();
+            query_index_queue_.pop();
+            return rv;
+        }
+        return ++max_query_index_;
+    }
+    void put_query_index(std::size_t query_index) {
+        if (query_index == opt_index) {
+            query_in_processing_ = false;
+        } else {
+            query_index_queue_.push(query_index);
         }
     }
 

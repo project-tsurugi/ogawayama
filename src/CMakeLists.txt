@@ -94,8 +94,8 @@ set_target_properties(stub
 
 target_include_directories(stub
     PRIVATE ${CMAKE_SOURCE_DIR}/include
-    PRIVATE ${CMAKE_SOURCE_DIR}/src/include
     PRIVATE ${CMAKE_SOURCE_DIR}/common/include
+    PRIVATE ${CMAKE_SOURCE_DIR}/src
     PRIVATE ${CMAKE_BINARY_DIR}/src
 )
 
@@ -114,7 +114,7 @@ add_library(stub-impl INTERFACE)
 
 target_include_directories(stub-impl
     INTERFACE ${CMAKE_SOURCE_DIR}/include
-    INTERFACE ${CMAKE_SOURCE_DIR}/src/include
     INTERFACE ${CMAKE_SOURCE_DIR}/common/include
+    INTERFACE ${CMAKE_SOURCE_DIR}/src
     INTERFACE ogawayama/stub
 )
