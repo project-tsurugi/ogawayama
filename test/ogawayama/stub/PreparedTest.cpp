@@ -47,6 +47,7 @@ TEST_F(PreparedTest, prepare) {
         jogasaki::proto::sql::response::Prepare rp{};
         auto ps = rp.mutable_prepared_statement_handle();
         ps->set_handle(1234);
+        ps->set_has_result_records(false);
         server_->response_message(rp);
         rp.clear_prepared_statement_handle();
 
@@ -142,8 +143,53 @@ TEST_F(PreparedTest, prepare) {
         EXPECT_FALSE(request.begin().has_option());
     }
 
-    // TODO: place execute test here
-    
+    {
+        jogasaki::proto::sql::response::ResultOnly ro{};
+        jogasaki::proto::sql::response::Success s{};
+        ro.set_allocated_success(&s);
+        server_->response_message(ro);
+        ogawayama::stub::parameters_type parameters{};
+        parameters.emplace_back("int32_data:", static_cast<std::int32_t>(123456));
+        parameters.emplace_back("int64_data:", static_cast<std::int64_t>(123456789));
+        parameters.emplace_back("float32_data:", static_cast<float>(123.456));
+        parameters.emplace_back("float64_data:", static_cast<double>(123.456789));
+        parameters.emplace_back("text_data:", std::string("this is a string for the test"));
+// TODO: place put parameters for date, etc. here
+        EXPECT_EQ(ERROR_CODE::OK, transaction->execute_statement(prepared_statement, parameters));
+        ro.release_success();
+
+        std::optional<jogasaki::proto::sql::request::Request> request_opt = server_->request_message();
+        EXPECT_TRUE(request_opt);
+        auto request = request_opt.value();
+        EXPECT_EQ(request.request_case(), jogasaki::proto::sql::request::Request::RequestCase::kExecutePreparedStatement);
+
+        auto eps_request = request.execute_prepared_statement();
+        EXPECT_EQ(eps_request.prepared_statement_handle().handle(), 1234);
+        EXPECT_EQ(eps_request.parameters_size(), 5);
+
+        // 1st placeholder
+        EXPECT_EQ(eps_request.parameters(0).name(), "int32_data:");
+        EXPECT_EQ(eps_request.parameters(0).value_case(), ::jogasaki::proto::sql::request::Parameter::ValueCase::kInt4Value);
+        EXPECT_EQ(eps_request.parameters(0).int4_value(), 123456);
+        // 2nd placeholder
+        EXPECT_EQ(eps_request.parameters(1).name(), "int64_data:");
+        EXPECT_EQ(eps_request.parameters(1).value_case(), ::jogasaki::proto::sql::request::Parameter::ValueCase::kInt8Value);
+        EXPECT_EQ(eps_request.parameters(1).int8_value(), 123456789);
+        // 3rd placeholder
+        EXPECT_EQ(eps_request.parameters(2).name(), "float32_data:");
+        EXPECT_EQ(eps_request.parameters(2).value_case(), ::jogasaki::proto::sql::request::Parameter::ValueCase::kFloat4Value);
+        EXPECT_EQ(eps_request.parameters(2).float4_value(), static_cast<float>(123.456));
+        // 4th placeholder
+        EXPECT_EQ(eps_request.parameters(3).name(), "float64_data:");
+        EXPECT_EQ(eps_request.parameters(3).value_case(), ::jogasaki::proto::sql::request::Parameter::ValueCase::kFloat8Value);
+        EXPECT_EQ(eps_request.parameters(3).float8_value(), static_cast<double>(123.456789));
+        // 5th placeholder
+        EXPECT_EQ(eps_request.parameters(4).name(), "text_data:");
+        EXPECT_EQ(eps_request.parameters(4).value_case(), ::jogasaki::proto::sql::request::Parameter::ValueCase::kCharacterValue);
+        EXPECT_EQ(eps_request.parameters(4).character_value(), "this is a string for the test");
+// TODO: place check parameters for date, etc. here
+    }
+
     {
         jogasaki::proto::sql::response::ResultOnly ro{};
         jogasaki::proto::sql::response::Success s{};
@@ -157,8 +203,6 @@ TEST_F(PreparedTest, prepare) {
         auto request = request_opt.value();
         EXPECT_EQ(request.request_case(), jogasaki::proto::sql::request::Request::RequestCase::kCommit);
     }
-
-
 }
 
 }  // namespace ogawayama::testing

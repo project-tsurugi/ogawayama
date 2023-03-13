@@ -33,7 +33,7 @@ public:
 
     auto get_id() { return id_; }
 
-    bool has_has_result_records() { return has_result_records_; }
+    bool has_result_records() { return has_result_records_; }
 
     /**
      * @brief get the object to which this belongs
