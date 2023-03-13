@@ -103,6 +103,25 @@ public:
     }
 
 /**
+ * @brief send a execute statement request to the sql service.
+ * @param execute_statement_request a execute statement request message in ::jogasaki::proto::sql::request::ExecutePreparedStatement
+ * @return std::optional of ::jogasaki::proto::sql::request::ResultOnly
+ */
+    std::optional<::jogasaki::proto::sql::response::ResultOnly> send(::jogasaki::proto::sql::request::ExecutePreparedStatement& execute_statement_request) {
+        ::jogasaki::proto::sql::request::Request request{};
+        *(request.mutable_execute_prepared_statement()) = execute_statement_request;
+        auto response_opt = send<::jogasaki::proto::sql::response::Response>(request);
+        request.clear_execute_statement();
+        if (response_opt) {
+            auto response_message = response_opt.value();
+            if (response_message.has_result_only()) {
+                return response_message.result_only();
+            }
+        }
+        return std::nullopt;
+    }
+
+/**
  * @brief send a execute query request to the sql service.
  * @param execute_query_request a execute query request message in ::jogasaki::proto::sql::request::ExecuteQuery
  * @return std::optional of ::jogasaki::proto::sql::request::ExecuteQuery
@@ -112,6 +131,28 @@ public:
         *(request.mutable_execute_query()) = execute_query_request;
         auto response_opt = send<::jogasaki::proto::sql::response::Response>(request, query_index);
         request.clear_execute_query();
+        if (response_opt) {
+            auto response_message = response_opt.value();
+            if (response_message.has_execute_query()) {
+                return response_message.execute_query();
+            }
+            if (response_message.has_result_only()) {
+                throw std::runtime_error("no body_head message");
+            }
+        }
+        return std::nullopt;
+    }
+
+/**
+ * @brief send a execute query request to the sql service.
+ * @param execute_query_request a execute query request message in ::jogasaki::proto::sql::request::ExecutePreparedQuery
+ * @return std::optional of ::jogasaki::proto::sql::request::ExecutePreparedQuery
+ */
+    std::optional<::jogasaki::proto::sql::response::ExecuteQuery> send(::jogasaki::proto::sql::request::ExecutePreparedQuery& execute_query_request, std::size_t query_index) {
+        ::jogasaki::proto::sql::request::Request request{};
+        *(request.mutable_execute_prepared_query()) = execute_query_request;
+        auto response_opt = send<::jogasaki::proto::sql::response::Response>(request, query_index);
+        request.clear_execute_prepared_query();
         if (response_opt) {
             auto response_message = response_opt.value();
             if (response_message.has_execute_query()) {

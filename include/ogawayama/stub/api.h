@@ -177,7 +177,7 @@ public:
      * @param the parameters to be used for execution of the prepared statement
      * @return error code defined in error_code.h
      */
-    ErrorCode execute_statement(PreparedStatement*, parameters_type&);
+    ErrorCode execute_statement(PreparedStatementPtr&, parameters_type&);
 
     /**
      * @brief execute a query.
@@ -194,7 +194,7 @@ public:
      * @param result_set returns a result set of the query
      * @return error code defined in error_code.h
      */
-    ErrorCode execute_query(PreparedStatement*, parameters_type&, ResultSetPtr&);
+    ErrorCode execute_query(PreparedStatementPtr&, parameters_type&, ResultSetPtr&);
 
     /**
      * @brief commit the current transaction.

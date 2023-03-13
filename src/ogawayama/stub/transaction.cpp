@@ -57,14 +57,87 @@ ErrorCode Transaction::Impl::execute_statement(std::string_view statement) {
     return ErrorCode::NO_TRANSACTION;
 }
 
+class parameter {
+public:
+    parameter(std::string name) {
+        parameter_.set_name(name);
+    }
+    ::jogasaki::proto::sql::request::Parameter operator()(const std::monostate& data) {
+        return parameter_;
+    }
+    ::jogasaki::proto::sql::request::Parameter operator()(const std::int32_t& data) {
+        parameter_.set_int4_value(data);
+        return parameter_;
+    }
+    ::jogasaki::proto::sql::request::Parameter operator()(const std::int64_t& data) {
+        parameter_.set_int8_value(data);
+        return parameter_;
+    }
+    ::jogasaki::proto::sql::request::Parameter operator()(const float& data) {
+        parameter_.set_float4_value(data);
+        return parameter_;
+    }
+    ::jogasaki::proto::sql::request::Parameter operator()(const double& data) {
+        parameter_.set_float8_value(data);
+        return parameter_;
+    }
+    ::jogasaki::proto::sql::request::Parameter operator()(const std::string& data) {
+        parameter_.set_character_value(data);
+        return parameter_;
+    }
+    ::jogasaki::proto::sql::request::Parameter operator()(const date_type& data) {
+        return parameter_;
+    }
+    ::jogasaki::proto::sql::request::Parameter operator()(const time_type& data) {
+        return parameter_;
+    }
+    ::jogasaki::proto::sql::request::Parameter operator()(const timestamp_type& data) {
+        return parameter_;
+    }
+    
+private:
+    ::jogasaki::proto::sql::request::Parameter parameter_{};
+};
+
 /**
  * @brief execute a prepared statement.
  * @param prepared statement object with parameters
  * @return error code defined in error_code.h
  */
-ErrorCode Transaction::Impl::execute_statement(PreparedStatement* prepared, const parameters_type& parameters) {
-    // FIXME implement
-    return ErrorCode::UNSUPPORTED;
+ErrorCode Transaction::Impl::execute_statement(PreparedStatementPtr& prepared, const parameters_type& parameters) {
+    if (alive_) {
+        auto* ps_impl = prepared->get_impl();
+
+        if (ps_impl->has_result_records()) {
+            return ErrorCode::INVALID_PARAMETER;
+        }
+
+        ::jogasaki::proto::sql::request::ExecutePreparedStatement request{};
+        *(request.mutable_transaction_handle()) = transaction_handle_;
+
+        ::jogasaki::proto::sql::common::PreparedStatement prepaed_statement{};
+        prepaed_statement.set_handle(ps_impl->get_id());
+        prepaed_statement.set_has_result_records(ps_impl->has_result_records());
+        request.set_allocated_prepared_statement_handle(&prepaed_statement);
+
+        for (auto& e : parameters) {
+            *(request.add_parameters()) = std::visit(parameter(e.first), e.second);
+        }
+        auto response_opt = transport_.send(request);
+        request.clear_parameters();
+        request.release_prepared_statement_handle();
+        request.clear_transaction_handle();
+        
+        if (!response_opt) {
+            return ErrorCode::SERVER_FAILURE;
+        }
+        auto response = response_opt.value();
+        if (response.has_success()) {
+            return ErrorCode::OK;
+        }
+        return ErrorCode::SERVER_FAILURE;
+    }
+    return ErrorCode::NO_TRANSACTION;
 }
 
 /**
@@ -108,10 +181,49 @@ ErrorCode Transaction::Impl::execute_query(std::string_view query, std::shared_p
  * @param connection returns a connection class
  * @return error code defined in error_code.h
  */
-ErrorCode Transaction::Impl::execute_query(PreparedStatement* prepared, const parameters_type& parameters, std::shared_ptr<ResultSet> &result_set)
+ErrorCode Transaction::Impl::execute_query(PreparedStatementPtr& prepared, const parameters_type& parameters, std::shared_ptr<ResultSet> &result_set)
 {
-    // FIXME implement
-    return ErrorCode::UNSUPPORTED;
+    if (alive_) {
+        auto* ps_impl = prepared->get_impl();
+
+        if (!ps_impl->has_result_records()) {
+            return ErrorCode::INVALID_PARAMETER;
+        }
+        
+        ::jogasaki::proto::sql::request::ExecutePreparedQuery request{};
+        *(request.mutable_transaction_handle()) = transaction_handle_;
+
+        ::jogasaki::proto::sql::common::PreparedStatement prepaed_statement{};
+        prepaed_statement.set_handle(ps_impl->get_id());
+        prepaed_statement.set_has_result_records(ps_impl->has_result_records());
+        request.set_allocated_prepared_statement_handle(&prepaed_statement);
+        try {
+            for (auto& e : parameters) {
+                *(request.add_parameters()) = std::visit(parameter(e.first), e.second);
+            }
+            std::size_t query_index = get_query_index();
+            auto response_opt = transport_.send(request, query_index);
+            request.clear_parameters();
+            request.release_prepared_statement_handle();
+            request.clear_transaction_handle();
+            if (!response_opt) {
+                return ErrorCode::SERVER_FAILURE;
+            }
+            auto response = response_opt.value();
+            result_set = std::make_shared<ResultSet>(
+                std::make_unique<ResultSet::Impl>(
+                    this,
+                    transport_.create_resultset_wire(response.name()),
+                    response.record_meta(),
+                    query_index
+                )
+            );
+            return ErrorCode::OK;
+        } catch (std::runtime_error &e) {
+            return ErrorCode::SERVER_FAILURE;
+        }
+    }
+    return ErrorCode::NO_TRANSACTION;
 }
 
 /**
@@ -178,7 +290,7 @@ ErrorCode Transaction::execute_statement(std::string_view statement)
     return impl_->execute_statement(statement);
 }
 
-ErrorCode Transaction::execute_statement(PreparedStatement* prepared, parameters_type& parameters)
+ErrorCode Transaction::execute_statement(PreparedStatementPtr& prepared, parameters_type& parameters)
 {
     return impl_->execute_statement(prepared, parameters);
 }
@@ -188,7 +300,7 @@ ErrorCode Transaction::execute_query(std::string_view query, std::shared_ptr<Res
     return impl_->execute_query(query, result_set);
 }
 
-ErrorCode Transaction::execute_query(PreparedStatement* prepared, parameters_type& parameters, std::shared_ptr<ResultSet> &result_set)
+ErrorCode Transaction::execute_query(PreparedStatementPtr& prepared, parameters_type& parameters, std::shared_ptr<ResultSet> &result_set)
 {
     return impl_->execute_query(prepared, parameters, result_set);
 }
