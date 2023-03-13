@@ -141,9 +141,12 @@ public:
                 break;
             }
             try {
+                std::cerr << __func__ << ":" << __LINE__ << " " << shm_name_ << std::endl;
                 managed_shared_memory_ = std::make_unique<boost::interprocess::managed_shared_memory>(boost::interprocess::open_only, shm_name_.c_str());
+                std::cerr << __func__ << ":" << __LINE__ << std::endl;
             }
             catch(const boost::interprocess::interprocess_exception& ex) {
+                std::cerr << __func__ << ":" << __LINE__ << std::endl;
                 throw SharedMemoryException(std::string("can't find shared memory: ") + shm_name_);
             }
         }

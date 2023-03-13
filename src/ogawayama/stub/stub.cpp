@@ -24,8 +24,11 @@ Stub::Impl::Impl(Stub *stub, std::string_view database_name)
     : envelope_(stub), database_name_(database_name), connection_container_(database_name)
 {
     // for old-fashioned link
+    std::cerr << __func__ << ":" << __LINE__ << std::endl;
     shared_memory_ = std::make_unique<ogawayama::common::SharedMemory>(database_name, ogawayama::common::param::SheredMemoryType::SHARED_MEMORY_SERVER_CHANNEL);
+    std::cerr << __func__ << ":" << __LINE__ << std::endl;
     server_ = std::make_unique<ogawayama::common::ChannelStream>(ogawayama::common::param::server, shared_memory_.get());
+    std::cerr << __func__ << ":" << __LINE__ << std::endl;
 }
 
 Stub::Impl::~Impl() {}

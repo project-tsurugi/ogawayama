@@ -362,11 +362,15 @@ public:
             mem->destroy<MsgBuffer>(name_);
             buffer_ = mem->construct<MsgBuffer>(name_)(mem->get_segment_manager());
         } else {
+            std::cerr << __func__ << ":" << __LINE__ << " " << name_ << std::endl;
             buffer_ = mem->find<MsgBuffer>(name_).first;
             if (buffer_ == nullptr) {
+                std::cerr << __func__ << ":" << __LINE__ << std::endl;
                 throw SharedMemoryException(std::string("can't find shared memory for ChannelStream: ") + std::string(name));
             }
+            std::cerr << __func__ << ":" << __LINE__ << std::endl;
             buffer_->hello();
+            std::cerr << __func__ << ":" << __LINE__ << std::endl;
         }
     }
     ChannelStream(std::string_view name, SharedMemory *shared_memory) : ChannelStream(name, shared_memory, false) {}
