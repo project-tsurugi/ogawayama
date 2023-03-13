@@ -86,15 +86,20 @@ public:
         return parameter_;
     }
     ::jogasaki::proto::sql::request::Parameter operator()(const date_type& data) {
+        parameter_.set_date_value(data.days_since_epoch());
         return parameter_;
     }
     ::jogasaki::proto::sql::request::Parameter operator()(const time_type& data) {
+        parameter_.set_time_of_day_value(data.time_since_epoch().count());
         return parameter_;
     }
     ::jogasaki::proto::sql::request::Parameter operator()(const timestamp_type& data) {
+        auto v = parameter_.mutable_time_point_value();
+        v->set_offset_seconds(data.seconds_since_epoch().count());
+        v->set_nano_adjustment(data.subsecond().count());
         return parameter_;
     }
-    
+
 private:
     ::jogasaki::proto::sql::request::Parameter parameter_{};
 };

@@ -154,7 +154,12 @@ TEST_F(PreparedTest, prepare) {
         parameters.emplace_back("float32_data:", static_cast<float>(123.456));
         parameters.emplace_back("float64_data:", static_cast<double>(123.456789));
         parameters.emplace_back("text_data:", std::string("this is a string for the test"));
-// TODO: place put parameters for date, etc. here
+        auto date_for_test = takatori::datetime::date(2022, 12, 31);
+        parameters.emplace_back("date_data:", date_for_test);
+        auto time_of_day_for_test = takatori::datetime::time_of_day(23, 59, 59, std::chrono::nanoseconds(123457000));
+        parameters.emplace_back("time_data:", time_of_day_for_test);
+        auto time_point_for_test = takatori::datetime::time_point(takatori::datetime::date(2022, 12, 31), takatori::datetime::time_of_day(23, 59, 59, std::chrono::nanoseconds(987654000)));
+        parameters.emplace_back("timestamp_data:", time_point_for_test);
         EXPECT_EQ(ERROR_CODE::OK, transaction->execute_statement(prepared_statement, parameters));
         ro.release_success();
 
@@ -165,7 +170,7 @@ TEST_F(PreparedTest, prepare) {
 
         auto eps_request = request.execute_prepared_statement();
         EXPECT_EQ(eps_request.prepared_statement_handle().handle(), 1234);
-        EXPECT_EQ(eps_request.parameters_size(), 5);
+        EXPECT_EQ(eps_request.parameters_size(), 8);
 
         // 1st placeholder
         EXPECT_EQ(eps_request.parameters(0).name(), "int32_data:");
@@ -187,7 +192,19 @@ TEST_F(PreparedTest, prepare) {
         EXPECT_EQ(eps_request.parameters(4).name(), "text_data:");
         EXPECT_EQ(eps_request.parameters(4).value_case(), ::jogasaki::proto::sql::request::Parameter::ValueCase::kCharacterValue);
         EXPECT_EQ(eps_request.parameters(4).character_value(), "this is a string for the test");
-// TODO: place check parameters for date, etc. here
+        // 6th placeholder
+        EXPECT_EQ(eps_request.parameters(5).name(), "date_data:");
+        EXPECT_EQ(eps_request.parameters(5).value_case(), ::jogasaki::proto::sql::request::Parameter::ValueCase::kDateValue);
+        EXPECT_EQ(eps_request.parameters(5).date_value(), date_for_test.days_since_epoch());
+        // 7th placeholder
+        EXPECT_EQ(eps_request.parameters(6).name(), "time_data:");
+        EXPECT_EQ(eps_request.parameters(6).value_case(), ::jogasaki::proto::sql::request::Parameter::ValueCase::kTimeOfDayValue);
+        EXPECT_EQ(eps_request.parameters(6).time_of_day_value(), time_of_day_for_test.time_since_epoch().count());
+        // 8sh placeholder
+        EXPECT_EQ(eps_request.parameters(7).name(), "timestamp_data:");
+        EXPECT_EQ(eps_request.parameters(7).value_case(), ::jogasaki::proto::sql::request::Parameter::ValueCase::kTimePointValue);
+        EXPECT_EQ(eps_request.parameters(7).time_point_value().offset_seconds(), time_point_for_test.seconds_since_epoch().count());
+        EXPECT_EQ(eps_request.parameters(7).time_point_value().nano_adjustment(), time_point_for_test.subsecond().count());
     }
 
     {
