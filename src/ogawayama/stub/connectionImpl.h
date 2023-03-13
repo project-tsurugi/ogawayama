@@ -56,7 +56,7 @@ public:
      * @param reference to a PreparedSatementPtr
      * @return error code defined in error_code.h
      */
-    ErrorCode prepare(std::string_view, const pralceholders_type&, PreparedStatementPtr&);
+    ErrorCode prepare(std::string_view, const placeholders_type&, PreparedStatementPtr&);
 
     /**
      * @brief relay a create tabe message from the frontend to the server

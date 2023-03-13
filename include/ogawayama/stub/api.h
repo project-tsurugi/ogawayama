@@ -230,7 +230,7 @@ using TransactionPtr = std::unique_ptr<ogawayama::stub::Transaction>;
 
 namespace ogawayama::stub {
 
-using pralceholders_type = std::vector<std::pair<std::string, Metadata::ColumnType>>;
+using placeholders_type = std::vector<std::pair<std::string, Metadata::ColumnType::Type>>;
 
 /**
  * @brief Information about a connection.
@@ -270,7 +270,7 @@ public:
      * @param prepared statement returns a prepared statement class
      * @return error code defined in error_code.h
      */
-    ErrorCode prepare(std::string_view, const pralceholders_type&, PreparedStatementPtr&);
+    ErrorCode prepare(std::string_view, const placeholders_type&, PreparedStatementPtr&);
 
     /**
      * @brief implements begin_ddl() procedure
@@ -306,10 +306,8 @@ private:
     auto get_impl() { return impl_.get(); }
 
     friend class Stub;
-    friend class Transaction;
+    friend class PreparedStatement::Impl;
     friend class Transaction::Impl;
-    friend class ResultSet;
-    friend class ResultSet::Impl;
 };
 
 }  // namespace ogawayama::stub

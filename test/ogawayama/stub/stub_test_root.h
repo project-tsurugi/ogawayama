@@ -122,5 +122,12 @@ inline void server::response_message<jogasaki::proto::sql::response::ResultOnly>
     endpoint_.worker_->response_message(r);
     r.release_result_only();
 }
+template<>
+inline void server::response_message<jogasaki::proto::sql::response::Prepare>(jogasaki::proto::sql::response::Prepare& p) {
+    jogasaki::proto::sql::response::Response r{};
+    r.set_allocated_prepare(&p);
+    endpoint_.worker_->response_message(r);
+    r.release_prepare();
+}
 
 }  // namespace ogawayama::testing

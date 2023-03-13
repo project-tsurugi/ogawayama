@@ -14,6 +14,7 @@
  * limitations under the License.
  */
 
+#include "connectionImpl.h"
 #include "prepared_statementImpl.h"
 
 namespace ogawayama::stub {

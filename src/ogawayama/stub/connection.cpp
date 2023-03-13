@@ -16,6 +16,7 @@
 
 #include <boost/foreach.hpp>
 
+#include "prepared_statementImpl.h"
 #include "connectionImpl.h"
 
 namespace ogawayama::stub {
@@ -112,10 +113,68 @@ ErrorCode Connection::Impl::begin(const boost::property_tree::ptree& option, Tra
 /**
  * @brief prepare statement
  */
-ErrorCode Connection::Impl::prepare(std::string_view sql, const pralceholders_type& placeholders, PreparedStatementPtr& prepared)
+ErrorCode Connection::Impl::prepare(std::string_view sql, const placeholders_type& placeholders, PreparedStatementPtr& prepared)
 {
-    // FIXME implement
-    return ErrorCode::UNSUPPORTED;
+    ::jogasaki::proto::sql::request::Prepare request{};
+
+    std::string sql_string(sql);
+    request.set_sql(sql_string);
+
+    for (auto& e : placeholders) {
+        auto* ph = request.add_placeholders();
+        ph->set_name(e.first);
+        switch (e.second) {
+        case Metadata::ColumnType::Type::INT32:
+            ph->set_atom_type(::jogasaki::proto::sql::common::AtomType::INT4);
+            break;
+        case Metadata::ColumnType::Type::INT64:
+            ph->set_atom_type(::jogasaki::proto::sql::common::AtomType::INT8);
+            break;
+        case Metadata::ColumnType::Type::FLOAT32:
+            ph->set_atom_type(::jogasaki::proto::sql::common::AtomType::FLOAT4);
+            break;
+        case Metadata::ColumnType::Type::FLOAT64:
+            ph->set_atom_type(::jogasaki::proto::sql::common::AtomType::FLOAT8);
+            break;
+        case Metadata::ColumnType::Type::TEXT:
+            ph->set_atom_type(::jogasaki::proto::sql::common::AtomType::CHARACTER);
+            break;
+        case Metadata::ColumnType::Type::DECIMAL:
+            ph->set_atom_type(::jogasaki::proto::sql::common::AtomType::DECIMAL);
+            break;
+        case Metadata::ColumnType::Type::DATE:
+            ph->set_atom_type(::jogasaki::proto::sql::common::AtomType::DATE);
+            break;
+        case Metadata::ColumnType::Type::TIME:
+            ph->set_atom_type(::jogasaki::proto::sql::common::AtomType::TIME_OF_DAY);
+            break;
+        case Metadata::ColumnType::Type::TIMESTAMP:
+            ph->set_atom_type(::jogasaki::proto::sql::common::AtomType::TIME_POINT);
+            break;
+        case Metadata::ColumnType::Type::TIMETZ:
+            ph->set_atom_type(::jogasaki::proto::sql::common::AtomType::TIME_OF_DAY_WITH_TIME_ZONE);
+            break;
+        case Metadata::ColumnType::Type::TIMESTAMPTZ:
+            ph->set_atom_type(::jogasaki::proto::sql::common::AtomType::TIME_POINT_WITH_TIME_ZONE);
+            break;
+        default:
+            return ErrorCode::UNSUPPORTED;
+        }
+    }
+
+    auto response_opt = transport_.send(request);
+    if (!response_opt) {
+        return ErrorCode::SERVER_FAILURE;
+    }
+    auto response_prepare = response_opt.value();
+    if (response_prepare.has_prepared_statement_handle()) {
+        auto& psh = response_prepare.prepared_statement_handle();
+        std::size_t id = psh.handle();
+        bool has_result_records = psh.has_result_records();
+        prepared = std::make_unique<PreparedStatement>(std::make_unique<PreparedStatement::Impl>(this, id, has_result_records));
+        return ErrorCode::OK;
+    }
+    return ErrorCode::SERVER_FAILURE;
 }
 
 /**
@@ -186,7 +245,7 @@ ErrorCode Connection::begin(const boost::property_tree::ptree& option, Transacti
 /**
  * @brief prepare statement
  */
-ErrorCode Connection::prepare(std::string_view sql, const pralceholders_type& placeholders, PreparedStatementPtr &prepared) { return impl_->prepare(sql, placeholders, prepared); }
+ErrorCode Connection::prepare(std::string_view sql, const placeholders_type& placeholders, PreparedStatementPtr &prepared) { return impl_->prepare(sql, placeholders, prepared); }
 
 /**
  * @brief receive a begin_ddl message from manager
