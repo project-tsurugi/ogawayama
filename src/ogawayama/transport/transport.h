@@ -65,8 +65,27 @@ public:
     }
 
 /**
+ * @brief send a prepare request to the sql service.
+ * @param prepare_request a begen request message in ::jogasaki::proto::sql::request::Prepare
+ * @return std::optional of ::jogasaki::proto::sql::request::Prepare
+ */
+    std::optional<::jogasaki::proto::sql::response::Prepare> send(::jogasaki::proto::sql::request::Prepare& prepare_request) {
+        ::jogasaki::proto::sql::request::Request request{};
+        *(request.mutable_prepare())= prepare_request;
+        auto response_opt = send<::jogasaki::proto::sql::response::Response>(request);
+        request.clear_prepare();
+        if (response_opt) {
+            auto response_message = response_opt.value();
+            if (response_message.has_prepare()) {
+                return response_message.prepare();
+            }
+        }
+        return std::nullopt;
+    }
+
+/**
  * @brief send a execute statement request to the sql service.
- * @param execute_statement_request a execute statement request message in ::jogasaki::proto::sql::request::Begin
+ * @param execute_statement_request a execute statement request message in ::jogasaki::proto::sql::request::ExecuteStatement
  * @return std::optional of ::jogasaki::proto::sql::request::ResultOnly
  */
     std::optional<::jogasaki::proto::sql::response::ResultOnly> send(::jogasaki::proto::sql::request::ExecuteStatement& execute_statement_request) {
@@ -85,7 +104,7 @@ public:
 
 /**
  * @brief send a execute query request to the sql service.
- * @param execute_query_request a execute query request message in ::jogasaki::proto::sql::request::Begin
+ * @param execute_query_request a execute query request message in ::jogasaki::proto::sql::request::ExecuteQuery
  * @return std::optional of ::jogasaki::proto::sql::request::ExecuteQuery
  */
     std::optional<::jogasaki::proto::sql::response::ExecuteQuery> send(::jogasaki::proto::sql::request::ExecuteQuery& execute_query_request, std::size_t query_index) {

@@ -28,16 +28,25 @@ namespace ogawayama::stub {
 class PreparedStatement::Impl
 {
 public:
-    Impl(PreparedStatement *prepared_statement, std::size_t id)
-        : envelope_(prepared_statement), id_(id) {}
-    ~Impl() = default;
+    Impl(Connection::Impl* manager, std::size_t id, bool has_result_records)
+        : manager_(manager), id_(id), has_result_records_(has_result_records) {}
 
     auto get_id() { return id_; }
 
+    bool has_has_result_records() { return has_result_records_; }
+
+    /**
+     * @brief get the object to which this belongs
+     * @return stub objext
+     */
+    auto get_manager() { return manager_; }
+
 private:
-    PreparedStatement *envelope_;
+    Connection::Impl* manager_;
 
     std::size_t id_;
+
+    bool has_result_records_;
 };
 
 }  // namespace ogawayama::stub
