@@ -48,6 +48,7 @@ TEST_F(PreparedTest, prepare) {
         auto ps = rp.mutable_prepared_statement_handle();
         ps->set_handle(1234);
         server_->response_message(rp);
+        rp.clear_prepared_statement_handle();
 
         ogawayama::stub::placeholders_type placeholders{};
         placeholders.emplace_back("int32_data:", ogawayama::stub::Metadata::ColumnType::Type::INT32);
@@ -62,7 +63,6 @@ TEST_F(PreparedTest, prepare) {
         placeholders.emplace_back("timetz_data:", ogawayama::stub::Metadata::ColumnType::Type::TIMETZ);
         placeholders.emplace_back("timestamptz_data:", ogawayama::stub::Metadata::ColumnType::Type::TIMESTAMPTZ);
         EXPECT_EQ(ERROR_CODE::OK, connection->prepare("this is a sql for the test", placeholders, prepared_statement));
-        rp.release_prepared_statement_handle();
 
         std::optional<jogasaki::proto::sql::request::Request> request_opt = server_->request_message();
         EXPECT_TRUE(request_opt);
