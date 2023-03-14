@@ -23,14 +23,17 @@
 
 namespace ogawayama::testing {
 
-static constexpr const char* shm_name = "api_test";
+static constexpr const char* name_prefix = "api_test";
 
 class ApiTest : public ::testing::Test {
     virtual void SetUp() {
-        server_ = std::make_unique<server>(shm_name);
+        shm_name_ = std::string(name_prefix);
+        shm_name_ += std::to_string(getpid());
+        server_ = std::make_unique<server>(shm_name_);
     }
 protected:
     std::unique_ptr<server> server_{};
+    std::string shm_name_{};
 };
 
 TEST_F(ApiTest, begin_commit) {
@@ -38,7 +41,7 @@ TEST_F(ApiTest, begin_commit) {
     ConnectionPtr connection;
     TransactionPtr transaction;
 
-    EXPECT_EQ(ERROR_CODE::OK, make_stub(stub, shm_name));
+    EXPECT_EQ(ERROR_CODE::OK, make_stub(stub, shm_name_));
 
     EXPECT_EQ(ERROR_CODE::OK, stub->get_connection(connection, 16));
 
@@ -84,7 +87,7 @@ TEST_F(ApiTest, long_transaction) {
     ConnectionPtr connection;
     TransactionPtr transaction;
 
-    EXPECT_EQ(ERROR_CODE::OK, make_stub(stub, shm_name));
+    EXPECT_EQ(ERROR_CODE::OK, make_stub(stub, shm_name_));
 
     EXPECT_EQ(ERROR_CODE::OK, stub->get_connection(connection, 16));
 
@@ -156,7 +159,7 @@ TEST_F(ApiTest, result_set) {
     ResultSetPtr result_set;
     MetadataPtr metadata;
 
-    EXPECT_EQ(ERROR_CODE::OK, make_stub(stub, shm_name));
+    EXPECT_EQ(ERROR_CODE::OK, make_stub(stub, shm_name_));
 
     EXPECT_EQ(ERROR_CODE::OK, stub->get_connection(connection, 16));
 
