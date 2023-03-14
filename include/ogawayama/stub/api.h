@@ -105,7 +105,7 @@ using ResultSetPtr = std::shared_ptr<ogawayama::stub::ResultSet>;
 
 namespace ogawayama::stub {
 
-using value_type = std::variant<std::monostate, std::int32_t, std::int64_t, float, double, std::string, date_type, time_type, timestamp_type>;
+using value_type = std::variant<std::monostate, std::int32_t, std::int64_t, float, double, std::string, date_type, time_type, timestamp_type, timetz_type, timestamptz_type>;
 using parameters_type = std::vector<std::pair<std::string, value_type>>;
 
 /**

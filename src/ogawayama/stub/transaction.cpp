@@ -99,6 +99,19 @@ public:
         v->set_nano_adjustment(data.subsecond().count());
         return parameter_;
     }
+    ::jogasaki::proto::sql::request::Parameter operator()(const timetz_type& data) {
+        auto v = parameter_.mutable_time_of_day_with_time_zone_value();
+        v->set_time_zone_offset(data.second);
+        v->set_offset_nanoseconds(data.first.time_since_epoch().count());
+        return parameter_;
+    }
+    ::jogasaki::proto::sql::request::Parameter operator()(const timestamptz_type& data) {
+        auto v = parameter_.mutable_time_point_with_time_zone_value();
+        v->set_time_zone_offset(data.second);
+        v->set_offset_seconds(data.first.seconds_since_epoch().count());
+        v->set_nano_adjustment(data.first.subsecond().count());
+        return parameter_;
+    }
 
 private:
     ::jogasaki::proto::sql::request::Parameter parameter_{};
