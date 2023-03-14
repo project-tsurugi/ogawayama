@@ -41,6 +41,8 @@ TEST_F(PreparedTest, prepare) {
     ConnectionPtr connection;
     PreparedStatementPtr prepared_statement;
     TransactionPtr transaction;
+    ResultSetPtr result_set;
+    MetadataPtr metadata;
 
     EXPECT_EQ(ERROR_CODE::OK, make_stub(stub, shm_name_));
 
@@ -50,7 +52,7 @@ TEST_F(PreparedTest, prepare) {
         jogasaki::proto::sql::response::Prepare rp{};
         auto ps = rp.mutable_prepared_statement_handle();
         ps->set_handle(1234);
-        ps->set_has_result_records(false);
+        ps->set_has_result_records(true);
         server_->response_message(rp);
         rp.clear_prepared_statement_handle();
 
@@ -147,10 +149,45 @@ TEST_F(PreparedTest, prepare) {
     }
 
     {
+        // build reply message for test
+        // metadata
+        jogasaki::proto::sql::response::ResultSetMetadata m{};
+        m.add_columns()->set_atom_type(jogasaki::proto::sql::common::AtomType::INT4);
+        m.add_columns()->set_atom_type(jogasaki::proto::sql::common::AtomType::FLOAT8);
+        m.add_columns()->set_atom_type(jogasaki::proto::sql::common::AtomType::CHARACTER);
+        m.add_columns()->set_atom_type(jogasaki::proto::sql::common::AtomType::INT4);
+        m.add_columns()->set_atom_type(jogasaki::proto::sql::common::AtomType::INT8);
+        m.add_columns()->set_atom_type(jogasaki::proto::sql::common::AtomType::FLOAT4);
+        m.add_columns()->set_atom_type(jogasaki::proto::sql::common::AtomType::CHARACTER);
+        // resultset
+        std::queue<std::string> resultset{};
+        std::string row{};
+        row.resize(8196);  // enough to write
+        takatori::util::buffer_view buf { row.data(), row.size() };
+        takatori::util::buffer_view::iterator iter = buf.begin();
+        auto end = buf.end();
+        jogasaki::serializer::write_row_begin(7, iter, end);
+        jogasaki::serializer::write_int(1, iter, end);
+        jogasaki::serializer::write_float8(1.1, iter, end);
+        jogasaki::serializer::write_character("ABCDE", iter, end);
+        jogasaki::serializer::write_null(iter, end);
+        jogasaki::serializer::write_null(iter, end);
+        jogasaki::serializer::write_null(iter, end);
+        jogasaki::serializer::write_null(iter, end);
+        jogasaki::serializer::write_end_of_contents(iter, end);
+        row.resize(std::distance(buf.begin(), iter));
+        resultset.emplace(row);
+		// body
         jogasaki::proto::sql::response::ResultOnly ro{};
         jogasaki::proto::sql::response::Success s{};
         ro.set_allocated_success(&s);
-        server_->response_message(ro);
+        // set response
+        server_->response_with_resultset(m, resultset, ro);
+        // clear fields
+        ro.release_success();
+        m.clear_columns();
+
+        // execute_query()
         ogawayama::stub::parameters_type parameters{};
         parameters.emplace_back("int32_data:", static_cast<std::int32_t>(123456));
         parameters.emplace_back("int64_data:", static_cast<std::int64_t>(123456789));
@@ -163,17 +200,68 @@ TEST_F(PreparedTest, prepare) {
         parameters.emplace_back("time_data:", time_of_day_for_test);
         auto time_point_for_test = takatori::datetime::time_point(takatori::datetime::date(2022, 12, 31), takatori::datetime::time_of_day(23, 59, 59, std::chrono::nanoseconds(987654000)));
         parameters.emplace_back("timestamp_data:", time_point_for_test);
-        EXPECT_EQ(ERROR_CODE::OK, transaction->execute_statement(prepared_statement, parameters));
-        ro.release_success();
+        auto timetz_for_test = std::pair<takatori::datetime::time_of_day, std::int32_t>{time_of_day_for_test, 720};
+        parameters.emplace_back("timetz_data:", timetz_for_test);
+        auto time_pointtz_for_test = std::pair<takatori::datetime::time_point, std::int32_t>{time_point_for_test, 720};
+        parameters.emplace_back("timestamptz_data:", time_pointtz_for_test);
+        EXPECT_EQ(ERROR_CODE::OK, transaction->execute_query(prepared_statement, parameters, result_set));
 
+        // get_metadata()
+        EXPECT_EQ(ERROR_CODE::OK, result_set->get_metadata(metadata));
+
+        auto& md = metadata->get_types();
+        EXPECT_EQ(static_cast<std::size_t>(7), md.size());
+
+        EXPECT_EQ(TYPE::INT32, md.at(0).get_type());
+
+        EXPECT_EQ(TYPE::FLOAT64, md.at(1).get_type());
+
+        EXPECT_EQ(TYPE::TEXT, md.at(2).get_type());
+
+        EXPECT_EQ(TYPE::INT32, md.at(3).get_type());
+
+        EXPECT_EQ(TYPE::INT64, md.at(4).get_type());
+
+        EXPECT_EQ(TYPE::FLOAT32, md.at(5).get_type());
+
+        EXPECT_EQ(TYPE::TEXT, md.at(6).get_type());
+
+        // get result set
+        std::int32_t i;
+        std::int64_t b;
+        float f;
+        double d;
+        std::string_view t;
+        EXPECT_EQ(ERROR_CODE::OK, result_set->next());
+
+        EXPECT_EQ(ERROR_CODE::OK, result_set->next_column(i));
+        EXPECT_EQ(static_cast<std::int32_t>(1), i);
+
+        EXPECT_EQ(ERROR_CODE::OK, result_set->next_column(d));
+        EXPECT_EQ(static_cast<double>(1.1), d);
+
+        EXPECT_EQ(ERROR_CODE::OK, result_set->next_column(t));
+        EXPECT_EQ("ABCDE", t);
+
+        EXPECT_EQ(ERROR_CODE::COLUMN_WAS_NULL, result_set->next_column(i));
+
+        EXPECT_EQ(ERROR_CODE::COLUMN_WAS_NULL, result_set->next_column(b));
+
+        EXPECT_EQ(ERROR_CODE::COLUMN_WAS_NULL, result_set->next_column(f));
+
+        EXPECT_EQ(ERROR_CODE::COLUMN_WAS_NULL, result_set->next_column(t));
+
+        EXPECT_EQ(ERROR_CODE::END_OF_ROW, result_set->next());
+
+        // verify request message
         std::optional<jogasaki::proto::sql::request::Request> request_opt = server_->request_message();
         EXPECT_TRUE(request_opt);
         auto request = request_opt.value();
-        EXPECT_EQ(request.request_case(), jogasaki::proto::sql::request::Request::RequestCase::kExecutePreparedStatement);
+        EXPECT_EQ(request.request_case(), jogasaki::proto::sql::request::Request::RequestCase::kExecutePreparedQuery);
 
-        auto eps_request = request.execute_prepared_statement();
+        auto eps_request = request.execute_prepared_query();
         EXPECT_EQ(eps_request.prepared_statement_handle().handle(), 1234);
-        EXPECT_EQ(eps_request.parameters_size(), 8);
+        EXPECT_EQ(eps_request.parameters_size(), 10);
 
         // 1st placeholder
         EXPECT_EQ(eps_request.parameters(0).name(), "int32_data:");
@@ -203,11 +291,22 @@ TEST_F(PreparedTest, prepare) {
         EXPECT_EQ(eps_request.parameters(6).name(), "time_data:");
         EXPECT_EQ(eps_request.parameters(6).value_case(), ::jogasaki::proto::sql::request::Parameter::ValueCase::kTimeOfDayValue);
         EXPECT_EQ(eps_request.parameters(6).time_of_day_value(), time_of_day_for_test.time_since_epoch().count());
-        // 8sh placeholder
+        // 8th placeholder
         EXPECT_EQ(eps_request.parameters(7).name(), "timestamp_data:");
         EXPECT_EQ(eps_request.parameters(7).value_case(), ::jogasaki::proto::sql::request::Parameter::ValueCase::kTimePointValue);
         EXPECT_EQ(eps_request.parameters(7).time_point_value().offset_seconds(), time_point_for_test.seconds_since_epoch().count());
         EXPECT_EQ(eps_request.parameters(7).time_point_value().nano_adjustment(), time_point_for_test.subsecond().count());
+        // 9th placeholder
+        EXPECT_EQ(eps_request.parameters(8).name(), "timetz_data:");
+        EXPECT_EQ(eps_request.parameters(8).value_case(), ::jogasaki::proto::sql::request::Parameter::ValueCase::kTimeOfDayWithTimeZoneValue);
+        EXPECT_EQ(eps_request.parameters(8).time_of_day_with_time_zone_value().offset_nanoseconds(), time_of_day_for_test.time_since_epoch().count());
+        EXPECT_EQ(eps_request.parameters(8).time_of_day_with_time_zone_value().time_zone_offset(), 720);
+        // 10th placeholder
+        EXPECT_EQ(eps_request.parameters(9).name(), "timestamptz_data:");
+        EXPECT_EQ(eps_request.parameters(9).value_case(), ::jogasaki::proto::sql::request::Parameter::ValueCase::kTimePointWithTimeZoneValue);
+        EXPECT_EQ(eps_request.parameters(9).time_point_with_time_zone_value().offset_seconds(), time_point_for_test.seconds_since_epoch().count());
+        EXPECT_EQ(eps_request.parameters(9).time_point_with_time_zone_value().nano_adjustment(), time_point_for_test.subsecond().count());
+        EXPECT_EQ(eps_request.parameters(9).time_point_with_time_zone_value().time_zone_offset(), 720);
     }
 
     {
