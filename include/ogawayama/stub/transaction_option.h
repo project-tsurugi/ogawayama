@@ -16,23 +16,23 @@ namespace ogawayama::stub {
     /**
      * @brief Field name constant indicating the transaction type.
      */
-    static constexpr const char* TRANSACTION_TYPE = "TransactionType";
+    static constexpr const char* TRANSACTION_TYPE = "transactionType";
     /**
      * @brief Field name constant indicating the transaction priority.
      */
-    static constexpr const char* TRANSACTION_PRIORITY = "TransactionPriority";
+    static constexpr const char* TRANSACTION_PRIORITY = "transactionPriority";
     /**
      * @brief Field name constant indicating the transaction label.
      */
-    static constexpr const char* TRANSACTION_LABEL = "TransactionLabel";
+    static constexpr const char* TRANSACTION_LABEL = "transactionLabel";
     /**
      * @brief Field name constant indicating the write preserve.
      */
-    static constexpr const char* WRITE_PRESERVE = "WritePreserve";
+    static constexpr const char* WRITE_PRESERVE = "writePreserve";
     /**
      * @brief Field name constant indicating the table name in write preserve.
      */
-    static constexpr const char* TABLE_NAME = "TableName";
+    static constexpr const char* TABLE_NAME = "tableName";
 
     enum TransactionType {
         TRANSACTION_TYPE_UNSPECIFIED = 0,
