@@ -24,6 +24,7 @@
 
 #include <tateyama/framework/environment.h>
 
+#include <ogawayama/logging.h>
 #include "worker.h"
 
 namespace ogawayama::bridge {
@@ -131,7 +132,9 @@ private:
 
 service::service() = default;
 
-service::~service() = default;
+service::~service() {
+    VLOG(log_info) << "/:tateyama:lifecycle:component:<dtor> " << component_label;
+}
 
 bool service::start(tateyama::framework::environment& env) {
     auto sqlres = env.resource_repository().find<jogasaki::api::resource::bridge>();
@@ -166,7 +169,7 @@ bool service::setup(tateyama::framework::environment&) {
 }
 
 std::string_view service::label() const noexcept {
-    return "fdw_service";
+    return component_label;
 }
 
 }  // ogawayama::bridge

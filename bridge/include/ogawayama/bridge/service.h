@@ -32,6 +32,10 @@ class listener;
 class service : public tateyama::framework::service {
 public:
     static constexpr id_type tag = tateyama::framework::service_id_fdw;
+
+    //@brief human readable label of this component
+    static constexpr std::string_view component_label = "fdw_service";
+
     /**
      * @brief create empty object
      */
