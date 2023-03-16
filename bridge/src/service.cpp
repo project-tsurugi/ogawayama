@@ -165,4 +165,8 @@ bool service::setup(tateyama::framework::environment&) {
     return true;
 }
 
+std::string_view service::label() const noexcept {
+    return "fdw_service";
+}
+
 }  // ogawayama::bridge
