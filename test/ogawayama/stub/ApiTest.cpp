@@ -152,6 +152,146 @@ TEST_F(ApiTest, long_transaction) {
     }
 }
 
+TEST_F(ApiTest, long_transaction_inclusive_read_area) {
+    StubPtr stub;
+    ConnectionPtr connection;
+    TransactionPtr transaction;
+
+    EXPECT_EQ(ERROR_CODE::OK, make_stub(stub, shm_name_));
+
+    EXPECT_EQ(ERROR_CODE::OK, stub->get_connection(connection, 16));
+
+    {
+        boost::property_tree::ptree option;
+        boost::property_tree::ptree ra;
+        boost::property_tree::ptree tbl1;
+        boost::property_tree::ptree tbl2;
+        tbl1.put(ogawayama::stub::TABLE_NAME, "table1");
+        tbl2.put(ogawayama::stub::TABLE_NAME, "table2");
+        ra.push_back(boost::property_tree::ptree::value_type("", tbl1));
+        ra.push_back(boost::property_tree::ptree::value_type("", tbl2));
+        option.put_child(ogawayama::stub::INCLUSIVE_READ_AREA, ra);
+        option.put(ogawayama::stub::TRANSACTION_TYPE, ogawayama::stub::TransactionType::LONG);
+        option.put(ogawayama::stub::TRANSACTION_PRIORITY, ogawayama::stub::TransactionPriority::INTERRUPT_EXCLUDE);
+        option.put(ogawayama::stub::TRANSACTION_LABEL, "this is a transaction_label the test");
+        
+        jogasaki::proto::sql::response::Begin b{};
+        jogasaki::proto::sql::response::Begin::Success s{};
+        jogasaki::proto::sql::common::Transaction t{};
+        jogasaki::proto::sql::common::TransactionId tid{};
+        tid.set_id("transaction_id_for_test");
+        t.set_handle(0x12345678);
+        s.set_allocated_transaction_handle(&t);
+        s.set_allocated_transaction_id(&tid);
+        b.set_allocated_success(&s);
+        server_->response_message(b);
+        EXPECT_EQ(ERROR_CODE::OK, connection->begin(option, transaction));
+        s.release_transaction_handle();
+        s.release_transaction_id();
+        b.release_success();
+
+        std::optional<jogasaki::proto::sql::request::Request> request_opt = server_->request_message();
+        EXPECT_TRUE(request_opt);
+        auto request = request_opt.value();
+        EXPECT_EQ(request.request_case(), jogasaki::proto::sql::request::Request::RequestCase::kBegin);
+        EXPECT_TRUE(request.begin().has_option());
+        auto transaction_option = request.begin().option();
+        EXPECT_EQ(transaction_option.type(), ogawayama::stub::TransactionType::LONG);
+        EXPECT_EQ(transaction_option.priority(), ogawayama::stub::TransactionPriority::INTERRUPT_EXCLUDE);
+        EXPECT_EQ(transaction_option.label(), "this is a transaction_label the test");
+        auto inclusive_read_areas = transaction_option.inclusive_read_areas();
+        EXPECT_EQ(inclusive_read_areas.size(), 2);
+        bool first = true;
+        for(auto&& inclusive_read_area : inclusive_read_areas) {
+            EXPECT_EQ(inclusive_read_area.table_name(), first ? "table1" : "table2");
+            first = false;
+        }
+    }
+    {
+        jogasaki::proto::sql::response::ResultOnly ro{};
+        jogasaki::proto::sql::response::Success s{};
+        ro.set_allocated_success(&s);
+        server_->response_message(ro);
+        EXPECT_EQ(ERROR_CODE::OK, transaction->commit());
+        ro.release_success();
+
+        std::optional<jogasaki::proto::sql::request::Request> request_opt = server_->request_message();
+        EXPECT_TRUE(request_opt);
+        auto request = request_opt.value();
+        EXPECT_EQ(request.request_case(), jogasaki::proto::sql::request::Request::RequestCase::kCommit);
+    }
+}
+
+TEST_F(ApiTest, long_transaction_exclusive_read_area) {
+    StubPtr stub;
+    ConnectionPtr connection;
+    TransactionPtr transaction;
+
+    EXPECT_EQ(ERROR_CODE::OK, make_stub(stub, shm_name_));
+
+    EXPECT_EQ(ERROR_CODE::OK, stub->get_connection(connection, 16));
+
+    {
+        boost::property_tree::ptree option;
+        boost::property_tree::ptree ra;
+        boost::property_tree::ptree tbl1;
+        boost::property_tree::ptree tbl2;
+        tbl1.put(ogawayama::stub::TABLE_NAME, "table1");
+        tbl2.put(ogawayama::stub::TABLE_NAME, "table2");
+        ra.push_back(boost::property_tree::ptree::value_type("", tbl1));
+        ra.push_back(boost::property_tree::ptree::value_type("", tbl2));
+        option.put_child(ogawayama::stub::EXCLUSIVE_READ_AREA, ra);
+        option.put(ogawayama::stub::TRANSACTION_TYPE, ogawayama::stub::TransactionType::LONG);
+        option.put(ogawayama::stub::TRANSACTION_PRIORITY, ogawayama::stub::TransactionPriority::INTERRUPT_EXCLUDE);
+        option.put(ogawayama::stub::TRANSACTION_LABEL, "this is a transaction_label the test");
+        
+        jogasaki::proto::sql::response::Begin b{};
+        jogasaki::proto::sql::response::Begin::Success s{};
+        jogasaki::proto::sql::common::Transaction t{};
+        jogasaki::proto::sql::common::TransactionId tid{};
+        tid.set_id("transaction_id_for_test");
+        t.set_handle(0x12345678);
+        s.set_allocated_transaction_handle(&t);
+        s.set_allocated_transaction_id(&tid);
+        b.set_allocated_success(&s);
+        server_->response_message(b);
+        EXPECT_EQ(ERROR_CODE::OK, connection->begin(option, transaction));
+        s.release_transaction_handle();
+        s.release_transaction_id();
+        b.release_success();
+
+        std::optional<jogasaki::proto::sql::request::Request> request_opt = server_->request_message();
+        EXPECT_TRUE(request_opt);
+        auto request = request_opt.value();
+        EXPECT_EQ(request.request_case(), jogasaki::proto::sql::request::Request::RequestCase::kBegin);
+        EXPECT_TRUE(request.begin().has_option());
+        auto transaction_option = request.begin().option();
+        EXPECT_EQ(transaction_option.type(), ogawayama::stub::TransactionType::LONG);
+        EXPECT_EQ(transaction_option.priority(), ogawayama::stub::TransactionPriority::INTERRUPT_EXCLUDE);
+        EXPECT_EQ(transaction_option.label(), "this is a transaction_label the test");
+        auto exclusive_read_areas = transaction_option.exclusive_read_areas();
+        EXPECT_EQ(exclusive_read_areas.size(), 2);
+        bool first = true;
+        for(auto&& exclusive_read_area : exclusive_read_areas) {
+            EXPECT_EQ(exclusive_read_area.table_name(), first ? "table1" : "table2");
+            first = false;
+        }
+    }
+    {
+        jogasaki::proto::sql::response::ResultOnly ro{};
+        jogasaki::proto::sql::response::Success s{};
+        ro.set_allocated_success(&s);
+        server_->response_message(ro);
+        EXPECT_EQ(ERROR_CODE::OK, transaction->commit());
+        ro.release_success();
+
+        std::optional<jogasaki::proto::sql::request::Request> request_opt = server_->request_message();
+        EXPECT_TRUE(request_opt);
+        auto request = request_opt.value();
+        EXPECT_EQ(request.request_case(), jogasaki::proto::sql::request::Request::RequestCase::kCommit);
+    }
+}
+
 TEST_F(ApiTest, result_set) {
     StubPtr stub;
     ConnectionPtr connection;
