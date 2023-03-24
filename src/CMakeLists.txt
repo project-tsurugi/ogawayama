@@ -116,5 +116,6 @@ target_include_directories(stub-impl
     INTERFACE ${CMAKE_SOURCE_DIR}/include
     INTERFACE ${CMAKE_SOURCE_DIR}/common/include
     INTERFACE ${CMAKE_SOURCE_DIR}/src
+    INTERFACE ${CMAKE_BINARY_DIR}/src
     INTERFACE ogawayama/stub
 )
