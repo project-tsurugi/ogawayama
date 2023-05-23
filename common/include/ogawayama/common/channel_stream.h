@@ -466,21 +466,8 @@ public:
         buffer_ = nullptr;
     }
     bool is_alive() {
-        if (!shared_memory_->is_alive()) {
-            return false;
-        }
-        if (owner_) {
-            if (always_connected_) {
-                return buffer_->is_partner();
-            }
-            return true;
-        }
-        try {
-            return shared_memory_->get_managed_shared_memory_ptr()->find<MsgBuffer>(name_).first != nullptr;
-        }
-        catch(const boost::interprocess::interprocess_exception& ex) {
-            return false;
-        }
+        // Since channel_stream is deprecated, the connection destination monitoring function that may have caused the error should be removed.
+        return true;
     }
 
 private:
