@@ -363,7 +363,7 @@ public:
 
 
 namespace ogawayama::common::param {
-static const std::string SHARED_MEMORY_NAME = "tateyama";
+static const std::string SHARED_MEMORY_NAME = "tsurugi";
 }  // namespace ogawayama::common::param
 
 using StubPtr = std::unique_ptr<ogawayama::stub::Stub>;
