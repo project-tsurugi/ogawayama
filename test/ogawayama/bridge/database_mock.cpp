@@ -174,4 +174,8 @@ jogasaki::status database_mock::do_drop_sequence(
     return jogasaki::status::ok;
 }
 
+jogasaki::status database_mock::list_tables(std::vector<std::string>&) {
+    return jogasaki::status::ok;
+}
+
 };

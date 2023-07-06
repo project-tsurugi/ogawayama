@@ -102,6 +102,7 @@ public:
 
     std::string diagnostic_string() override;
 
+    status list_tables(std::vector<std::string>& out) override;
 
     // for test
     std::shared_ptr<yugawara::storage::table>& get_table() {
