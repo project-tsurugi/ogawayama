@@ -22,7 +22,9 @@ register_tests(
       stub-impl
       bridge-impl
       message-manager-interface
-      jogasaki-${SHARKSFIN_IMPLEMENTATION}-engine
+      jogasaki-${SHARKSFIN_IMPLEMENTATION}-api
+      tateyama-${SHARKSFIN_IMPLEMENTATION}-api
+      sharksfin-api
       Boost::filesystem
       glog::glog
       gflags::gflags
