@@ -20,6 +20,7 @@
 #include <chrono>
 
 #include <boost/foreach.hpp>
+#define BOOST_BIND_GLOBAL_PLACEHOLDERS  // to retain the current behavior
 #include <boost/property_tree/json_parser.hpp>
 
 #include <gflags/gflags.h>

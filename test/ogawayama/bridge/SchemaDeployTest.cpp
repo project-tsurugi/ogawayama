@@ -19,6 +19,7 @@
 
 #include "gtest/gtest.h"
 
+#define BOOST_BIND_GLOBAL_PLACEHOLDERS
 #include <boost/property_tree/json_parser.hpp>
 
 #include <takatori/value/boolean.h>
