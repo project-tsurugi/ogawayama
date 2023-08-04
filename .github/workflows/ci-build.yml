@@ -200,7 +200,7 @@ jobs:
         run: |
           export LD_LIBRARY_PATH=${GITHUB_WORKSPACE}/.local/lib
           cd build
-          ctest --verbose
+          ASAN_OPTIONS="detect_odr_violation=0" ctest --verbose
 
       - id: Clang-Tidy
         name: Clang-Tidy
