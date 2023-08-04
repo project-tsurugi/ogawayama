@@ -18,7 +18,7 @@ function(register_tests)
         TESTS # prefix
         ""
         "TARGET;BUILD"
-        "SOURCES;DEPENDS"
+        "SOURCES;DEPENDS;INCLUDES"
         ${ARGN}
     )
     if(NOT DEFINED TESTS_BUILD)
@@ -53,6 +53,11 @@ function(register_tests)
             add_executable(${test_name} ${src} ${TESTS_COMMON_SOURCES})
 
             target_include_directories(${test_name} PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
+            if(TESTS_INCLUDES)
+              foreach(include IN LISTS TESTS_INCLUDES)
+                target_include_directories(${test_name} PRIVATE ${include})
+              endforeach()
+            endif()
 
             if(TARGET ${TESTS_TARGET})
                 target_link_libraries(${test_name} PRIVATE ${TESTS_TARGET})
