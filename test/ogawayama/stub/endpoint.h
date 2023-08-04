@@ -35,10 +35,10 @@
 
 #include "server_wires_impl.h"
 #include "endpoint_proto_utils.h"
-#include "stubImpl.h"
-#include "connectionImpl.h"
-#include "transactionImpl.h"
-#include "result_setImpl.h"
+#include "ogawayama/stub/stubImpl.h"
+#include "ogawayama/stub/connectionImpl.h"
+#include "ogawayama/stub/transactionImpl.h"
+#include "ogawayama/stub/result_setImpl.h"
 
 namespace ogawayama::testing {
 

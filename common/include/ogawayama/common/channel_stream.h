@@ -17,7 +17,8 @@
 
 #include <atomic>
 
-#include <boost/bind.hpp>
+#define BOOST_BIND_GLOBAL_PLACEHOLDERS
+#include <boost/bind/bind.hpp>
 #include <boost/interprocess/managed_shared_memory.hpp>
 #include <boost/interprocess/allocators/allocator.hpp>
 #include <boost/interprocess/containers/string.hpp>

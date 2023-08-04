@@ -2,7 +2,7 @@
 
 ## Requirements
 
-* CMake `>= 3.10`
+* CMake `>= 3.16`
 * C++ Compiler `>= C++17`
 * access to umikongo and manager/metadata-manager by NEC
 * and see *Dockerfile* sectioni
@@ -15,10 +15,16 @@ git submodule update --init --recursive
 ### Dockerfile
 
 ```dockerfile
-FROM ubuntu:18.04
+FROM ubuntu:22.04
 
 RUN apt update -y && apt install -y git build-essential cmake ninja-build libboost-system-dev libboost-thread-dev libboost-serialization-dev libgoogle-glog-dev libgflags-dev
 ```
+
+optional packages:
+
+* `doxygen`
+* `graphviz`
+* `clang-tidy-14`
 
 ## How to build
 

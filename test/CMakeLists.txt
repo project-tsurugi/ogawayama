@@ -19,18 +19,20 @@ file(GLOB STUB_TEST_SOURCES
 register_tests(
     TARGET stub
     DEPENDS
-      stub-impl
-      bridge-impl
       message-manager-interface
       jogasaki-${SHARKSFIN_IMPLEMENTATION}-api
       tateyama-${SHARKSFIN_IMPLEMENTATION}-api
       sharksfin-api
-      Boost::filesystem
       glog::glog
       gflags::gflags
       rt
       protobuf::libprotobuf
     SOURCES ${STUB_TEST_SOURCES}
+    INCLUDES
+      ${CMAKE_SOURCE_DIR}/src
+      ${CMAKE_SOURCE_DIR}/include
+      ${CMAKE_SOURCE_DIR}/common/include
+      ${CMAKE_SOURCE_DIR}/bridge/include
 )
 
 file(GLOB BRIDGE_TEST_SOURCES
@@ -41,8 +43,6 @@ file(GLOB BRIDGE_TEST_SOURCES
 register_tests(
     TARGET bridge
     DEPENDS
-      stub-impl
-      bridge-impl
       message-manager-interface
       jogasaki-${SHARKSFIN_IMPLEMENTATION}-engine
       Boost::filesystem
@@ -50,4 +50,9 @@ register_tests(
       gflags::gflags
       rt
     SOURCES ${BRIDGE_TEST_SOURCES}
+    INCLUDES
+      ${CMAKE_SOURCE_DIR}/include
+      ${CMAKE_SOURCE_DIR}/common/include
+      ${CMAKE_SOURCE_DIR}/bridge/src
+      ${CMAKE_SOURCE_DIR}/bridge/include
 )

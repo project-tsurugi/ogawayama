@@ -61,7 +61,7 @@ add_custom_target(build_protos
         ${SqlProtoFiles}
         ${FrameworkProtobufSources}
         ${FrameworkProtoFiles}
-        )
+)
 
 file(GLOB SOURCES
     "ogawayama/stub/*.cpp"
@@ -70,17 +70,17 @@ file(GLOB SOURCES
 )
 
 set_source_files_properties(
-        ${GENERATED_SQL_PROTO_SRCS}
-        ${GENERATED_FRAMEWORK_PROTO_SRCS}
-        PROPERTIES
-        GENERATED TRUE
-        COMPILE_FLAGS -Wno-unused-parameter
+    ${GENERATED_SQL_PROTO_SRCS}
+    ${GENERATED_FRAMEWORK_PROTO_SRCS}
+    PROPERTIES
+    GENERATED TRUE
+    COMPILE_FLAGS -Wno-unused-parameter
 )
 
 add_library(stub
        ${SOURCES}
-        ${GENERATED_SQL_PROTO_SRCS}
-        ${GENERATED_FRAMEWORK_PROTO_SRCS}
+       ${GENERATED_SQL_PROTO_SRCS}
+       ${GENERATED_FRAMEWORK_PROTO_SRCS}
 )
 
 add_dependencies(stub
@@ -101,6 +101,7 @@ target_include_directories(stub
 
 target_link_libraries(stub
     PUBLIC takatori
+    PRIVATE jogasaki-${SHARKSFIN_IMPLEMENTATION}-engine
     PRIVATE message-manager-interface
     PRIVATE pthread
     PRIVATE rt

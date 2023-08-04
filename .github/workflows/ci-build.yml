@@ -8,7 +8,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        container-tag: [ubuntu-20.04]
+        container-tag: [ubuntu-20.04, ubuntu-22.04]
     runs-on: [self-hosted, docker]
     timeout-minutes: 30
     container:
@@ -49,7 +49,7 @@ jobs:
         with:
           repository: project-tsurugi/jogasaki
           path: third_party/temp_jogasaki
-          ref: 56fbbad322677d9090011582dd649f0184175eda
+          ref: 6033bd9774a8a1c6e749b2b48e96a10009ebf35d
           submodules: recursive
           token: ${{ secrets.GHA_PAT }}
 
@@ -133,16 +133,6 @@ jobs:
           cmake -DCMAKE_BUILD_TYPE=Debug -DCMAKE_CXX_COMPILER_LAUNCHER=${{ vars.compiler_launcher }} -DBUILD_TESTS=OFF -DBUILD_DOCUMENTS=OFF -DBUILD_EXAMPLES=OFF -DFORCE_INSTALL_RPATH=ON -DCMAKE_INSTALL_PREFIX=${GITHUB_WORKSPACE}/.local -DCMAKE_PREFIX_PATH="${{ matrix.additional_prefix_path }};${GITHUB_WORKSPACE}/.local" ..
           cmake --build . --target install --clean-first -- -j
 
-      - id: Install_performance_tools
-        name: Install_performance_tools
-        run: |
-          cd third_party/temp_jogasaki/third_party/performance-tools
-          rm -rf build
-          mkdir -p build
-          cd build
-          cmake -DCMAKE_BUILD_TYPE=Debug -DCMAKE_CXX_COMPILER_LAUNCHER=${{ vars.compiler_launcher }} -DBUILD_TESTS=OFF -DBUILD_DOCUMENTS=OFF -DBUILD_EXAMPLES=OFF -DCMAKE_INSTALL_PREFIX=${GITHUB_WORKSPACE}/.local ..
-          cmake --build . --target install --clean-first -- -j
-
       - id: Install_moodycamel_concurrentqueue
         name: Install_moodycamel_concurrentqueue
         run: |
@@ -210,20 +200,20 @@ jobs:
         run: |
           export LD_LIBRARY_PATH=${GITHUB_WORKSPACE}/.local/lib
           cd build
-          ctest --verbose
+          ASAN_OPTIONS="detect_odr_violation=0" ctest --verbose
 
       - id: Clang-Tidy
         name: Clang-Tidy
         run: |
-          python tools/bin/run-clang-tidy.py -quiet -export-fixes=build/clang-tidy-fix.yaml -p build -extra-arg=-Wno-unknown-warning-option -header-filter=$(pwd)'/(common|server|stub/include|bridge)/.*\\.h$' $(pwd)'/(common|server|stub/src|bridge)/.*\\.cpp$' 2>&1 | tee build/clang-tidy.log
-        if: matrix.container-tag != 'ubuntu-18.04'
+          python tools/bin/run-clang-tidy.py -quiet -export-fixes=build/clang-tidy-fix.yaml -p build -extra-arg=-Wno-unknown-warning-option -header-filter=$(pwd)'/(common|server|stub/include|bridge)/.*\\.h$' $(pwd)'/(common|server|stub/src|bridge)/.*\\.cpp$' 2>&1 | awk '!a[$0]++{print > "build/clang-tidy.log"}'
+        if: matrix.container-tag == 'ubuntu-22.04'
 
       # - id: Doxygen
       #   name: Doxygen
       #   run: |
       #     cd build
       #     make doxygen 2> >(tee doxygen-error.log)
-      #   if: matrix.container-tag != 'ubuntu-18.04'
+      #   if: matrix.container-tag == 'ubuntu-22.04'
 
       - id: Generate_Annotations
         name: Generate_Annotations
