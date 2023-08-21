@@ -96,8 +96,6 @@ public:
 
     std::shared_ptr<class jogasaki::configuration>& config() noexcept override;
 
-    [[nodiscard]] std::shared_ptr<jogasaki::diagnostics> fetch_diagnostics() noexcept override;
-
     void print_diagnostic(std::ostream& os) override;
 
     std::string diagnostic_string() override;
