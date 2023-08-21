@@ -98,10 +98,6 @@ std::shared_ptr<class jogasaki::configuration>& database_mock::config() noexcept
     return cfg_;
 }
 
-[[nodiscard]] std::shared_ptr<jogasaki::diagnostics> database_mock::fetch_diagnostics() noexcept {
-    return nullptr;
-}
-
 void database_mock::print_diagnostic(std::ostream&) {
 }
 
