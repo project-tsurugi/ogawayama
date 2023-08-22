@@ -261,7 +261,7 @@ ErrorCode Transaction::Impl::commit()
         }
         auto response = response_opt.value();
         if (response.has_success()) {
-            return ErrorCode::OK;
+            return dispose_transaction();
         }
         return ErrorCode::SERVER_FAILURE;
     }
@@ -285,13 +285,25 @@ ErrorCode Transaction::Impl::rollback()
         }
         auto response = response_opt.value();
         if (response.has_success()) {
-            return ErrorCode::OK;
+            return dispose_transaction();
         }
         return ErrorCode::SERVER_FAILURE;
     }
     return ErrorCode::OK;  // rollback is idempotent
 }
 
+ErrorCode Transaction::Impl::dispose_transaction()
+{
+    ::jogasaki::proto::sql::request::DisposeTransaction request{};
+    *(request.mutable_transaction_handle()) = transaction_handle_;
+    auto response_opt = transport_.send(request);
+    request.clear_transaction_handle();
+    alive_ = false;
+    if (!response_opt) {
+        return ErrorCode::SERVER_FAILURE;
+    }
+    return response_opt.value();
+}
 
 /**
  * @brief constructor of Transaction class

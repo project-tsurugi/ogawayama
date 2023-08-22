@@ -311,17 +311,29 @@ TEST_F(PreparedTest, prepare) {
     }
 
     {
-        jogasaki::proto::sql::response::ResultOnly ro{};
-        jogasaki::proto::sql::response::Success s{};
-        ro.set_allocated_success(&s);
-        server_->response_message(ro);
-        EXPECT_EQ(ERROR_CODE::OK, transaction->commit());
-        ro.release_success();
+        jogasaki::proto::sql::response::ResultOnly roc{};
+        jogasaki::proto::sql::response::Success sc{};
+        roc.set_allocated_success(&sc);
+        server_->response_message(roc);
 
-        std::optional<jogasaki::proto::sql::request::Request> request_opt = server_->request_message();
-        EXPECT_TRUE(request_opt);
-        auto request = request_opt.value();
-        EXPECT_EQ(request.request_case(), jogasaki::proto::sql::request::Request::RequestCase::kCommit);
+        jogasaki::proto::sql::response::ResultOnly rod{};
+        jogasaki::proto::sql::response::Success sd{};
+        rod.set_allocated_success(&sd);
+        server_->response_message(rod, 1);
+
+        EXPECT_EQ(ERROR_CODE::OK, transaction->commit());
+        roc.release_success();
+        rod.release_success();
+
+        std::optional<jogasaki::proto::sql::request::Request> requestc_opt = server_->request_message();
+        EXPECT_TRUE(requestc_opt);
+        auto requestc = requestc_opt.value();
+        EXPECT_EQ(requestc.request_case(), jogasaki::proto::sql::request::Request::RequestCase::kCommit);
+
+        std::optional<jogasaki::proto::sql::request::Request> requestd_opt = server_->request_message();
+        EXPECT_TRUE(requestd_opt);
+        auto requestd = requestd_opt.value();
+        EXPECT_EQ(requestd.request_case(), jogasaki::proto::sql::request::Request::RequestCase::kDisposeTransaction);
     }
 }
 

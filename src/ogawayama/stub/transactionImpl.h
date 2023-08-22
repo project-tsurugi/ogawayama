@@ -83,7 +83,7 @@ private:
     tateyama::bootstrap::wire::transport& transport_;
     ::jogasaki::proto::sql::common::Transaction transaction_handle_;
 
-    constexpr static std::size_t opt_index = 1;
+    constexpr static std::size_t opt_index = 2;  // reserve 0 for commit and 1 for dispose_transaction
     std::size_t max_query_index_{opt_index};
     std::queue<std::size_t> query_index_queue_{};
     bool query_in_processing_{false};
@@ -122,6 +122,7 @@ private:
             query_index_queue_.push(query_index);
         }
     }
+    ErrorCode dispose_transaction();
 
     friend class ResultSet::Impl;
 };

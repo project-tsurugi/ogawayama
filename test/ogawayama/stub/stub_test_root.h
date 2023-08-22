@@ -56,8 +56,10 @@ public:
 
     template<typename T>
     void response_message(T& reply) = delete;
+    template<typename T>
+    void response_message(T& reply, std::size_t) = delete;
 
-    void response_with_resultset(jogasaki::proto::sql::response::ResultSetMetadata& metadata, std::queue<std::string>& resultset, jogasaki::proto::sql::response::ResultOnly& ro, std::size_t index = 1) {
+    void response_with_resultset(jogasaki::proto::sql::response::ResultSetMetadata& metadata, std::queue<std::string>& resultset, jogasaki::proto::sql::response::ResultOnly& ro, std::size_t index = 2) {
         std::string resultset_name{resultset_name_prefix};
         resultset_name += std::to_string(index);
         // body_head
@@ -116,11 +118,15 @@ inline void server::response_message<jogasaki::proto::sql::response::Begin>(joga
     r.release_begin();
 }
 template<>
-inline void server::response_message<jogasaki::proto::sql::response::ResultOnly>(jogasaki::proto::sql::response::ResultOnly& ro) {
+inline void server::response_message<jogasaki::proto::sql::response::ResultOnly>(jogasaki::proto::sql::response::ResultOnly& ro, std::size_t index) {
     jogasaki::proto::sql::response::Response r{};
     r.set_allocated_result_only(&ro);
-    endpoint_.worker_->response_message(r);
+    endpoint_.worker_->response_message(r, index);
     r.release_result_only();
+}
+template<>
+inline void server::response_message<jogasaki::proto::sql::response::ResultOnly>(jogasaki::proto::sql::response::ResultOnly& ro) {
+    response_message<jogasaki::proto::sql::response::ResultOnly>(ro, 0);
 }
 template<>
 inline void server::response_message<jogasaki::proto::sql::response::Prepare>(jogasaki::proto::sql::response::Prepare& p) {
