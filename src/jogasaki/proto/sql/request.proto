@@ -280,7 +280,10 @@ message ExecuteDump {
 
 /* For execute load request. */
 message ExecuteLoad {
-  common.Transaction transaction_handle = 1;
+  // optional transaction handle (empty for non-transactional load).
+  oneof transaction_handle_opt {
+    common.Transaction transaction_handle = 1;
+  }
   common.PreparedStatement prepared_statement_handle = 2;
   repeated Parameter parameters = 3;
   repeated string file = 4;
@@ -292,6 +295,9 @@ message Commit {
 
     // response will be returned after reaching the commit status.
     CommitStatus notification_type = 2;
+
+    // dispose the target transaction handle only if notifies a successfully commit to the client.
+    bool auto_dispose = 3;
 }
 
 /* For rollback request. */
@@ -318,6 +324,28 @@ message DescribeTable {
     string name = 11;
 }
 
+// describe available table names in the database.
+message ListTables {
+    reserved 1 to 10;
+}
+
+// describe the current search path.
+message GetSearchPath {
+    reserved 1 to 10;
+}
+
+// retrieves error information of the transaction.
+message GetErrorInfo {
+  // the target transaction handle.
+  common.Transaction transaction_handle = 1;
+}
+
+// occurred when the client side transaction handle is disposed.
+message DisposeTransaction {
+  // the target transaction handle.
+  common.Transaction transaction_handle = 1;
+}
+
 /* For request message to the SQL service. */
 message Request {
   common.Session session_handle = 1;
@@ -337,5 +365,9 @@ message Request {
     ExecuteLoad execute_load = 14;
     DescribeTable describe_table = 15;
     Batch batch = 16;
+    ListTables listTables = 17;
+    GetSearchPath getSearchPath = 18;
+    GetErrorInfo get_error_info = 19;
+    DisposeTransaction dispose_transaction = 20;
   }
 }

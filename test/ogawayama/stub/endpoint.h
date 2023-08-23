@@ -148,7 +148,7 @@ public:
             }
             clean_up_();
         }
-        void response_message(const jogasaki::proto::sql::response::Response& message) {
+        void response_message(const jogasaki::proto::sql::response::Response& message, std::size_t index = 0) {
             std::stringstream ss{};
             ::tateyama::proto::framework::response::Header header{};
             if(auto res = tateyama::utils::SerializeDelimitedToOstream(header, std::addressof(ss)); ! res) {
@@ -157,7 +157,7 @@ public:
             if(auto res = tateyama::utils::SerializeDelimitedToOstream(message, std::addressof(ss)); ! res) {
                 throw std::runtime_error("error formatting response message");
             }
-            responses_.at(0) = endpoint_response(ss.str());
+            responses_.at(index) = endpoint_response(ss.str());
         }
         void response_message(const jogasaki::proto::sql::response::Response& head, std::string_view name, std::queue<std::string>& resultset, const jogasaki::proto::sql::response::Response& body, std::size_t index) {
             std::stringstream ss_head{};

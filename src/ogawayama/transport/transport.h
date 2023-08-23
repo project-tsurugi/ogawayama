@@ -35,6 +35,8 @@ namespace tateyama::bootstrap::wire {
 
 constexpr static std::size_t MESSAGE_VERSION = 1;
 constexpr inline std::uint32_t SERVICE_ID_SQL = 3;  // from tateyama/framework/component_ids.h
+constexpr static tateyama::common::wire::message_header::index_type SLOT_FOR_DISPOSE_TRANSACTION = 1;
+constexpr static tateyama::common::wire::message_header::index_type OPT_INDEX = SLOT_FOR_DISPOSE_TRANSACTION + 1;
 
 class transport {
 public:
@@ -211,6 +213,33 @@ public:
         return std::nullopt;
     }
 
+/**
+ * @brief send a rollback request to the sql service.
+ * @param rollback_request a rollback request message in ::jogasaki::proto::sql::request::Rollback
+ * @return std::optional of ::jogasaki::proto::sql::request::ResultOnly
+ */
+    std::optional<ogawayama::stub::ErrorCode> send(::jogasaki::proto::sql::request::DisposeTransaction& r) {
+        ::jogasaki::proto::sql::request::Request request{};
+        *(request.mutable_dispose_transaction()) = r;
+        auto response_opt = send<::jogasaki::proto::sql::response::Response>(request, SLOT_FOR_DISPOSE_TRANSACTION);
+        request.clear_rollback();
+        if (response_opt) {
+            auto response_message = response_opt.value();
+            if (response_message.has_result_only()) {
+                auto ro = response_message.result_only();
+                if (ro.has_success()) {
+                    return ogawayama::stub::ErrorCode::OK;
+                }
+            }
+            if (response_message.has_dispose_transaction()) {
+                auto ro = response_message.dispose_transaction();
+                if (ro.has_success()) {
+                    return ogawayama::stub::ErrorCode::OK;
+                }
+            }
+        }
+        return std::nullopt;
+    }
 
     void close() {
         wire_.close();
@@ -233,7 +262,6 @@ private:
     ::jogasaki::proto::sql::common::Session session_{};
     std::string statement_result_{};
     std::string query_result_for_the_one_{};
-    constexpr static std::size_t opt_index = 1;
     std::vector<std::string> query_results_{};
     
     template <typename T>
@@ -266,10 +294,10 @@ private:
             if (index == 0 && !statement_result_.empty()) {
                 response_message = statement_result_;
                 statement_result_.clear();
-            } else if (index == opt_index && !query_result_for_the_one_.empty()) {
+            } else if (index == OPT_INDEX && !query_result_for_the_one_.empty()) {
                 response_message = query_result_for_the_one_;
                 query_result_for_the_one_.clear();
-            } else if (index > opt_index && !query_results_at(index).empty()) {
+            } else if (index > OPT_INDEX && !query_results_at(index).empty()) {
                 response_message = query_results_at(index);
                 query_results_at(index).clear();
             } else {
@@ -283,7 +311,7 @@ private:
                         statement_result_.resize(response_wire.get_length());
                         response_wire.read(statement_result_.data());
                     } else {
-                        std::string& body = (slot == opt_index) ? query_result_for_the_one_ : query_results_at(slot);
+                        std::string& body = (slot == OPT_INDEX) ? query_result_for_the_one_ : query_results_at(slot);
                         body.resize(response_wire.get_length());
                         response_wire.read(body.data());
                     }
@@ -308,7 +336,7 @@ private:
     }
 
     std::string& query_results_at(std::size_t index) {
-        auto vector_index = index - (opt_index + 1);
+        auto vector_index = index - (OPT_INDEX + 1);
         if (query_results_.size() < (vector_index + 1)) {
             query_results_.resize(vector_index + 1);
         }
