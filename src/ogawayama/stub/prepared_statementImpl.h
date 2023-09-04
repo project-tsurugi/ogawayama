@@ -15,8 +15,6 @@
  */
 #pragma once
 
-#include "ogawayama/common/channel_stream.h"
-#include "ogawayama/common/parameter_set.h"
 #include "transactionImpl.h"
 #include "stubImpl.h"
 

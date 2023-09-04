@@ -72,21 +72,18 @@ public:
     bool shutdown(tateyama::framework::environment&) override;
 
     /**
-     * @brief request interface not used by this service
+     * @brief request interface
      */
     bool operator()(
         std::shared_ptr<tateyama::api::server::request>,
-        std::shared_ptr<tateyama::api::server::response>) override {
-        std::abort();
-    }
+        std::shared_ptr<tateyama::api::server::response>) override;
 
     /**
      * @see `tateyama::framework::component::label()`
      */
     [[nodiscard]] std::string_view label() const noexcept override;
 private:
-    std::unique_ptr<listener> listener_; // to use incomplete object, do not add {} after var. name.
-    std::thread listener_thread_;
+    jogasaki::api::database *db_{};
 };
 
 }

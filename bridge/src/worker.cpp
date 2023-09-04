@@ -45,90 +45,34 @@
 
 namespace ogawayama::bridge {
 
-DEFINE_bool(remove_shm, true, "remove the shared memory prior to the execution");  // NOLINT
-
-Worker::Worker(jogasaki::api::database& db, std::string& dbname, std::string_view shm_name, std::size_t id) : db_(db), id_(id), dbname_(dbname)
+ERROR_CODE Worker::begin_ddl(jogasaki::api::database& db)
 {
-    std::string name{shm_name};
-    name += "-" + std::to_string(id);
-    shm4_connection_ = std::make_unique<ogawayama::common::SharedMemory>(name, ogawayama::common::param::SheredMemoryType::SHARED_MEMORY_CONNECTION);
-    channel_ = std::make_unique<ogawayama::common::ChannelStream>(ogawayama::common::param::channel, shm4_connection_.get());
-    channel_->send_ack(ERROR_CODE::OK);
-}
-
-void Worker::run()
-{
-    while(true) {
-        ogawayama::common::CommandMessage::Type type;
-        std::size_t ivalue{};
-        std::string_view string;
-        try {
-            if (auto rc = channel_->recv_req(type, ivalue, string); rc != ERROR_CODE::OK) {
-                LOG(WARNING) << "error (" << error_name(rc) << ") occured in command receive, exiting";
-                return;
-            }
-            VLOG(log_debug) << "--> " << ogawayama::common::type_name(type) << " : ivalue = " << ivalue << " : string = " << " \"" << string << "\"";
-        } catch (std::exception &ex) {
-            LOG(WARNING) << "exception in command receive, exiting";
-            return;
-        }
-
-        switch (type) {
-        case ogawayama::common::CommandMessage::Type::CREATE_TABLE:
-            deploy_metadata(ivalue);
-            break;
-        case ogawayama::common::CommandMessage::Type::DROP_TABLE:
-            withdraw_metadata(ivalue);
-            break;
-        case ogawayama::common::CommandMessage::Type::BEGIN_DDL:
-            begin_ddl();
-            break;
-        case ogawayama::common::CommandMessage::Type::END_DDL:
-            end_ddl();
-            break;
-        case ogawayama::common::CommandMessage::Type::DISCONNECT:
-            if (transaction_handle_) {
-                transaction_handle_.abort();
-            }
-            clear_all();
-            channel_->bye_and_notify();
-            VLOG(log_debug) << "<-- bye_and_notify()";
-            return;
-        default:
-            LOG(ERROR) << "recieved an illegal command message";
-            return;
-        }
-    }
-}
-
-void Worker::begin_ddl()
-{
-    ERROR_CODE err_code = ERROR_CODE::OK;
+    ERROR_CODE rv = ERROR_CODE::OK;
 
     if (!transaction_handle_) {
-        if(auto rc = db_.create_transaction(transaction_handle_); rc != jogasaki::status::ok) {  // FIXME use transaction option to specify exclusive exexution
-            LOG(ERROR) << "fail to db_.create_transaction(transaction_handle_) " << jogasaki::to_string_view(rc);
-            err_code = ERROR_CODE::UNKNOWN;
+        if(auto rc = db.create_transaction(transaction_handle_); rc != jogasaki::status::ok) {  // FIXME use transaction option to specify exclusive exexution
+            LOG(ERROR) << "fail to db.create_transaction(transaction_handle_) " << jogasaki::to_string_view(rc);
+            rv = ERROR_CODE::UNKNOWN;
         }
     } else {
-        err_code = ERROR_CODE::TRANSACTION_ALREADY_STARTED;
+        rv = ERROR_CODE::TRANSACTION_ALREADY_STARTED;
     }
-    channel_->send_ack(err_code);
-    VLOG(log_debug) << "<-- " << ogawayama::stub::error_name(err_code);
+    VLOG(log_debug) << "<-- " << ogawayama::stub::error_name(rv);
+    return rv;
 }
 
-void Worker::end_ddl()
+ERROR_CODE Worker::end_ddl(jogasaki::api::database& db)
 {
-    ERROR_CODE err_code = ERROR_CODE::OK;
+    ERROR_CODE rv = ERROR_CODE::OK;
 
     if (!transaction_handle_) {
-        err_code = ERROR_CODE::NO_TRANSACTION;
+        rv = ERROR_CODE::NO_TRANSACTION;
     } else {
         transaction_handle_.commit();
-        clear_transaction();
+        clear_transaction(db);
     }
-    channel_->send_ack(err_code);
-    VLOG(log_debug) << "<-- " << ogawayama::stub::error_name(err_code);
+    VLOG(log_debug) << "<-- " << ogawayama::stub::error_name(rv);
+    return rv;
 }
 
 static void get_data_length_vector(const boost::property_tree::ptree& column, std::vector<boost::optional<int64_t>>& data_length_vector) {
@@ -138,6 +82,7 @@ static void get_data_length_vector(const boost::property_tree::ptree& column, st
     }
 }
 
+#if 0
 void Worker::deploy_metadata(std::size_t table_id)
 {
     manager::metadata::ErrorCode error;
@@ -151,18 +96,36 @@ void Worker::deploy_metadata(std::size_t table_id)
     }
     boost::property_tree::ptree table;
     if (error = tables->get(table_id, table); error == manager::metadata::ErrorCode::OK) {
-        auto rc = do_deploy_metadata(db_, table_id, table);
+
+        std::ostringstream ofs;
+        boost::archive::binary_oarchive oa(ofs);
+        oa << table_id;
+        oa << table;
+        
+        auto rc = do_deploy_metadata(db_, ofs.str());
         channel_->send_ack(rc);
     } else {
         channel_->send_ack(ERROR_CODE::UNKNOWN);
         VLOG(log_debug) << "<-- UNKNOWN";
     }
 }
+#endif
 
-ERROR_CODE Worker::do_deploy_metadata(jogasaki::api::database& db, std::size_t table_id, boost::property_tree::ptree& table)
+ERROR_CODE Worker::deploy_metadata(jogasaki::api::database& db, std::string_view str)
+{
+    std::istringstream ifs(std::string{str});
+    boost::archive::binary_iarchive ia(ifs);
+    return do_deploy_metadata(db, ia);
+}
+
+ERROR_CODE Worker::do_deploy_metadata(jogasaki::api::database& db, boost::archive::binary_iarchive& ia)
 {
     manager::metadata::ErrorCode error;
+    std::size_t table_id;
 
+    boost::property_tree::ptree table;
+    ia >> table_id;
+    ia >> table;
     {
         if (FLAGS_v >= log_debug) {
             std::ostringstream oss;
@@ -658,45 +621,42 @@ ERROR_CODE Worker::do_deploy_metadata(jogasaki::api::database& db, std::size_t t
     }
 }
 
-void Worker::withdraw_metadata(std::size_t table_id)
+ERROR_CODE Worker::withdraw_metadata(jogasaki::api::database& db, std::string_view str)
+{
+    std::istringstream ifs(std::string{str});
+    boost::archive::binary_iarchive ia(ifs);
+    return do_withdraw_metadata(db, ia);
+}
+
+ERROR_CODE Worker::do_withdraw_metadata(jogasaki::api::database& db, boost::archive::binary_iarchive& ia)
 {
     manager::metadata::ErrorCode error;
-
-    auto tables = std::make_unique<manager::metadata::Tables>(dbname_);
-    error = tables->Metadata::load();
-    if (error != manager::metadata::ErrorCode::OK) {
-        channel_->send_ack(ERROR_CODE::FILE_IO_ERROR);
-        VLOG(log_debug) << "<-- FILE_IO_ERROR";
-        return;
-    }
+    std::size_t table_id;
 
     boost::property_tree::ptree table;
-    if ((error = tables->get(table_id, table)) == manager::metadata::ErrorCode::OK) {
-        VLOG(log_debug) << "found table with id " << table_id ;
-        // table metadata
-        auto id = table.get_optional<manager::metadata::ObjectIdType>(manager::metadata::Tables::ID);
-        auto table_name = table.get_optional<std::string>(manager::metadata::Tables::NAME);
-        if (!id || !table_name || (id.value() != table_id)) {
-            channel_->send_ack(ERROR_CODE::INVALID_PARAMETER);
-            VLOG(log_debug) << "<-- INVALID_PARAMETER";
-            return;
-        }
+    ia >> table_id;
+    ia >> table;
 
-        VLOG(log_debug) << " name is " << table_name.value();
-        if (auto rc = db_.drop_table(table_name.value()); rc != jogasaki::status::ok) {
-            channel_->send_ack(ERROR_CODE::INVALID_PARAMETER);
-            return;
-        }
-        if (auto rc = db_.drop_index(table_name.value()); rc != jogasaki::status::ok) {
-            channel_->send_ack(ERROR_CODE::INVALID_PARAMETER);
-            return;
-        }
-        channel_->send_ack(ERROR_CODE::OK);
-        VLOG(log_debug) << "<-- OK";
-    } else {
-        channel_->send_ack(ERROR_CODE::UNKNOWN);
-        VLOG(log_debug) << "<-- UNKNOWN";
+    VLOG(log_debug) << "found table with id " << table_id ;
+    // table metadata
+    auto id = table.get_optional<manager::metadata::ObjectIdType>(manager::metadata::Tables::ID);
+    auto table_name = table.get_optional<std::string>(manager::metadata::Tables::NAME);
+    if (!id || !table_name || (id.value() != table_id)) {
+        VLOG(log_debug) << "<-- INVALID_PARAMETER";
+            return ERROR_CODE::INVALID_PARAMETER;
     }
+
+    VLOG(log_debug) << " name is " << table_name.value();
+    if (auto rc = db.drop_table(table_name.value()); rc != jogasaki::status::ok) {
+        return ERROR_CODE::INVALID_PARAMETER;
+    }
+    if (auto rc = db.drop_index(table_name.value()); rc != jogasaki::status::ok) {
+        return ERROR_CODE::INVALID_PARAMETER;
+    }
+    VLOG(log_debug) << "<-- OK";
+    return ERROR_CODE::OK;
 }
+
+jogasaki::api::transaction_handle Worker::transaction_handle_{};
 
 }  // ogawayama::bridge

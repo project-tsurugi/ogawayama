@@ -38,7 +38,6 @@
 #include "ogawayama/stub/transactionImpl.h"
 #include "ogawayama/stub/result_setImpl.h"
 #include "endpoint.h"
-#include "channel_stream_for_test.h"
 
 namespace ogawayama::testing {
 
@@ -46,11 +45,10 @@ class server {
     constexpr static std::string_view resultset_name_prefix = "resultset_for_test_";  // NOLINT
 
 public:
-    server(std::string name) : name_(name), endpoint_(name_), channel_stream_(name_) {
+    server(std::string name) : name_(name), endpoint_(name_) {
     }
     ~server() {
         endpoint_.terminate();
-        channel_stream_.terminate();
         remove_shm();
     }
 
@@ -72,7 +70,7 @@ public:
         jogasaki::proto::sql::response::Response rb{};
         rb.set_allocated_result_only(&ro);
         // set response
-        endpoint_.worker_->response_message(rh, resultset_name, resultset, rb, index);
+        endpoint_.get_worker()->response_message(rh, resultset_name, resultset, rb, index);
         // release
         rb.release_result_only();
         rh.release_execute_query();
@@ -80,7 +78,7 @@ public:
     }
 
     std::optional<jogasaki::proto::sql::request::Request> request_message() {
-        auto request_packet = endpoint_.worker_->request_message();
+        auto request_packet = endpoint_.get_worker()->request_message();
 
         ::tateyama::proto::framework::request::Header header{};
         google::protobuf::io::ArrayInputStream in{request_packet.data(), static_cast<int>(request_packet.length())};
@@ -100,7 +98,6 @@ public:
 private:
     std::string name_;
     endpoint endpoint_;
-    channel_stream channel_stream_;
 
     void remove_shm() {
         std::string cmd = "if [ -f /dev/shm/" + name_ + " ]; then rm -f /dev/shm/" + name_ + "*; fi";
@@ -114,14 +111,14 @@ template<>
 inline void server::response_message<jogasaki::proto::sql::response::Begin>(jogasaki::proto::sql::response::Begin& b) {
     jogasaki::proto::sql::response::Response r{};
     r.set_allocated_begin(&b);
-    endpoint_.worker_->response_message(r);
+    endpoint_.get_worker()->response_message(r);
     r.release_begin();
 }
 template<>
 inline void server::response_message<jogasaki::proto::sql::response::ResultOnly>(jogasaki::proto::sql::response::ResultOnly& ro, std::size_t index) {
     jogasaki::proto::sql::response::Response r{};
     r.set_allocated_result_only(&ro);
-    endpoint_.worker_->response_message(r, index);
+    endpoint_.get_worker()->response_message(r, index);
     r.release_result_only();
 }
 template<>
@@ -132,7 +129,7 @@ template<>
 inline void server::response_message<jogasaki::proto::sql::response::Prepare>(jogasaki::proto::sql::response::Prepare& p) {
     jogasaki::proto::sql::response::Response r{};
     r.set_allocated_prepare(&p);
-    endpoint_.worker_->response_message(r);
+    endpoint_.get_worker()->response_message(r);
     r.release_prepare();
 }
 

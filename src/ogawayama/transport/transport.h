@@ -29,22 +29,28 @@
 #include <jogasaki/proto/sql/common.pb.h>
 #include <jogasaki/proto/sql/response.pb.h>
 
+#include <ogawayama/stub/error_code.h>
+
 #include "tateyama/transport/client_wire.h"
 
 namespace tateyama::bootstrap::wire {
 
-constexpr static std::size_t MESSAGE_VERSION = 1;
-constexpr inline std::uint32_t SERVICE_ID_SQL = 3;  // from tateyama/framework/component_ids.h
 constexpr static tateyama::common::wire::message_header::index_type SLOT_FOR_DISPOSE_TRANSACTION = 1;
 constexpr static tateyama::common::wire::message_header::index_type OPT_INDEX = SLOT_FOR_DISPOSE_TRANSACTION + 1;
 
 class transport {
+constexpr static std::size_t MESSAGE_VERSION = 1;
+constexpr static std::uint32_t SERVICE_ID_SQL = 3;  // from tateyama/framework/component_ids.h
+constexpr static std::uint32_t SERVICE_ID_FDW = 4;  // from tateyama/framework/component_ids.h
+
 public:
     transport() = delete;
 
     explicit transport(tateyama::common::wire::session_wire_container& wire) : wire_(wire) {
         header_.set_message_version(MESSAGE_VERSION);
         header_.set_service_id(SERVICE_ID_SQL);
+        bridge_header_.set_message_version(MESSAGE_VERSION);
+        bridge_header_.set_service_id(SERVICE_ID_FDW);
     }
 
 /**
@@ -256,9 +262,23 @@ public:
         return nullptr;
     }
 
+/**
+ * @brief send a request message to fdw service, to use fdw_service.
+ * @param request a request message in std::string
+ * @return std::optional of std::string
+ */
+    std::optional<std::string> send(std::string_view request) {
+        auto response_opt = send_request(request);
+        if (response_opt) {
+            return response_opt.value();
+        }
+        return std::nullopt;
+    }
+
 private:
     tateyama::common::wire::session_wire_container& wire_;
     ::tateyama::proto::framework::request::Header header_{};
+    ::tateyama::proto::framework::request::Header bridge_header_{};
     ::jogasaki::proto::sql::common::Session session_{};
     std::string statement_result_{};
     std::string query_result_for_the_one_{};
@@ -341,6 +361,44 @@ private:
             query_results_.resize(vector_index + 1);
         }
         return query_results_.at(vector_index);
+    }
+
+    std::optional<std::string> send_request(std::string_view request, tateyama::common::wire::message_header::index_type index = 0) {
+        std::stringstream ss{};
+        if(auto res = tateyama::utils::SerializeDelimitedToOstream(bridge_header_, std::addressof(ss)); ! res) {
+            return std::nullopt;
+        }
+        if(auto res = tateyama::utils::PutDelimitedBodyToOstream(request, std::addressof(ss)); ! res) {
+            return std::nullopt;
+        }
+        wire_.write(ss.str(), index);
+
+        return receive(index);
+    }
+
+    std::optional<std::string> receive(tateyama::common::wire::message_header::index_type index) {
+        auto& response_wire = wire_.get_response_wire();
+
+        std::string response_message{};
+
+        response_wire.await();
+        auto slot = response_wire.get_idx();
+        if (slot == index) {
+            response_message.resize(response_wire.get_length());
+            response_wire.read(response_message.data());
+        }
+
+        ::tateyama::proto::framework::response::Header header{};
+        google::protobuf::io::ArrayInputStream in{response_message.data(), static_cast<int>(response_message.length())};
+        if(auto res = tateyama::utils::ParseDelimitedFromZeroCopyStream(std::addressof(header), std::addressof(in), nullptr); ! res) {
+            return std::nullopt;
+        }
+        std::string_view response{};
+        bool eof;
+        if(auto res = tateyama::utils::GetDelimitedBodyFromZeroCopyStream(std::addressof(in), &eof, response); ! res) {
+            return std::nullopt;
+        }
+        return std::string{response};
     }
 };
 

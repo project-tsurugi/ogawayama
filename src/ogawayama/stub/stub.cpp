@@ -14,6 +14,8 @@
  * limitations under the License.
  */
 
+#include <stdexcept>
+
 #include "connectionImpl.h"
 
 #include "stubImpl.h"
@@ -21,12 +23,7 @@
 namespace ogawayama::stub {
 
 Stub::Impl::Impl(Stub *stub, std::string_view database_name)
-    : envelope_(stub), database_name_(database_name), connection_container_(database_name)
-{
-    // for old-fashioned link
-    shared_memory_ = std::make_unique<ogawayama::common::SharedMemory>(database_name, ogawayama::common::param::SheredMemoryType::SHARED_MEMORY_SERVER_CHANNEL);
-    server_ = std::make_unique<ogawayama::common::ChannelStream>(ogawayama::common::param::server, shared_memory_.get());
-}
+    : envelope_(stub), database_name_(database_name), connection_container_(database_name) {}
 
 Stub::Impl::~Impl() {}
 
@@ -44,17 +41,8 @@ ErrorCode Stub::Impl::get_connection(ConnectionPtr& connection, std::size_t pgpr
         return ErrorCode::SERVER_FAILURE;
     }
     auto connection_impl = std::make_unique<Connection::Impl>(this, sid, pgprocno);
-    
-    // for old-fashioned link
-    server_->lock();
-    server_->send_req(ogawayama::common::CommandMessage::Type::CONNECT, pgprocno);
-    server_->wait();
-    server_->unlock();
-    auto rv = connection_impl->confirm();
-
     connection = std::make_unique<Connection>(std::move(connection_impl));
-
-    return rv;
+    return ERROR_CODE::OK;
 }
 
 /**
@@ -85,7 +73,7 @@ ERROR_CODE make_stub(StubPtr &stub, std::string_view name)
     try {
         stub = std::make_unique<ogawayama::stub::Stub>(name);
     }
-    catch (ogawayama::common::SharedMemoryException& e) {
+    catch (std::runtime_error &e) {
         std::cerr << e.what() << std::endl;
         return ERROR_CODE::SERVER_FAILURE;
     }

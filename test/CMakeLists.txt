@@ -46,6 +46,7 @@ register_tests(
       message-manager-interface
       jogasaki-${SHARKSFIN_IMPLEMENTATION}-engine
       Boost::filesystem
+      Boost::serialization
       glog::glog
       gflags::gflags
       rt

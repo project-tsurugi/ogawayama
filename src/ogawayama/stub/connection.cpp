@@ -14,38 +14,30 @@
  * limitations under the License.
  */
 
-#include <boost/foreach.hpp>
+#include <iostream>
 
+#include <boost/foreach.hpp>
+#define BOOST_BIND_GLOBAL_PLACEHOLDERS  // to retain the current behavior
+#include <boost/property_tree/json_parser.hpp>
+#include <boost/archive/basic_archive.hpp> // need for ubuntu 20.04
+#include <boost/property_tree/ptree_serialization.hpp>
+#include <boost/archive/binary_oarchive.hpp>
+#include <boost/archive/binary_iarchive.hpp>
+
+#include <manager/metadata/tables.h>
+
+#include <ogawayama/common/bridge.h>
 #include "prepared_statementImpl.h"
 #include "connectionImpl.h"
 
 namespace ogawayama::stub {
 
 Connection::Impl::Impl(Stub::Impl* manager, std::string_view session_id, std::size_t pgprocno)
-    : manager_(manager), session_id_(session_id), wire_(session_id_), transport_(wire_), pgprocno_(pgprocno)
-{
-    // for old-fashioned link
-    std::string name{manager->get_shm_name()};
-    name += "-" + std::to_string(pgprocno);
-    shm4_connection_ = std::make_unique<ogawayama::common::SharedMemory>(name, ogawayama::common::param::SheredMemoryType::SHARED_MEMORY_CONNECTION, true, true);
-    channel_ = std::make_unique<ogawayama::common::ChannelStream>(ogawayama::common::param::channel, shm4_connection_.get(), true);
-}
+    : manager_(manager), session_id_(session_id), wire_(session_id_), transport_(wire_), pgprocno_(pgprocno) {}
 
 Connection::Impl::~Impl()
 {
     transport_.close();
-    // for old-fashioned link
-    channel_->send_req(ogawayama::common::CommandMessage::Type::DISCONNECT);
-    channel_->wait();
-}
-
-ErrorCode Connection::Impl::confirm()
-{
-    ErrorCode reply = channel_->recv_ack();
-    if (reply != ErrorCode::OK) {
-        return ErrorCode::SERVER_FAILURE;
-    }
-    return reply;
 }
 
 /**
@@ -195,6 +187,19 @@ ErrorCode Connection::Impl::prepare(std::string_view sql, const placeholders_typ
     return ErrorCode::SERVER_FAILURE;
 }
 
+static inline
+ErrorCode get_table_metadata(std::string_view name, std::size_t id, boost::property_tree::ptree& tree) {
+    auto tables = std::make_unique<manager::metadata::Tables>(name);
+    if (tables->Metadata::load() != manager::metadata::ErrorCode::OK) {
+        return ERROR_CODE::FILE_IO_ERROR;
+    }
+    boost::property_tree::ptree table;
+    if (tables->get(id, table) != manager::metadata::ErrorCode::OK) {
+        return ERROR_CODE::FILE_IO_ERROR;  // tables->get() failed
+    }
+    return ERROR_CODE::OK;
+}
+
 /**
  * @brief relay a create tabe message from the frontend to the server
  * @param table id given by the frontend
@@ -202,8 +207,27 @@ ErrorCode Connection::Impl::prepare(std::string_view sql, const placeholders_typ
  */
 ErrorCode Connection::Impl::create_table(std::size_t id)
 {
-    channel_->send_req(ogawayama::common::CommandMessage::Type::CREATE_TABLE, id);
-    return channel_->recv_ack();
+    boost::property_tree::ptree table;
+    if (auto rc = get_table_metadata(manager_->get_database_name(), id, table); rc != ErrorCode::OK) {
+        return rc;
+    }
+    auto command = ogawayama::common::command::create_table;
+
+    std::ostringstream ofs;
+    boost::archive::binary_oarchive oa(ofs);
+    oa << command;
+    oa << id;
+    oa << table;
+        
+    auto response_opt = transport_.send(ofs.str());
+    if (response_opt) {
+        ERROR_CODE rv;
+        std::istringstream ifs(response_opt.value());
+        boost::archive::binary_iarchive ia(ifs);
+        ia >> rv;
+        return rv;
+    }
+    return ERROR_CODE::SERVER_FAILURE;  // service returns std::nullopt
 }
 
 /**
@@ -213,8 +237,27 @@ ErrorCode Connection::Impl::create_table(std::size_t id)
  */
 ErrorCode Connection::Impl::drop_table(std::size_t id)
 {
-    channel_->send_req(ogawayama::common::CommandMessage::Type::DROP_TABLE, id);
-    return channel_->recv_ack();
+    boost::property_tree::ptree table;
+    if (auto rc = get_table_metadata(manager_->get_database_name(), id, table); rc != ErrorCode::OK) {
+        return rc;
+    }
+    auto command = ogawayama::common::command::drop_table;
+
+    std::ostringstream ofs;
+    boost::archive::binary_oarchive oa(ofs);
+    oa << command;
+    oa << id;
+    oa << table;
+        
+    auto response_opt = transport_.send(ofs.str());
+    if (response_opt) {
+        ERROR_CODE rv;
+        std::istringstream ifs(response_opt.value());
+        boost::archive::binary_iarchive ia(ifs);
+        ia >> rv;
+        return rv;
+    }
+    return ERROR_CODE::SERVER_FAILURE;  // service returns std::nullopt
 }
 
 /**
@@ -224,8 +267,21 @@ ErrorCode Connection::Impl::drop_table(std::size_t id)
  */
 ErrorCode Connection::Impl::begin_ddl()
 {
-    channel_->send_req(ogawayama::common::CommandMessage::Type::BEGIN_DDL);
-    return channel_->recv_ack();
+    auto command = ogawayama::common::command::begin;
+
+    std::ostringstream ofs;
+    boost::archive::binary_oarchive oa(ofs);
+    oa << command;
+
+    auto response_opt = transport_.send(ofs.str());
+    if (response_opt) {
+        ERROR_CODE rv;
+        std::istringstream ifs(response_opt.value());
+        boost::archive::binary_iarchive ia(ifs);
+        ia >> rv;
+        return rv;
+    }
+    return ERROR_CODE::SERVER_FAILURE;  // service returns std::nullopt
 }
 
 /**
@@ -235,8 +291,21 @@ ErrorCode Connection::Impl::begin_ddl()
  */
 ErrorCode Connection::Impl::end_ddl()
 {
-    channel_->send_req(ogawayama::common::CommandMessage::Type::END_DDL);
-    return channel_->recv_ack();
+    auto command = ogawayama::common::command::commit;
+
+    std::ostringstream ofs;
+    boost::archive::binary_oarchive oa(ofs);
+    oa << command;
+
+    auto response_opt = transport_.send(ofs.str());
+    if (response_opt) {
+        ERROR_CODE rv;
+        std::istringstream ifs(response_opt.value());
+        boost::archive::binary_iarchive ia(ifs);
+        ia >> rv;
+        return rv;
+    }
+    return ERROR_CODE::SERVER_FAILURE;  // service returns std::nullopt
 }
 
 
