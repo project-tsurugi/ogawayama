@@ -82,35 +82,6 @@ static void get_data_length_vector(const boost::property_tree::ptree& column, st
     }
 }
 
-#if 0
-void Worker::deploy_metadata(std::size_t table_id)
-{
-    manager::metadata::ErrorCode error;
-
-    auto tables = std::make_unique<manager::metadata::Tables>(dbname_);
-    error = tables->Metadata::load();
-    if (error != manager::metadata::ErrorCode::OK) {
-        channel_->send_ack(ERROR_CODE::FILE_IO_ERROR);
-        VLOG(log_debug) << "<-- FILE_IO_ERROR";
-        return;
-    }
-    boost::property_tree::ptree table;
-    if (error = tables->get(table_id, table); error == manager::metadata::ErrorCode::OK) {
-
-        std::ostringstream ofs;
-        boost::archive::binary_oarchive oa(ofs);
-        oa << table_id;
-        oa << table;
-        
-        auto rc = do_deploy_metadata(db_, ofs.str());
-        channel_->send_ack(rc);
-    } else {
-        channel_->send_ack(ERROR_CODE::UNKNOWN);
-        VLOG(log_debug) << "<-- UNKNOWN";
-    }
-}
-#endif
-
 ERROR_CODE Worker::deploy_metadata(jogasaki::api::database& db, std::string_view str)
 {
     std::istringstream ifs(std::string{str});
@@ -120,7 +91,6 @@ ERROR_CODE Worker::deploy_metadata(jogasaki::api::database& db, std::string_view
 
 ERROR_CODE Worker::do_deploy_metadata(jogasaki::api::database& db, boost::archive::binary_iarchive& ia)
 {
-    manager::metadata::ErrorCode error;
     std::size_t table_id;
 
     boost::property_tree::ptree table;
