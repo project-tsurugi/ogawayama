@@ -104,7 +104,9 @@ target_include_directories(stub
 target_link_libraries(stub
     PUBLIC takatori
     PRIVATE jogasaki-${SHARKSFIN_IMPLEMENTATION}-engine
+    PRIVATE metadata-manager-api
     PRIVATE message-manager-interface
+    PRIVATE Boost::serialization
     PRIVATE pthread
     PRIVATE rt
     PRIVATE protobuf::libprotobuf

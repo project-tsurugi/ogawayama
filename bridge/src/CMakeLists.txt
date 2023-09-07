@@ -39,10 +39,8 @@ target_link_libraries(bridge
     PRIVATE shakujo-common
     PRIVATE metadata-manager-api
     PRIVATE message-manager-interface
-    PRIVATE gflags::gflags
     PRIVATE glog::glog
-    PRIVATE Boost::filesystem
-    PRIVATE Boost::thread
+    PRIVATE Boost::serialization
     PRIVATE pthread
     PRIVATE rt
 )

@@ -15,8 +15,6 @@
  */
 #pragma once
 
-#include "ogawayama/common/channel_stream.h"
-#include "ogawayama/common/parameter_set.h"
 #include "ogawayama/transport/transport.h"
 
 #include "transactionImpl.h"
@@ -32,8 +30,6 @@ class Connection::Impl
 public:
     Impl(Stub::Impl*, std::string_view, std::size_t);
     ~Impl();
-
-    ErrorCode confirm();
 
     /**
      * @brief begin transaction
@@ -92,10 +88,6 @@ private:
     std::size_t pgprocno_;
 
     std::vector<ResultSet::Impl> result_sets_{};
-
-    // for old-fashioned link
-    std::unique_ptr<ogawayama::common::SharedMemory> shm4_connection_;
-    std::unique_ptr<ogawayama::common::ChannelStream> channel_;
 };
 
 }  // namespace ogawayama::stub

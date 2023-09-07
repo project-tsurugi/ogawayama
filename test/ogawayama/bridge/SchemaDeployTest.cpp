@@ -21,6 +21,9 @@
 
 #define BOOST_BIND_GLOBAL_PLACEHOLDERS
 #include <boost/property_tree/json_parser.hpp>
+#include <boost/archive/basic_archive.hpp> // need for ubuntu 20.04
+#include <boost/property_tree/ptree_serialization.hpp>
+#include <boost/archive/binary_oarchive.hpp>
 
 #include <takatori/value/boolean.h>
 #include <takatori/value/int.h>
@@ -50,13 +53,20 @@ protected:
 };
 
 TEST_F(SchemaDeployTest, basic_flow) {
+    std::size_t table_id{1};
     boost::property_tree::ptree table_ptree;
     try {
         boost::property_tree::read_json("../../test/ogawayama/bridge/schema/tables.json", table_ptree);
     } catch (std::exception& ex) {
         FAIL() << "error in read_json() of tables.json";
     }
-    EXPECT_EQ(ogawayama::bridge::Worker::do_deploy_metadata(*database_mock_, 1, table_ptree), ERROR_CODE::OK);
+
+    std::ostringstream ofs;
+    boost::archive::binary_oarchive oa(ofs);
+    oa << table_id;
+    oa << table_ptree;
+
+    EXPECT_EQ(ogawayama::bridge::Worker::deploy_metadata(*database_mock_, ofs.str()), ERROR_CODE::OK);
     auto& table = database_mock_->get_table();
     EXPECT_EQ(table->simple_name(), "table_for_test");
     auto& columns = table->columns();

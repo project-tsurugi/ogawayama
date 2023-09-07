@@ -18,7 +18,6 @@
 #include "gflags/gflags.h"
 #include <glog/logging.h>
 
-#include "ogawayama/common/channel_stream.h"
 #include "ogawayama/stub/api.h"
 #include "stubImpl.h"
 #include "transactionImpl.h"

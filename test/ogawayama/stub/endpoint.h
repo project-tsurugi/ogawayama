@@ -19,6 +19,7 @@
 #include <stdexcept>
 #include <functional>
 #include <mutex>
+#include <condition_variable>
 #include <array>
 
 #include <glog/logging.h>
@@ -87,8 +88,6 @@ private:
 };
 
 class endpoint {
-    friend class server;
-
     constexpr static tateyama::common::wire::response_header::msg_type RESPONSE_BODY = 1;
     constexpr static tateyama::common::wire::response_header::msg_type RESPONSE_BODYHEAD = 2;
     constexpr static tateyama::common::wire::response_header::msg_type RESPONSE_CODE = 3;
@@ -116,14 +115,16 @@ public:
                 wire_->get_request_wire()->read(message.data());
                 requests_.push(message);
 
-                auto& reply = responses_.at(index);
+                auto reply = responses_.at(index).front();
+                responses_.at(index).pop();
                 if (reply.get_type() == endpoint_response::BODY_ONLY) {
                     auto reply_message = reply.get_body();
                     wire_->get_response_wire().write(reply_message.data(), tateyama::common::wire::response_header(index, reply_message.length(), RESPONSE_BODY));
                 } else if (reply.get_type() == endpoint_response::WHTH_BODYHEAD) {
                     resultset_wires_array_.at(index) = wire_->create_resultset_wires(reply.get_name());
-                    auto* resultset_wires_ = (resultset_wires_array_.at(index)).get();
-                    resultset_wire_ = resultset_wires_->acquire();
+                    auto& resultset_wires = resultset_wires_array_.at(index);
+                    resultset_wire_array_.at(index) = resultset_wires->acquire();
+                    auto& resultset_wire = resultset_wire_array_.at(index);
                     // body_head
                     auto body_head = reply.get_body_head();
                     wire_->get_response_wire().write(body_head.data(), tateyama::common::wire::response_header(index, body_head.length(), RESPONSE_BODYHEAD));
@@ -132,11 +133,11 @@ public:
                     auto &resultset = reply.get_resultset();
                     while (!resultset.empty()) {
                         auto chunk = resultset.front();
-                        resultset_wire_->write(chunk.data(), chunk.length());
-                        resultset_wire_->flush();
+                        resultset_wire->write(chunk.data(), chunk.length());
+                        resultset_wire->flush();
                         resultset.pop();
                     }
-                    resultset_wires_->set_eor();
+                    resultset_wires->set_eor();
 
                     // body
                     auto reply_message = reply.get_body();
@@ -144,7 +145,6 @@ public:
                 } else {
                     throw std::runtime_error("response for the request has not been set");
                 }
-                reply = endpoint_response();
             }
             clean_up_();
         }
@@ -157,7 +157,7 @@ public:
             if(auto res = tateyama::utils::SerializeDelimitedToOstream(message, std::addressof(ss)); ! res) {
                 throw std::runtime_error("error formatting response message");
             }
-            responses_.at(index) = endpoint_response(ss.str());
+            responses_.at(index).emplace(endpoint_response(ss.str()));
         }
         void response_message(const jogasaki::proto::sql::response::Response& head, std::string_view name, std::queue<std::string>& resultset, const jogasaki::proto::sql::response::Response& body, std::size_t index) {
             std::stringstream ss_head{};
@@ -176,7 +176,7 @@ public:
             if(auto res = tateyama::utils::SerializeDelimitedToOstream(body, std::addressof(ss_body)); ! res) {
                 throw std::runtime_error("error formatting response message");
             }
-            responses_.at(index) = endpoint_response(ss_head.str(), name, resultset, ss_body.str());
+            responses_.at(index).emplace(endpoint_response(ss_head.str(), name, resultset, ss_body.str()));
         }
         std::string_view request_message() {
             current_request_ = requests_.front();
@@ -190,12 +190,10 @@ public:
         std::thread thread_;
 
         std::queue<std::string> requests_;
-        std::array<endpoint_response, response_array_size> responses_;
+        std::array<std::queue<endpoint_response>, response_array_size> responses_;
         std::array<tateyama::common::server_wire::server_wire_container::unq_p_resultset_wires_conteiner, response_array_size> resultset_wires_array_;
+        std::array<tateyama::common::server_wire::server_wire_container::unq_p_resultset_wire_conteiner, response_array_size> resultset_wire_array_;
         std::string current_request_;
-
-        tateyama::common::server_wire::server_wire_container::unq_p_resultset_wires_conteiner resultset_wires_{};
-        tateyama::common::server_wire::server_wire_container::unq_p_resultset_wire_conteiner resultset_wire_{};
     };
 
     endpoint(std::string name)
@@ -205,6 +203,15 @@ public:
         if (thread_.joinable()) {
             thread_.join();
         }
+    }
+    worker* get_worker() {
+        if (!worker_) {
+            std::unique_lock<std::mutex> lk(mutex_);
+            condition_.wait(lk, [&]{
+                return worker_.get() != nullptr;
+            });
+        }
+        return worker_.get();
     }
     void operator()() {
         auto& connection_queue = container_->get_connection_queue();
@@ -221,7 +228,9 @@ public:
             auto wire = std::make_unique<tateyama::common::server_wire::server_wire_container>(session_name);
             std::size_t index = connection_queue.accept(session_id);
             try {
+                std::unique_lock<std::mutex> lk(mutex_);
                 worker_ = std::make_unique<worker>(session_name, std::move(wire), [&connection_queue, index](){ connection_queue.disconnect(index); });
+                condition_.notify_all();
             } catch (std::exception& ex) {
                 LOG(ERROR) << ex.what();
                 break;
@@ -237,6 +246,8 @@ private:
     std::unique_ptr<tateyama::common::server_wire::connection_container> container_;
     std::thread thread_;
     std::unique_ptr<worker> worker_{};
+    std::mutex mutex_{};
+    std::condition_variable condition_{};
 };
 
 }  // namespace ogawayama::testing

@@ -17,13 +17,6 @@
 
 #include <memory>
 
-// for old-fashioned link from here
-#include "boost/interprocess/managed_shared_memory.hpp"
-#include "boost/interprocess/allocators/allocator.hpp"
-
-#include "ogawayama/common/channel_stream.h"
-// for old-fashioned link to here
-
 #include "tateyama/transport/client_wire.h"
 
 #include "ogawayama/stub/api.h"
@@ -40,16 +33,11 @@ public:
     ~Impl();
     ErrorCode get_connection(ConnectionPtr&, std::size_t);
     std::string_view get_database_name() { return database_name_; }
-    std::string_view get_shm_name() { return shared_memory_->get_name(); }
 
 private:
     const Stub *envelope_;
     const std::string database_name_;
     tateyama::common::wire::connection_container connection_container_;
-
-    // for old-fashioned link
-    std::unique_ptr<ogawayama::common::SharedMemory> shared_memory_;
-    std::unique_ptr<ogawayama::common::ChannelStream> server_;
 };
 
 }  // namespace ogawayama::stub

@@ -45,7 +45,7 @@ endif()
 
 find_package(Threads REQUIRED)
 find_package(Boost
-        COMPONENTS filesystem thread system container stacktrace_backtrace
+        COMPONENTS filesystem thread system container stacktrace_backtrace serialization
         REQUIRED
 )
 find_package(glog REQUIRED)
