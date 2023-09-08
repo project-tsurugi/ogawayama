@@ -619,14 +619,14 @@ ERROR_CODE Worker::do_withdraw_metadata(jogasaki::api::database& db, boost::arch
     auto table_name = table.get_optional<std::string>(manager::metadata::Tables::NAME);
     if (!id || !table_name || (id.value() != table_id)) {
         VLOG(log_debug) << "<-- INVALID_PARAMETER";
-            return ERROR_CODE::INVALID_PARAMETER;
+        return ERROR_CODE::INVALID_PARAMETER;
     }
 
     VLOG(log_debug) << " name is " << table_name.value();
-    if (auto rc = db.drop_table(table_name.value()); rc != jogasaki::status::ok) {
+    if (auto rc = db.drop_index(table_name.value()); rc != jogasaki::status::ok) {
         return ERROR_CODE::INVALID_PARAMETER;
     }
-    if (auto rc = db.drop_index(table_name.value()); rc != jogasaki::status::ok) {
+    if (auto rc = db.drop_table(table_name.value()); rc != jogasaki::status::ok) {
         return ERROR_CODE::INVALID_PARAMETER;
     }
     VLOG(log_debug) << "<-- OK";
