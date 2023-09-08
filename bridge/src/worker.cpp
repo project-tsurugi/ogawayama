@@ -45,6 +45,13 @@
 
 namespace ogawayama::bridge {
 
+Worker::~Worker()
+{
+    if (transaction_handle_) {
+        transaction_handle_.abort();
+    }
+}
+
 ERROR_CODE Worker::begin_ddl(jogasaki::api::database& db)
 {
     ERROR_CODE rv = ERROR_CODE::OK;
@@ -72,7 +79,7 @@ ERROR_CODE Worker::end_ddl(jogasaki::api::database& db)
     } else {
         transaction_handle_.commit();
         if (auto rc = db.destroy_transaction(transaction_handle_); rc != jogasaki::status::ok) {
-            LOG(ERROR) << "fail to db_.destroy_transaction(transaction_handle_)";
+            LOG(ERROR) << "fail to db.destroy_transaction(transaction_handle_)";
             rv = ERROR_CODE::SERVER_FAILURE;
         }
         transaction_handle_ = jogasaki::api::transaction_handle();
@@ -88,14 +95,14 @@ static void get_data_length_vector(const boost::property_tree::ptree& column, st
     }
 }
 
-ERROR_CODE Worker::deploy_metadata(jogasaki::api::database& db, std::string_view str)
+ERROR_CODE Worker::deploy_table(jogasaki::api::database& db, std::string_view str)
 {
     std::istringstream ifs(std::string{str});
     boost::archive::binary_iarchive ia(ifs);
-    return do_deploy_metadata(db, ia);
+    return do_deploy_table(db, ia);
 }
 
-ERROR_CODE Worker::do_deploy_metadata(jogasaki::api::database& db, boost::archive::binary_iarchive& ia)
+ERROR_CODE Worker::do_deploy_table(jogasaki::api::database& db, boost::archive::binary_iarchive& ia)
 {
     std::size_t table_id;
 
@@ -597,14 +604,14 @@ ERROR_CODE Worker::do_deploy_metadata(jogasaki::api::database& db, boost::archiv
     }
 }
 
-ERROR_CODE Worker::withdraw_metadata(jogasaki::api::database& db, std::string_view str)
+ERROR_CODE Worker::withdraw_table(jogasaki::api::database& db, std::string_view str)
 {
     std::istringstream ifs(std::string{str});
     boost::archive::binary_iarchive ia(ifs);
-    return do_withdraw_metadata(db, ia);
+    return do_withdraw_table(db, ia);
 }
 
-ERROR_CODE Worker::do_withdraw_metadata(jogasaki::api::database& db, boost::archive::binary_iarchive& ia)
+ERROR_CODE Worker::do_withdraw_table(jogasaki::api::database& db, boost::archive::binary_iarchive& ia)
 {
     manager::metadata::ErrorCode error;
     std::size_t table_id;
@@ -633,6 +640,18 @@ ERROR_CODE Worker::do_withdraw_metadata(jogasaki::api::database& db, boost::arch
     return ERROR_CODE::OK;
 }
 
-jogasaki::api::transaction_handle Worker::transaction_handle_{};
+ERROR_CODE Worker::do_deploy_index(jogasaki::api::database& db, boost::archive::binary_iarchive& ia)
+{
+    (void) db;
+    (void) ia;
+    return ERROR_CODE::UNSUPPORTED;
+}
+
+ERROR_CODE Worker::do_withdraw_index(jogasaki::api::database& db, boost::archive::binary_iarchive& ia)
+{
+    (void) db;
+    (void) ia;
+    return ERROR_CODE::UNSUPPORTED;
+}
 
 }  // ogawayama::bridge

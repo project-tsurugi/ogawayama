@@ -26,6 +26,8 @@ enum class command : std::size_t {
     commit,
     create_table,
     drop_table,
+    create_index,
+    drop_index,
 };
 
 /**
@@ -41,6 +43,8 @@ enum class command : std::size_t {
     case command::commit: return "commit"sv;
     case command::create_table: return "create_table"sv;
     case command::drop_table: return "drop_table"sv;
+    case command::create_index: return "create_index"sv;
+    case command::drop_index: return "drop_index"sv;
     default: return "UNDEFINED";
     }
     std::abort();
