@@ -188,10 +188,19 @@ ErrorCode Connection::Impl::prepare(std::string_view sql, const placeholders_typ
 }
 
 static inline
-ErrorCode get_table_metadata(std::string_view name, std::size_t id, boost::property_tree::ptree& table) {
-    auto tables = std::make_unique<manager::metadata::Tables>(name);
+ErrorCode get_tables(std::string_view name, std::unique_ptr<manager::metadata::Tables>& tables) {
+    tables = std::make_unique<manager::metadata::Tables>(name);
     if (tables->Metadata::load() != manager::metadata::ErrorCode::OK) {
         return ERROR_CODE::FILE_IO_ERROR;
+    }
+    return ERROR_CODE::OK;
+}
+
+static inline
+ErrorCode get_table_metadata(std::string_view name, std::size_t id, boost::property_tree::ptree& table) {
+    std::unique_ptr<manager::metadata::Tables> tables;
+    if (auto rv = get_tables(name, tables); rv != ERROR_CODE::OK) {
+        return rv;
     }
     if (tables->get(id, table) != manager::metadata::ErrorCode::OK) {
         return ERROR_CODE::FILE_IO_ERROR;  // tables->get() failed

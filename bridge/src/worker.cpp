@@ -50,7 +50,9 @@ ERROR_CODE Worker::begin_ddl(jogasaki::api::database& db)
     ERROR_CODE rv = ERROR_CODE::OK;
 
     if (!transaction_handle_) {
-        if(auto rc = db.create_transaction(transaction_handle_); rc != jogasaki::status::ok) {  // FIXME use transaction option to specify exclusive exexution
+        jogasaki::api::transaction_option option{};
+        option.modifies_definitions(true);
+        if(auto rc = db.create_transaction(transaction_handle_, option); rc != jogasaki::status::ok) {  // FIXME specify exclusive exexution
             LOG(ERROR) << "fail to db.create_transaction(transaction_handle_) " << jogasaki::to_string_view(rc);
             rv = ERROR_CODE::UNKNOWN;
         }
@@ -69,7 +71,11 @@ ERROR_CODE Worker::end_ddl(jogasaki::api::database& db)
         rv = ERROR_CODE::NO_TRANSACTION;
     } else {
         transaction_handle_.commit();
-        clear_transaction(db);
+        if (auto rc = db.destroy_transaction(transaction_handle_); rc != jogasaki::status::ok) {
+            LOG(ERROR) << "fail to db_.destroy_transaction(transaction_handle_)";
+            rv = ERROR_CODE::SERVER_FAILURE;
+        }
+        transaction_handle_ = jogasaki::api::transaction_handle();
     }
     VLOG(log_debug) << "<-- " << ogawayama::stub::error_name(rv);
     return rv;
@@ -613,14 +619,14 @@ ERROR_CODE Worker::do_withdraw_metadata(jogasaki::api::database& db, boost::arch
     auto table_name = table.get_optional<std::string>(manager::metadata::Tables::NAME);
     if (!id || !table_name || (id.value() != table_id)) {
         VLOG(log_debug) << "<-- INVALID_PARAMETER";
-            return ERROR_CODE::INVALID_PARAMETER;
+        return ERROR_CODE::INVALID_PARAMETER;
     }
 
     VLOG(log_debug) << " name is " << table_name.value();
-    if (auto rc = db.drop_table(table_name.value()); rc != jogasaki::status::ok) {
+    if (auto rc = db.drop_index(table_name.value()); rc != jogasaki::status::ok) {
         return ERROR_CODE::INVALID_PARAMETER;
     }
-    if (auto rc = db.drop_index(table_name.value()); rc != jogasaki::status::ok) {
+    if (auto rc = db.drop_table(table_name.value()); rc != jogasaki::status::ok) {
         return ERROR_CODE::INVALID_PARAMETER;
     }
     VLOG(log_debug) << "<-- OK";
