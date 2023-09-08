@@ -34,8 +34,6 @@
 
 namespace ogawayama::bridge {
 
-DECLARE_bool(remove_shm);
-
 service::service() = default;
 
 service::~service() {
@@ -55,6 +53,8 @@ bool service::shutdown(tateyama::framework::environment& env) {
     return true;
 }
 
+static thread_local std::unique_ptr<Worker> worker_for_this_thread{};
+
 bool service::operator()(std::shared_ptr<tateyama::api::server::request> req, std::shared_ptr<tateyama::api::server::response> res) {
     auto payload = req->payload();
     std::istringstream ifs(std::string{payload});
@@ -67,22 +67,48 @@ bool service::operator()(std::shared_ptr<tateyama::api::server::request> req, st
     ERROR_CODE rv{ERROR_CODE::OK};
     switch(c) {
     case ogawayama::common::command::create_table:
-        rv = Worker::do_deploy_table(*db_, ia);
+        if (worker_for_this_thread) {
+            rv = worker_for_this_thread->do_deploy_table(*db_, ia);
+        } else {
+            rv = ERROR_CODE::NO_TRANSACTION;
+        }
         break;
     case ogawayama::common::command::drop_table:
-        rv = Worker::do_withdraw_table(*db_, ia);
+        if (worker_for_this_thread) {
+            rv = worker_for_this_thread->do_withdraw_table(*db_, ia);
+        } else {
+            rv = ERROR_CODE::NO_TRANSACTION;
+        }
         break;
     case ogawayama::common::command::create_index:
-        rv = Worker::do_deploy_index(*db_, ia);
+        if (worker_for_this_thread) {
+            rv = worker_for_this_thread->do_deploy_index(*db_, ia);
+        } else {
+            rv = ERROR_CODE::NO_TRANSACTION;
+        }
         break;
     case ogawayama::common::command::drop_index:
-        rv = Worker::do_withdraw_index(*db_, ia);
+        if (worker_for_this_thread) {
+            rv = worker_for_this_thread->do_withdraw_index(*db_, ia);
+        } else {
+            rv = ERROR_CODE::NO_TRANSACTION;
+        }
         break;
     case ogawayama::common::command::begin:
-        rv = Worker::begin_ddl(*db_);
+        if (!worker_for_this_thread) {
+            worker_for_this_thread = std::make_unique<Worker>();
+            rv = worker_for_this_thread->begin_ddl(*db_);
+        } else {
+            rv = ERROR_CODE::TRANSACTION_ALREADY_STARTED;
+        }
         break;
     case ogawayama::common::command::commit:
-        rv = Worker::end_ddl(*db_);
+        if (worker_for_this_thread) {
+            rv = worker_for_this_thread->end_ddl(*db_);
+            worker_for_this_thread = nullptr;
+        } else {
+            rv = ERROR_CODE::NO_TRANSACTION;
+        }
         break;
     default:
         return false;

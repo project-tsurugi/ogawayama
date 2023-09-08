@@ -45,6 +45,13 @@
 
 namespace ogawayama::bridge {
 
+Worker::~Worker()
+{
+    if (transaction_handle_) {
+        transaction_handle_.abort();
+    }
+}
+
 ERROR_CODE Worker::begin_ddl(jogasaki::api::database& db)
 {
     ERROR_CODE rv = ERROR_CODE::OK;
@@ -72,7 +79,7 @@ ERROR_CODE Worker::end_ddl(jogasaki::api::database& db)
     } else {
         transaction_handle_.commit();
         if (auto rc = db.destroy_transaction(transaction_handle_); rc != jogasaki::status::ok) {
-            LOG(ERROR) << "fail to db_.destroy_transaction(transaction_handle_)";
+            LOG(ERROR) << "fail to db.destroy_transaction(transaction_handle_)";
             rv = ERROR_CODE::SERVER_FAILURE;
         }
         transaction_handle_ = jogasaki::api::transaction_handle();
@@ -638,7 +645,7 @@ ERROR_CODE Worker::do_deploy_index(jogasaki::api::database& db, boost::archive::
     (void) db;
     (void) ia;
     return ERROR_CODE::UNSUPPORTED;
-    }
+}
 
 ERROR_CODE Worker::do_withdraw_index(jogasaki::api::database& db, boost::archive::binary_iarchive& ia)
 {
@@ -646,7 +653,5 @@ ERROR_CODE Worker::do_withdraw_index(jogasaki::api::database& db, boost::archive
     (void) ia;
     return ERROR_CODE::UNSUPPORTED;
 }
-
-jogasaki::api::transaction_handle Worker::transaction_handle_{};
 
 }  // ogawayama::bridge
