@@ -296,6 +296,18 @@ public:
      */
     manager::message::Status receive_drop_table(const manager::metadata::ObjectIdType object_id) const;
 
+    /**
+     * @brief implements receive_create_index() procedure
+     * @return Status defined in message-broker/include/manager/message/status.h
+     */
+    manager::message::Status receive_create_index(const manager::metadata::ObjectIdType object_id) const;
+
+    /**
+     * @brief implements drop_index() procedure
+     * @return Status defined in message-broker/include/manager/message/status.h
+     */
+    manager::message::Status receive_drop_index(const manager::metadata::ObjectIdType object_id) const;
+
 private:
     std::unique_ptr<Impl> impl_;
 

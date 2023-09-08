@@ -66,7 +66,7 @@ TEST_F(SchemaDeployTest, basic_flow) {
     oa << table_id;
     oa << table_ptree;
 
-    EXPECT_EQ(ogawayama::bridge::Worker::deploy_metadata(*database_mock_, ofs.str()), ERROR_CODE::OK);
+    EXPECT_EQ(ogawayama::bridge::Worker::deploy_table(*database_mock_, ofs.str()), ERROR_CODE::OK);
     auto& table = database_mock_->get_table();
     EXPECT_EQ(table->simple_name(), "table_for_test");
     auto& columns = table->columns();

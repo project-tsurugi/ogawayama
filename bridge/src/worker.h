@@ -44,10 +44,12 @@ public:
 
     static ERROR_CODE begin_ddl(jogasaki::api::database& db);
     static ERROR_CODE end_ddl(jogasaki::api::database& db);
-    static ERROR_CODE deploy_metadata(jogasaki::api::database&, std::string_view);  // placed in public for testing convenience
-    static ERROR_CODE do_deploy_metadata(jogasaki::api::database& db, boost::archive::binary_iarchive& ia);
-    static ERROR_CODE withdraw_metadata(jogasaki::api::database&, std::string_view);
-    static ERROR_CODE do_withdraw_metadata(jogasaki::api::database& db, boost::archive::binary_iarchive& ia);
+    static ERROR_CODE deploy_table(jogasaki::api::database&, std::string_view);  // placed in public for testing convenience
+    static ERROR_CODE do_deploy_table(jogasaki::api::database& db, boost::archive::binary_iarchive& ia);
+    static ERROR_CODE withdraw_table(jogasaki::api::database&, std::string_view);
+    static ERROR_CODE do_withdraw_table(jogasaki::api::database& db, boost::archive::binary_iarchive& ia);
+    static ERROR_CODE do_deploy_index(jogasaki::api::database& db, boost::archive::binary_iarchive& ia);
+    static ERROR_CODE do_withdraw_index(jogasaki::api::database& db, boost::archive::binary_iarchive& ia);
 
  private:
     static jogasaki::api::transaction_handle transaction_handle_;

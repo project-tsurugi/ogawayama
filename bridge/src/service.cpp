@@ -67,10 +67,16 @@ bool service::operator()(std::shared_ptr<tateyama::api::server::request> req, st
     ERROR_CODE rv{ERROR_CODE::OK};
     switch(c) {
     case ogawayama::common::command::create_table:
-        rv = Worker::do_deploy_metadata(*db_, ia);
+        rv = Worker::do_deploy_table(*db_, ia);
         break;
     case ogawayama::common::command::drop_table:
-        rv = Worker::do_withdraw_metadata(*db_, ia);
+        rv = Worker::do_withdraw_table(*db_, ia);
+        break;
+    case ogawayama::common::command::create_index:
+        rv = Worker::do_deploy_index(*db_, ia);
+        break;
+    case ogawayama::common::command::drop_index:
+        rv = Worker::do_withdraw_index(*db_, ia);
         break;
     case ogawayama::common::command::begin:
         rv = Worker::begin_ddl(*db_);

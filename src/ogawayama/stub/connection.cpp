@@ -209,7 +209,7 @@ ErrorCode get_table_metadata(std::string_view name, std::size_t id, boost::prope
 }
 
 /**
- * @brief relay a create tabe message from the frontend to the server
+ * @brief relay a create table message from the frontend to the server
  * @param table id given by the frontend
  * @return error code defined in error_code.h
  */
@@ -226,7 +226,7 @@ ErrorCode Connection::Impl::create_table(std::size_t id)
     oa << command;
     oa << id;
     oa << table;
-        
+
     auto response_opt = transport_.send(ofs.str());
     if (response_opt) {
         ERROR_CODE rv;
@@ -239,7 +239,7 @@ ErrorCode Connection::Impl::create_table(std::size_t id)
 }
 
 /**
- * @brief relay a drop tabe message from the frontend to the server
+ * @brief relay a drop table message from the frontend to the server
  * @param table id given by the frontend
  * @return error code defined in error_code.h
  */
@@ -256,7 +256,67 @@ ErrorCode Connection::Impl::drop_table(std::size_t id)
     oa << command;
     oa << id;
     oa << table;
-        
+
+    auto response_opt = transport_.send(ofs.str());
+    if (response_opt) {
+        ERROR_CODE rv;
+        std::istringstream ifs(response_opt.value());
+        boost::archive::binary_iarchive ia(ifs);
+        ia >> rv;
+        return rv;
+    }
+    return ERROR_CODE::SERVER_FAILURE;  // service returns std::nullopt
+}
+
+static inline
+ErrorCode get_indexes(std::string_view name, std::unique_ptr<manager::metadata::Indexes>& indexes) {
+    indexes = std::make_unique<manager::metadata::Indexes>(name);
+    if (indexes->Metadata::load() != manager::metadata::ErrorCode::OK) {
+        return ERROR_CODE::FILE_IO_ERROR;
+    }
+    return ERROR_CODE::OK;
+}
+
+static inline
+ErrorCode get_index_metadata(std::string_view name, std::size_t id, boost::property_tree::ptree& index) {
+    std::unique_ptr<manager::metadata::Indexes> indexes;
+    if (auto rv = get_indexes(name, indexes); rv != ERROR_CODE::OK) {
+        return rv;
+    }
+    if (indexes->get(id, index) != manager::metadata::ErrorCode::OK) {
+        return ERROR_CODE::FILE_IO_ERROR;  // indexes->get() failed
+    }
+    return ERROR_CODE::OK;
+}
+
+/**
+ * @brief relay a create index message from the frontend to the server
+ * @param index id given by the frontend
+ * @return error code defined in error_code.h
+ */
+ErrorCode Connection::Impl::create_index(std::size_t id)
+{
+    boost::property_tree::ptree index;
+    if (auto rc = get_index_metadata(manager_->get_database_name(), id, index); rc != ErrorCode::OK) {
+        return rc;
+    }
+    auto table_id = index.get_optional<manager::metadata::ObjectIdType>("table_id");
+    if (!table_id) {
+        return ERROR_CODE::INVALID_PARAMETER;
+    }
+    boost::property_tree::ptree table;
+    if (auto rc = get_table_metadata(manager_->get_database_name(), table_id.value(), table); rc != ErrorCode::OK) {
+        return rc;
+    }
+    auto command = ogawayama::common::command::create_index;
+
+    std::ostringstream ofs;
+    boost::archive::binary_oarchive oa(ofs);
+    oa << command;
+    oa << id;
+    oa << table;
+    oa << index;
+
     auto response_opt = transport_.send(ofs.str());
     if (response_opt) {
         ERROR_CODE rv;
@@ -269,8 +329,37 @@ ErrorCode Connection::Impl::drop_table(std::size_t id)
 }
 
 /**
- * @brief relay a create tabe message from the frontend to the server
- * @param table id given by the frontend
+ * @brief relay a drop index message from the frontend to the server
+ * @param index id given by the frontend
+ * @return error code defined in error_code.h
+ */
+ErrorCode Connection::Impl::drop_index(std::size_t id)
+{
+    boost::property_tree::ptree index;
+    if (auto rc = get_index_metadata(manager_->get_database_name(), id, index); rc != ErrorCode::OK) {
+        return rc;
+    }
+    auto command = ogawayama::common::command::drop_index;
+
+    std::ostringstream ofs;
+    boost::archive::binary_oarchive oa(ofs);
+    oa << command;
+    oa << id;
+    oa << index;
+
+    auto response_opt = transport_.send(ofs.str());
+    if (response_opt) {
+        ERROR_CODE rv;
+        std::istringstream ifs(response_opt.value());
+        boost::archive::binary_iarchive ia(ifs);
+        ia >> rv;
+        return rv;
+    }
+    return ERROR_CODE::SERVER_FAILURE;  // service returns std::nullopt
+}
+
+/**
+ * @brief relay a begin_ddl message from the frontend to the server
  * @return error code defined in error_code.h
  */
 ErrorCode Connection::Impl::begin_ddl()
@@ -293,8 +382,7 @@ ErrorCode Connection::Impl::begin_ddl()
 }
 
 /**
- * @brief relay a create tabe message from the frontend to the server
- * @param table id given by the frontend
+ * @brief relay a end_ddl message from the frontend to the server
  * @return error code defined in error_code.h
  */
 ErrorCode Connection::Impl::end_ddl()
@@ -375,6 +463,24 @@ manager::message::Status Connection::receive_create_table(const manager::metadat
 manager::message::Status Connection::receive_drop_table(const manager::metadata::ObjectIdType object_id) const
 {
     ErrorCode reply = impl_->drop_table(static_cast<std::size_t>(object_id));
+    return manager::message::Status(reply == ErrorCode::OK ? manager::message::ErrorCode::SUCCESS : manager::message::ErrorCode::FAILURE, static_cast<int>(reply));
+}
+
+/**
+ * @brief receive a create_index message from manager
+ */
+manager::message::Status Connection::receive_create_index(const manager::metadata::ObjectIdType object_id) const
+{
+    ErrorCode reply = impl_->create_index(static_cast<std::size_t>(object_id));
+    return manager::message::Status(reply == ErrorCode::OK ? manager::message::ErrorCode::SUCCESS : manager::message::ErrorCode::FAILURE, static_cast<int>(reply));
+}
+
+/**
+ * @brief receive a drop_index message from manager
+ */
+manager::message::Status Connection::receive_drop_index(const manager::metadata::ObjectIdType object_id) const
+{
+    ErrorCode reply = impl_->drop_index(static_cast<std::size_t>(object_id));
     return manager::message::Status(reply == ErrorCode::OK ? manager::message::ErrorCode::SUCCESS : manager::message::ErrorCode::FAILURE, static_cast<int>(reply));
 }
 
