@@ -300,7 +300,7 @@ ErrorCode Connection::Impl::create_index(std::size_t id)
     if (auto rc = get_index_metadata(manager_->get_database_name(), id, index); rc != ErrorCode::OK) {
         return rc;
     }
-    auto table_id = index.get_optional<manager::metadata::ObjectIdType>("table_id");
+    auto table_id = index.get_optional<manager::metadata::ObjectIdType>(manager::metadata::Index::TABLE_ID);
     if (!table_id) {
         return ERROR_CODE::INVALID_PARAMETER;
     }
@@ -308,13 +308,17 @@ ErrorCode Connection::Impl::create_index(std::size_t id)
     if (auto rc = get_table_metadata(manager_->get_database_name(), table_id.value(), table); rc != ErrorCode::OK) {
         return rc;
     }
+    auto table_name_opt = table.get_optional<std::string>(manager::metadata::Tables::NAME);
+    if (!table_name_opt) {
+        return ERROR_CODE::INVALID_PARAMETER;
+    }
+        
     auto command = ogawayama::common::command::create_index;
 
     std::ostringstream ofs;
     boost::archive::binary_oarchive oa(ofs);
     oa << command;
-    oa << id;
-    oa << table;
+    oa << table_name_opt.value();
     oa << index;
 
     auto response_opt = transport_.send(ofs.str());
@@ -344,7 +348,6 @@ ErrorCode Connection::Impl::drop_index(std::size_t id)
     std::ostringstream ofs;
     boost::archive::binary_oarchive oa(ofs);
     oa << command;
-    oa << id;
     oa << index;
 
     auto response_opt = transport_.send(ofs.str());
