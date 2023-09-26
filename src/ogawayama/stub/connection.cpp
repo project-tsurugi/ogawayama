@@ -40,6 +40,29 @@ Connection::Impl::~Impl()
     transport_.close();
 }
 
+ErrorCode Connection::Impl::hello() 
+{
+    auto command = ogawayama::common::command::hello;
+
+    std::ostringstream ofs;
+    boost::archive::binary_oarchive oa(ofs);
+    oa << command;
+
+    try {
+        auto response_opt = transport_.send(ofs.str());
+        if (response_opt) {
+            ERROR_CODE rv;
+            std::istringstream ifs(response_opt.value());
+            boost::archive::binary_iarchive ia(ifs);
+            ia >> rv;
+            return rv;
+        }
+    } catch (std::runtime_error &e) {
+        return ErrorCode::SERVER_FAILURE;
+    }
+    return ErrorCode::UNKNOWN;
+}
+
 /**
  * @brief begin transaction
  * @param reference to a TransactionPtr

@@ -102,6 +102,10 @@ private:
     std::size_t pgprocno_;
 
     std::vector<ResultSet::Impl> result_sets_{};
+
+    ErrorCode hello();
+
+    friend class Stub::Impl;
 };
 
 }  // namespace ogawayama::stub

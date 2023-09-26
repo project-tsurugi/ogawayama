@@ -42,7 +42,7 @@ ErrorCode Stub::Impl::get_connection(ConnectionPtr& connection, std::size_t pgpr
     }
     auto connection_impl = std::make_unique<Connection::Impl>(this, sid, pgprocno);
     connection = std::make_unique<Connection>(std::move(connection_impl));
-    return ERROR_CODE::OK;
+    return connection->get_impl()->hello();
 }
 
 /**

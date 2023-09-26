@@ -58,8 +58,6 @@ public:
         c_idx_ = 0;
         return ErrorCode::END_OF_COLUMN;
     }
-
-    friend class transactionImpl;
 };
 
 }  // namespace ogawayama::stub

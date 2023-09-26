@@ -66,6 +66,9 @@ bool service::operator()(std::shared_ptr<tateyama::api::server::request> req, st
 
     ERROR_CODE rv{ERROR_CODE::OK};
     switch(c) {
+    case ogawayama::common::command::hello:
+        rv = ERROR_CODE::OK;
+        break;
     case ogawayama::common::command::create_table:
         if (worker_for_this_thread) {
             rv = worker_for_this_thread->do_deploy_table(*db_, ia);
