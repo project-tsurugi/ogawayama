@@ -62,10 +62,13 @@ bool service::operator()(std::shared_ptr<tateyama::api::server::request> req, st
 
     ogawayama::common::command c{};
     ia >> c;
-    VLOG(log_trace) << "received " << ogawayama::common::to_string_view(c);
+    VLOG(log_debug) << "--> " << ogawayama::common::to_string_view(c);
 
     ERROR_CODE rv{ERROR_CODE::OK};
     switch(c) {
+    case ogawayama::common::command::hello:
+        rv = ERROR_CODE::OK;
+        break;
     case ogawayama::common::command::create_table:
         if (worker_for_this_thread) {
             rv = worker_for_this_thread->do_deploy_table(*db_, ia);

@@ -642,16 +642,85 @@ ERROR_CODE Worker::do_withdraw_table(jogasaki::api::database& db, boost::archive
 
 ERROR_CODE Worker::do_deploy_index(jogasaki::api::database& db, boost::archive::binary_iarchive& ia)
 {
-    (void) db;
-    (void) ia;
-    return ERROR_CODE::UNSUPPORTED;
+    std::string table_name;
+    boost::property_tree::ptree index;
+    ia >> table_name;
+    ia >> index;
+
+    if (FLAGS_v >= log_debug) {
+        std::ostringstream oss;
+        boost::property_tree::json_parser::write_json(oss, index);
+        VLOG(log_debug) << "==== index metadata for " << table_name << " begin ====";
+        VLOG(log_debug) << oss.str();
+        VLOG(log_debug) << "==== index metadata end ====";
+    }
+
+    if (auto table = db.find_table(table_name); table) {
+        auto table_id_opt = index.get_optional<manager::metadata::ObjectIdType>(manager::metadata::Index::TABLE_ID);
+        auto name_opt = index.get_optional<std::string>(manager::metadata::Index::NAME);
+        std::vector<std::size_t> index_columns;
+        if (table_id_opt && name_opt) {
+            BOOST_FOREACH (const auto& column_node, index.get_child(manager::metadata::Index::KEYS)) {
+                auto& index_column = column_node.second;
+                auto column = index_column.get_value_optional<int64_t>();
+                index_columns.emplace_back(column.value());
+            }
+            // build index key metadata (yugawara::storage::index::key)
+            std::vector<yugawara::storage::index::key> si_keys;
+            si_keys.clear();
+            for (std::size_t position : index_columns) {
+                si_keys.emplace_back(yugawara::storage::index::key(table->columns()[position-1]));
+            }
+            // index_feature_set
+            bool is_unique{false};
+            auto is_unique_opt = index.get_optional<bool>(manager::metadata::Index::IS_UNIQUE);
+            if (is_unique_opt) {
+                is_unique = is_unique_opt.value();
+            }
+            yugawara::storage::index_feature_set feature_set = 
+                is_unique ? 
+                yugawara::storage::index_feature_set{
+                    ::yugawara::storage::index_feature::find,
+                    ::yugawara::storage::index_feature::scan,
+                    ::yugawara::storage::index_feature::unique,
+                } :
+                yugawara::storage::index_feature_set{
+                    ::yugawara::storage::index_feature::find,
+                    ::yugawara::storage::index_feature::scan,
+                };
+            auto si = std::make_shared<yugawara::storage::index>(
+                std::make_optional(static_cast<yugawara::storage::index::definition_id_type>(table_id_opt.value())),
+                table,
+                yugawara::storage::index::simple_name_type(name_opt.value()),
+                std::move(si_keys),
+                std::move(std::vector<yugawara::storage::index::column_ref>{}),
+                feature_set
+            );
+            if(db.create_index(si) != jogasaki::status::ok) {
+                VLOG(log_debug) << "<-- UNKNOWN";
+                return ERROR_CODE::UNKNOWN;  // error in the server
+            }
+            VLOG(log_debug) << "<-- OK";
+            return ERROR_CODE::OK;
+        }
+        VLOG(log_debug) << "<-- INVALID_PARAMETER";
+        return ERROR_CODE::INVALID_PARAMETER;  // id or name is not set in the ptree
+    }
+    VLOG(log_debug) << "<-- INVALID_PARAMETER";
+    return ERROR_CODE::INVALID_PARAMETER;  // table not found
 }
 
 ERROR_CODE Worker::do_withdraw_index(jogasaki::api::database& db, boost::archive::binary_iarchive& ia)
 {
-    (void) db;
-    (void) ia;
-    return ERROR_CODE::UNSUPPORTED;
+    std::string table_name;
+    boost::property_tree::ptree index;
+    ia >> table_name;
+    ia >> index;
+
+    if (auto name_opt = index.get_optional<std::string>(manager::metadata::Index::NAME); name_opt) {
+        db.drop_index(name_opt.value());
+    }
+    return ERROR_CODE::INVALID_PARAMETER;  // index not found
 }
 
 }  // ogawayama::bridge

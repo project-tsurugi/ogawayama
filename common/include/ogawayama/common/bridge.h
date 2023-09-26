@@ -22,6 +22,7 @@ namespace ogawayama::common {
  */
 enum class command : std::size_t {
     undefined = 0,
+    hello,
     begin,
     commit,
     create_table,
@@ -39,6 +40,7 @@ enum class command : std::size_t {
     using namespace std::string_view_literals;
     switch (value) {
     case command::undefined: return "undefined"sv;
+    case command::hello: return "hello"sv;
     case command::begin: return "begin"sv;
     case command::commit: return "commit"sv;
     case command::create_table: return "create_table"sv;

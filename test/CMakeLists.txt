@@ -23,6 +23,7 @@ register_tests(
       jogasaki-${SHARKSFIN_IMPLEMENTATION}-api
       tateyama-${SHARKSFIN_IMPLEMENTATION}-api
       sharksfin-api
+      Boost::serialization
       glog::glog
       gflags::gflags
       rt
