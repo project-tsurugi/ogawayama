@@ -22,6 +22,8 @@
 #include <condition_variable>
 #include <array>
 
+#include <boost/archive/binary_oarchive.hpp>
+
 #include <glog/logging.h>
 
 #include <unordered_map>
@@ -30,6 +32,7 @@
 #include <ogawayama/bridge/service.h>
 #include <tateyama/framework/server.h>
 #include <tateyama/utils/protobuf_utils.h>
+#include <tateyama/framework/component_ids.h>
 #include <jogasaki/proto/sql/common.pb.h>
 #include <jogasaki/proto/sql/request.pb.h>
 #include <jogasaki/proto/sql/response.pb.h>
@@ -91,6 +94,7 @@ class endpoint {
     constexpr static tateyama::common::wire::response_header::msg_type RESPONSE_BODY = 1;
     constexpr static tateyama::common::wire::response_header::msg_type RESPONSE_BODYHEAD = 2;
     constexpr static tateyama::common::wire::response_header::msg_type RESPONSE_CODE = 3;
+    constexpr static tateyama::common::wire::response_header::msg_type RESPONSE_HELLO = 99;
 
     constexpr static std::size_t response_array_size = 5;
 
@@ -113,8 +117,33 @@ public:
                 std::string message;
                 message.resize(h.get_length());
                 wire_->get_request_wire()->read(message.data());
-                requests_.push(message);
 
+                {
+                    ::tateyama::proto::framework::request::Header req_header{};
+                    google::protobuf::io::ArrayInputStream in{message.data(), static_cast<int>(message.length())};
+                    if(auto res = tateyama::utils::ParseDelimitedFromZeroCopyStream(std::addressof(req_header), std::addressof(in), nullptr); ! res) {
+                        throw std::runtime_error("error parsing request message");
+                    }
+                    if (req_header.service_id() == tateyama::framework::service_id_fdw) {
+                        std::stringstream ss{};
+                        ::tateyama::proto::framework::response::Header header{};
+                        if(auto res = tateyama::utils::SerializeDelimitedToOstream(header, std::addressof(ss)); ! res) {
+                            throw std::runtime_error("error formatting response message");
+                        }
+                        std::ostringstream ofs;
+                        boost::archive::binary_oarchive oa(ofs);
+                        oa << ERROR_CODE::OK;
+                        std::string code = ofs.str();
+                        if(auto res = tateyama::utils::PutDelimitedBodyToOstream(code, std::addressof(ss)); ! res) {
+                            throw std::runtime_error("error formatting response message");
+                        }
+                        auto reply_message = ss.str();
+                        wire_->get_response_wire().write(reply_message.data(), tateyama::common::wire::response_header(index, reply_message.length(), RESPONSE_HELLO));
+                        continue;
+                    }
+                }
+
+                requests_.push(message);
                 auto reply = responses_.at(index).front();
                 responses_.at(index).pop();
                 if (reply.get_type() == endpoint_response::BODY_ONLY) {
