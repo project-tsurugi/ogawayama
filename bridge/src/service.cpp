@@ -62,7 +62,7 @@ bool service::operator()(std::shared_ptr<tateyama::api::server::request> req, st
 
     ogawayama::common::command c{};
     ia >> c;
-    VLOG(log_trace) << "received " << ogawayama::common::to_string_view(c);
+    VLOG(log_debug) << "--> " << ogawayama::common::to_string_view(c);
 
     ERROR_CODE rv{ERROR_CODE::OK};
     switch(c) {

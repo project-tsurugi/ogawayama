@@ -647,6 +647,14 @@ ERROR_CODE Worker::do_deploy_index(jogasaki::api::database& db, boost::archive::
     ia >> table_name;
     ia >> index;
 
+    if (FLAGS_v >= log_debug) {
+        std::ostringstream oss;
+        boost::property_tree::json_parser::write_json(oss, index);
+        VLOG(log_debug) << "==== index metadata for " << table_name << " begin ====";
+        VLOG(log_debug) << oss.str();
+        VLOG(log_debug) << "==== index metadata end ====";
+    }
+
     if (auto table = db.find_table(table_name); table) {
         auto table_id_opt = index.get_optional<manager::metadata::ObjectIdType>(manager::metadata::Index::TABLE_ID);
         auto name_opt = index.get_optional<std::string>(manager::metadata::Index::NAME);
@@ -689,12 +697,16 @@ ERROR_CODE Worker::do_deploy_index(jogasaki::api::database& db, boost::archive::
                 feature_set
             );
             if(db.create_index(si) != jogasaki::status::ok) {
+                VLOG(log_debug) << "<-- UNKNOWN";
                 return ERROR_CODE::UNKNOWN;  // error in the server
             }
+            VLOG(log_debug) << "<-- OK";
             return ERROR_CODE::OK;
         }
+        VLOG(log_debug) << "<-- INVALID_PARAMETER";
         return ERROR_CODE::INVALID_PARAMETER;  // id or name is not set in the ptree
     }
+    VLOG(log_debug) << "<-- INVALID_PARAMETER";
     return ERROR_CODE::INVALID_PARAMETER;  // table not found
 }
 
