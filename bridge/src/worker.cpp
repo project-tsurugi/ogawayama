@@ -656,10 +656,10 @@ ERROR_CODE Worker::do_deploy_index(jogasaki::api::database& db, boost::archive::
     }
 
     if (auto table = db.find_table(table_name); table) {
-        auto table_id_opt = index.get_optional<manager::metadata::ObjectIdType>(manager::metadata::Index::TABLE_ID);
+        auto id_opt = index.get_optional<manager::metadata::ObjectIdType>(manager::metadata::Object::ID);
         auto name_opt = index.get_optional<std::string>(manager::metadata::Index::NAME);
         std::vector<std::size_t> index_columns;
-        if (table_id_opt && name_opt) {
+        if (id_opt && name_opt) {
             BOOST_FOREACH (const auto& column_node, index.get_child(manager::metadata::Index::KEYS)) {
                 auto& index_column = column_node.second;
                 auto column = index_column.get_value_optional<int64_t>();
@@ -689,7 +689,7 @@ ERROR_CODE Worker::do_deploy_index(jogasaki::api::database& db, boost::archive::
                     ::yugawara::storage::index_feature::scan,
                 };
             auto si = std::make_shared<yugawara::storage::index>(
-                std::make_optional(static_cast<yugawara::storage::index::definition_id_type>(table_id_opt.value())),
+                std::make_optional(static_cast<yugawara::storage::index::definition_id_type>(id_opt.value())),
                 table,
                 yugawara::storage::index::simple_name_type(name_opt.value()),
                 std::move(si_keys),
