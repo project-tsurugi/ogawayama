@@ -26,6 +26,21 @@ optional packages:
 * `graphviz`
 * `clang-tidy-14`
 
+### Install modules
+
+#### tsurugidb modules
+
+This requires below [tsurugidb](https://github.com/project-tsurugi/tsurugidb) modules to be installed.
+
+* [metadata-manager](https://github.com/project-tsurugi/metadata-manager)
+* [message-manager](https://github.com/project-tsurugi/message-manager)
+* [takatori](https://github.com/project-tsurugi/takatori)
+* [yugawara](https://github.com/project-tsurugi/yugawara)
+* [jogasaki](https://github.com/project-tsurugi/jogasaki)
+* [tateyama](https://github.com/project-tsurugi/tateyama)
+* [shakujo](https://github.com/project-tsurugi/shakujo)
+* [sharksfin](https://github.com/project-tsurugi/sharksfin)
+
 ## How to build
 
 ```sh
