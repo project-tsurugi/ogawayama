@@ -631,10 +631,12 @@ ERROR_CODE Worker::do_withdraw_table(jogasaki::api::database& db, boost::archive
 
     VLOG(log_debug) << " name is " << table_name.value();
     if (auto rc = db.drop_index(table_name.value()); rc != jogasaki::status::ok) {
-        return ERROR_CODE::INVALID_PARAMETER;
+        VLOG(log_debug) << "<-- UNKNOWN";
+        return ERROR_CODE::UNKNOWN;  // error in the server
     }
     if (auto rc = db.drop_table(table_name.value()); rc != jogasaki::status::ok) {
-        return ERROR_CODE::INVALID_PARAMETER;
+        VLOG(log_debug) << "<-- UNKNOWN";
+        return ERROR_CODE::UNKNOWN;  // error in the server
     }
     VLOG(log_debug) << "<-- OK";
     return ERROR_CODE::OK;
@@ -712,14 +714,18 @@ ERROR_CODE Worker::do_deploy_index(jogasaki::api::database& db, boost::archive::
 
 ERROR_CODE Worker::do_withdraw_index(jogasaki::api::database& db, boost::archive::binary_iarchive& ia)
 {
-    std::string table_name;
     boost::property_tree::ptree index;
-    ia >> table_name;
     ia >> index;
 
     if (auto name_opt = index.get_optional<std::string>(manager::metadata::Index::NAME); name_opt) {
-        db.drop_index(name_opt.value());
+        if (auto rc = db.drop_index(name_opt.value()); rc != jogasaki::status::ok) {
+            VLOG(log_debug) << "<-- UNKNOWN";
+            return ERROR_CODE::UNKNOWN;  // error in the server
+        }
+        VLOG(log_debug) << "<-- OK";
+        return ERROR_CODE::OK;
     }
+    VLOG(log_debug) << "<-- INVALID_PARAMETER";
     return ERROR_CODE::INVALID_PARAMETER;  // index not found
 }
 
