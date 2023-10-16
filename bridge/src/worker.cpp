@@ -134,6 +134,7 @@ ERROR_CODE Worker::do_deploy_table(jogasaki::api::database& db, boost::archive::
         std::size_t unique_columns_n = 0;
         std::vector<std::vector<std::size_t>> unique_columns;  // index of unique constraint: received order, content: column_number
         std::vector<boost::optional<std::string>> unique_columns_name;
+        std::vector<boost::optional<manager::metadata::ObjectIdType>> unique_index_id;
         BOOST_FOREACH (const auto& constraint_node, table.get_child(manager::metadata::Tables::CONSTRAINTS_NODE)) {
             auto& constraint = constraint_node.second;
             auto constraint_type = constraint.get_optional<int64_t>(manager::metadata::Constraint::TYPE);
@@ -147,12 +148,14 @@ ERROR_CODE Worker::do_deploy_table(jogasaki::api::database& db, boost::archive::
                     auto column = constraint_column.get_value_optional<int64_t>();
                     pk_columns.emplace_back(column.value());
                 }
-                pk_columns_name = constraint.get_optional<std::string>("name");
+                pk_columns_name = constraint.get_optional<std::string>(manager::metadata::Object::NAME);
                 break;
             case manager::metadata::Constraint::ConstraintType::UNIQUE:
                 // Unique制約が設定されたカラムメタデータのカラム番号と名前を読み込む
+                unique_index_id.resize(unique_columns_n + 1);
+                unique_index_id.at(unique_columns_n) = constraint.get_optional<manager::metadata::ObjectIdType>(manager::metadata::Constraint::INDEX_ID);
                 unique_columns_name.resize(unique_columns_n + 1);
-                unique_columns_name.at(unique_columns_n) = constraint.get_optional<std::string>("name");
+                unique_columns_name.at(unique_columns_n) = constraint.get_optional<std::string>(manager::metadata::Object::NAME);
                 unique_columns.resize(unique_columns_n + 1);
                 auto& v = unique_columns.at(unique_columns_n);
                 unique_columns_n++;
@@ -562,8 +565,14 @@ ERROR_CODE Worker::do_deploy_table(jogasaki::api::database& db, boost::archive::
 
         // secondary index from unique constraint
         for (std::size_t i = 0; i < unique_columns_n; i++) {
+            auto& secondary_index_id = unique_index_id.at(i);
             auto& secondary_index = unique_columns.at(i);
             auto& secondary_index_name = unique_columns_name.at(i);
+
+            if (!secondary_index_id) {
+                VLOG(log_debug) << "<-- UNKNOWN";
+                return ERROR_CODE::UNKNOWN;
+            }
 
             // build key metadata (yugawara::storage::index::key)
             std::vector<yugawara::storage::index::key> si_keys;
@@ -582,7 +591,7 @@ ERROR_CODE Worker::do_deploy_table(jogasaki::api::database& db, boost::archive::
             }
 
             auto si = std::make_shared<yugawara::storage::index>(
-                std::make_optional(static_cast<yugawara::storage::index::definition_id_type>(table_id)),
+                std::make_optional(static_cast<yugawara::storage::index::definition_id_type>(static_cast<std::size_t>(secondary_index_id.value()))),
                 t,
                 yugawara::storage::index::simple_name_type(in),
                 std::move(si_keys),
