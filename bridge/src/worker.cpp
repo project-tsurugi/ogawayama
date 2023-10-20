@@ -541,9 +541,7 @@ ERROR_CODE Worker::do_deploy_table(jogasaki::api::database& db, boost::archive::
         if (pk_columns_name) {
             pn = pk_columns_name.value();
         }
-        if (pn.empty()) {
-            pn = table_name.value();
-        }
+        pn = table_name.value();
 
         auto i = std::make_shared<yugawara::storage::index>(
             std::make_optional(static_cast<yugawara::storage::index::definition_id_type>(table_id)),
@@ -583,6 +581,9 @@ ERROR_CODE Worker::do_deploy_table(jogasaki::api::database& db, boost::archive::
             std::string in{};
             if (secondary_index_name) {
                 in = secondary_index_name.value();
+            } else {
+                VLOG(log_debug) << "<-- INVALID_PARAMETER";
+                return ERROR_CODE::INVALID_PARAMETER;
             }
             if (in.empty()) {
                 in = table_name.value();
