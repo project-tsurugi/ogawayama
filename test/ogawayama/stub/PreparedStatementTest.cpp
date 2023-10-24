@@ -150,11 +150,11 @@ TEST_F(PreparedTest, prepare) {
 
     {
         // build reply message for test
-        jogasaki::proto::sql::response::ResultOnly ro{};
-        jogasaki::proto::sql::response::Success s{};
-        ro.set_allocated_success(&s);
-        server_->response_message(ro);
-        ro.release_success();
+        jogasaki::proto::sql::response::ExecuteResult er{};
+        jogasaki::proto::sql::response::ExecuteResult_Success s{};
+        er.set_allocated_success(&s);
+        server_->response_message(er);
+        er.release_success();
 
         // execute_statement()
         ogawayama::stub::parameters_type parameters{};
