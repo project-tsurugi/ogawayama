@@ -96,15 +96,15 @@ public:
  * @param execute_statement_request a execute statement request message in ::jogasaki::proto::sql::request::ExecuteStatement
  * @return std::optional of ::jogasaki::proto::sql::request::ResultOnly
  */
-    std::optional<::jogasaki::proto::sql::response::ResultOnly> send(::jogasaki::proto::sql::request::ExecuteStatement& execute_statement_request) {
+    std::optional<::jogasaki::proto::sql::response::ExecuteResult> send(::jogasaki::proto::sql::request::ExecuteStatement& execute_statement_request) {
         ::jogasaki::proto::sql::request::Request request{};
         *(request.mutable_execute_statement()) = execute_statement_request;
         auto response_opt = send<::jogasaki::proto::sql::response::Response>(request);
         request.clear_execute_statement();
         if (response_opt) {
             auto response_message = response_opt.value();
-            if (response_message.has_result_only()) {
-                return response_message.result_only();
+            if (response_message.has_execute_result()) {
+                return response_message.execute_result();
             }
         }
         return std::nullopt;
@@ -115,15 +115,15 @@ public:
  * @param execute_statement_request a execute statement request message in ::jogasaki::proto::sql::request::ExecutePreparedStatement
  * @return std::optional of ::jogasaki::proto::sql::request::ResultOnly
  */
-    std::optional<::jogasaki::proto::sql::response::ResultOnly> send(::jogasaki::proto::sql::request::ExecutePreparedStatement& execute_statement_request) {
+    std::optional<::jogasaki::proto::sql::response::ExecuteResult> send(::jogasaki::proto::sql::request::ExecutePreparedStatement& execute_statement_request) {
         ::jogasaki::proto::sql::request::Request request{};
         *(request.mutable_execute_prepared_statement()) = execute_statement_request;
         auto response_opt = send<::jogasaki::proto::sql::response::Response>(request);
         request.clear_execute_statement();
         if (response_opt) {
             auto response_message = response_opt.value();
-            if (response_message.has_result_only()) {
-                return response_message.result_only();
+            if (response_message.has_execute_result()) {
+                return response_message.execute_result();
             }
         }
         return std::nullopt;

@@ -132,5 +132,16 @@ inline void server::response_message<jogasaki::proto::sql::response::Prepare>(jo
     endpoint_.get_worker()->response_message(r);
     r.release_prepare();
 }
+template<>
+inline void server::response_message<jogasaki::proto::sql::response::ExecuteResult>(jogasaki::proto::sql::response::ExecuteResult& er, std::size_t index) {
+    jogasaki::proto::sql::response::Response r{};
+    r.set_allocated_execute_result(&er);
+    endpoint_.get_worker()->response_message(r, index);
+    r.release_execute_result();
+}
+template<>
+inline void server::response_message<jogasaki::proto::sql::response::ExecuteResult>(jogasaki::proto::sql::response::ExecuteResult& er) {
+    response_message<jogasaki::proto::sql::response::ExecuteResult>(er, 0);
+}
 
 }  // namespace ogawayama::testing
