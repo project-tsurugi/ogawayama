@@ -110,7 +110,9 @@ ErrorCode Connection::Impl::begin(const boost::property_tree::ptree& option, Tra
         BOOST_FOREACH (const auto& wp_node, nodes.value()) {
             auto wp = wp_node.second.get_optional<std::string>(TABLE_NAME);
             if (wp) {
-                topt->add_write_preserves()->set_table_name(wp.value());
+                if (auto value = wp.value(); !value.empty()) {
+                    topt->add_write_preserves()->set_table_name(value);
+                }
             }
         }
     }
@@ -118,7 +120,9 @@ ErrorCode Connection::Impl::begin(const boost::property_tree::ptree& option, Tra
         BOOST_FOREACH (const auto& ra_node, nodes.value()) {
             auto ra = ra_node.second.get_optional<std::string>(TABLE_NAME);
             if (ra) {
-                topt->add_inclusive_read_areas()->set_table_name(ra.value());
+                if (auto value = ra.value(); !value.empty()) {
+                    topt->add_inclusive_read_areas()->set_table_name(value);
+                }
             }
         }
     }
@@ -126,7 +130,9 @@ ErrorCode Connection::Impl::begin(const boost::property_tree::ptree& option, Tra
         BOOST_FOREACH (const auto& ra_node, nodes.value()) {
             auto ra = ra_node.second.get_optional<std::string>(TABLE_NAME);
             if (ra) {
-                topt->add_exclusive_read_areas()->set_table_name(ra.value());
+                if (auto value = ra.value(); !value.empty()) {
+                    topt->add_exclusive_read_areas()->set_table_name(value);
+                }
             }
         }
     }
