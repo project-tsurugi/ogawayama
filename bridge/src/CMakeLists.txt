@@ -27,6 +27,7 @@ set_target_properties(bridge PROPERTIES
 target_include_directories(bridge
     PRIVATE ${CMAKE_SOURCE_DIR}/include
     PRIVATE ${CMAKE_SOURCE_DIR}/common/include
+    PRIVATE ${CMAKE_BINARY_DIR}/src
 )
 
 target_link_libraries(bridge
