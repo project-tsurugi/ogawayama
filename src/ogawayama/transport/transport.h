@@ -24,7 +24,6 @@
 #include <tateyama/proto/framework/request.pb.h>
 #include <tateyama/proto/framework/response.pb.h>
 
-#include <jogasaki/proto/sql/status.pb.h>
 #include <jogasaki/proto/sql/request.pb.h>
 #include <jogasaki/proto/sql/common.pb.h>
 #include <jogasaki/proto/sql/response.pb.h>
@@ -39,7 +38,10 @@ constexpr static tateyama::common::wire::message_header::index_type SLOT_FOR_DIS
 constexpr static tateyama::common::wire::message_header::index_type OPT_INDEX = SLOT_FOR_DISPOSE_TRANSACTION + 1;
 
 class transport {
-constexpr static std::size_t MESSAGE_VERSION = 1;
+constexpr static std::size_t HEADER_MESSAGE_VERSION_MAJOR = 0;
+constexpr static std::size_t HEADER_MESSAGE_VERSION_MINOR = 0;
+constexpr static std::size_t SQL_MESSAGE_VERSION_MAJOR = 1;
+constexpr static std::size_t SQL_MESSAGE_VERSION_MINOR = 0;
 constexpr static std::uint32_t SERVICE_ID_SQL = 3;  // from tateyama/framework/component_ids.h
 constexpr static std::uint32_t SERVICE_ID_FDW = 4;  // from tateyama/framework/component_ids.h
 
@@ -47,9 +49,11 @@ public:
     transport() = delete;
 
     explicit transport(tateyama::common::wire::session_wire_container& wire) : wire_(wire) {
-        header_.set_message_version(MESSAGE_VERSION);
+        header_.set_service_message_version_major(HEADER_MESSAGE_VERSION_MAJOR);
+        header_.set_service_message_version_minor(HEADER_MESSAGE_VERSION_MINOR);
         header_.set_service_id(SERVICE_ID_SQL);
-        bridge_header_.set_message_version(MESSAGE_VERSION);
+        bridge_header_.set_service_message_version_major(HEADER_MESSAGE_VERSION_MAJOR);
+        bridge_header_.set_service_message_version_minor(HEADER_MESSAGE_VERSION_MINOR);
         bridge_header_.set_service_id(SERVICE_ID_FDW);
     }
 
@@ -59,7 +63,7 @@ public:
  * @return std::optional of ::jogasaki::proto::sql::request::Begin
  */
     std::optional<::jogasaki::proto::sql::response::Begin> send(::jogasaki::proto::sql::request::Begin& begin_request) {
-        ::jogasaki::proto::sql::request::Request request{};
+        auto request = sql_request();
         *(request.mutable_begin())= begin_request;
         auto response_opt = send<::jogasaki::proto::sql::response::Response>(request);
         request.clear_begin();
@@ -78,7 +82,7 @@ public:
  * @return std::optional of ::jogasaki::proto::sql::request::Prepare
  */
     std::optional<::jogasaki::proto::sql::response::Prepare> send(::jogasaki::proto::sql::request::Prepare& prepare_request) {
-        ::jogasaki::proto::sql::request::Request request{};
+        auto request = sql_request();
         *(request.mutable_prepare())= prepare_request;
         auto response_opt = send<::jogasaki::proto::sql::response::Response>(request);
         request.clear_prepare();
@@ -97,7 +101,7 @@ public:
  * @return std::optional of ::jogasaki::proto::sql::request::ResultOnly
  */
     std::optional<::jogasaki::proto::sql::response::ExecuteResult> send(::jogasaki::proto::sql::request::ExecuteStatement& execute_statement_request) {
-        ::jogasaki::proto::sql::request::Request request{};
+        auto request = sql_request();
         *(request.mutable_execute_statement()) = execute_statement_request;
         auto response_opt = send<::jogasaki::proto::sql::response::Response>(request);
         request.clear_execute_statement();
@@ -116,7 +120,7 @@ public:
  * @return std::optional of ::jogasaki::proto::sql::request::ResultOnly
  */
     std::optional<::jogasaki::proto::sql::response::ExecuteResult> send(::jogasaki::proto::sql::request::ExecutePreparedStatement& execute_statement_request) {
-        ::jogasaki::proto::sql::request::Request request{};
+        auto request = sql_request();
         *(request.mutable_execute_prepared_statement()) = execute_statement_request;
         auto response_opt = send<::jogasaki::proto::sql::response::Response>(request);
         request.clear_execute_statement();
@@ -135,7 +139,7 @@ public:
  * @return std::optional of ::jogasaki::proto::sql::request::ExecuteQuery
  */
     std::optional<::jogasaki::proto::sql::response::ExecuteQuery> send(::jogasaki::proto::sql::request::ExecuteQuery& execute_query_request, std::size_t query_index) {
-        ::jogasaki::proto::sql::request::Request request{};
+        auto request = sql_request();
         *(request.mutable_execute_query()) = execute_query_request;
         auto response_opt = send<::jogasaki::proto::sql::response::Response>(request, query_index);
         request.clear_execute_query();
@@ -157,7 +161,7 @@ public:
  * @return std::optional of ::jogasaki::proto::sql::request::ExecutePreparedQuery
  */
     std::optional<::jogasaki::proto::sql::response::ExecuteQuery> send(::jogasaki::proto::sql::request::ExecutePreparedQuery& execute_query_request, std::size_t query_index) {
-        ::jogasaki::proto::sql::request::Request request{};
+        auto request = sql_request();
         *(request.mutable_execute_prepared_query()) = execute_query_request;
         auto response_opt = send<::jogasaki::proto::sql::response::Response>(request, query_index);
         request.clear_execute_prepared_query();
@@ -187,7 +191,7 @@ public:
  * @return std::optional of ::jogasaki::proto::sql::request::ResultOnly
  */
     std::optional<::jogasaki::proto::sql::response::ResultOnly> send(::jogasaki::proto::sql::request::Commit& commit_request) {
-        ::jogasaki::proto::sql::request::Request request{};
+        auto request = sql_request();
         *(request.mutable_commit()) = commit_request;
         auto response_opt = send<::jogasaki::proto::sql::response::Response>(request);
         request.clear_commit();
@@ -206,7 +210,7 @@ public:
  * @return std::optional of ::jogasaki::proto::sql::request::ResultOnly
  */
     std::optional<::jogasaki::proto::sql::response::ResultOnly> send(::jogasaki::proto::sql::request::Rollback& rollback_request) {
-        ::jogasaki::proto::sql::request::Request request{};
+        auto request = sql_request();
         *(request.mutable_rollback()) = rollback_request;
         auto response_opt = send<::jogasaki::proto::sql::response::Response>(request);
         request.clear_rollback();
@@ -225,7 +229,7 @@ public:
  * @return std::optional of ::jogasaki::proto::sql::request::ResultOnly
  */
     std::optional<ogawayama::stub::ErrorCode> send(::jogasaki::proto::sql::request::DisposeTransaction& r) {
-        ::jogasaki::proto::sql::request::Request request{};
+        auto request = sql_request();
         *(request.mutable_dispose_transaction()) = r;
         auto response_opt = send<::jogasaki::proto::sql::response::Response>(request, SLOT_FOR_DISPOSE_TRANSACTION);
         request.clear_rollback();
@@ -268,7 +272,7 @@ public:
  * @return std::optional of std::string
  */
     std::optional<std::string> send(std::string_view request) {
-        auto response_opt = send_request(request);
+        auto response_opt = send_bridge_request(request);
         if (response_opt) {
             return response_opt.value();
         }
@@ -363,7 +367,7 @@ private:
         return query_results_.at(vector_index);
     }
 
-    std::optional<std::string> send_request(std::string_view request, tateyama::common::wire::message_header::index_type index = 0) {
+    std::optional<std::string> send_bridge_request(std::string_view request, tateyama::common::wire::message_header::index_type index = 0) {
         std::stringstream ss{};
         if(auto res = tateyama::utils::SerializeDelimitedToOstream(bridge_header_, std::addressof(ss)); ! res) {
             return std::nullopt;
@@ -399,6 +403,13 @@ private:
             return std::nullopt;
         }
         return std::string{response};
+    }
+
+    ::jogasaki::proto::sql::request::Request sql_request() {
+        ::jogasaki::proto::sql::request::Request request{};
+        request.set_service_message_version_major(SQL_MESSAGE_VERSION_MAJOR);
+        request.set_service_message_version_minor(SQL_MESSAGE_VERSION_MINOR);
+        return request;
     }
 };
 

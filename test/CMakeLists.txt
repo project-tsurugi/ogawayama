@@ -34,6 +34,7 @@ register_tests(
       ${CMAKE_SOURCE_DIR}/include
       ${CMAKE_SOURCE_DIR}/common/include
       ${CMAKE_SOURCE_DIR}/bridge/include
+      ${CMAKE_BINARY_DIR}/src
 )
 
 file(GLOB BRIDGE_TEST_SOURCES
@@ -57,4 +58,5 @@ register_tests(
       ${CMAKE_SOURCE_DIR}/common/include
       ${CMAKE_SOURCE_DIR}/bridge/src
       ${CMAKE_SOURCE_DIR}/bridge/include
+      ${CMAKE_BINARY_DIR}/src
 )
