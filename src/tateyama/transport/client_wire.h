@@ -103,7 +103,7 @@ public:
             wire_->write(bip_buffer_, s.data(), message_header(index, s.length()));
         }
         void disconnect() {
-            wire_->write(bip_buffer_, nullptr, message_header(message_header::not_use, 0));
+            wire_->write(bip_buffer_, nullptr, message_header(message_header::termination_request, 0));
         }
 
     private:

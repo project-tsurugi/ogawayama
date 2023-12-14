@@ -113,7 +113,7 @@ public:
             while(true) {
                 auto h = wire_->get_request_wire()->peep(true);
                 auto index = h.get_idx();
-                if (h.get_length() == 0 && index == tateyama::common::wire::message_header::not_use) { break; }
+                if (h.get_length() == 0 && index == tateyama::common::wire::message_header::termination_request) { break; }
                 std::string message;
                 message.resize(h.get_length());
                 wire_->get_request_wire()->read(message.data());
