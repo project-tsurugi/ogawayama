@@ -17,6 +17,8 @@
 
 namespace ogawayama::common {
 
+static constexpr std::uint32_t OGAWAYAMA_MESSAGE_VERSION = 0;
+
 /**
  * @brief command used in fdw service
  */

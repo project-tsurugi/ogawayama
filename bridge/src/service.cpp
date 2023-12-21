@@ -59,62 +59,68 @@ bool service::operator()(std::shared_ptr<tateyama::api::server::request> req, st
     auto payload = req->payload();
     std::istringstream ifs(std::string{payload});
     boost::archive::binary_iarchive ia(ifs);
-
-    ogawayama::common::command c{};
-    ia >> c;
-    VLOG(log_debug) << "--> " << ogawayama::common::to_string_view(c);
-
     ERROR_CODE rv{ERROR_CODE::OK};
-    switch(c) {
-    case ogawayama::common::command::hello:
-        rv = ERROR_CODE::OK;
-        break;
-    case ogawayama::common::command::create_table:
-        if (worker_for_this_thread) {
-            rv = worker_for_this_thread->do_deploy_table(*db_, ia);
-        } else {
-            rv = ERROR_CODE::NO_TRANSACTION;
+
+    std::uint32_t message_version{};
+    ogawayama::common::command c{};
+    ia >> message_version;
+    if (message_version > common::OGAWAYAMA_MESSAGE_VERSION) {
+        rv = ERROR_CODE::UNSUPPORTED;
+    } else {
+        ia >> c;
+        VLOG(log_debug) << "--> " << ogawayama::common::to_string_view(c);
+
+        switch(c) {
+        case ogawayama::common::command::hello:
+            rv = ERROR_CODE::OK;
+            break;
+        case ogawayama::common::command::create_table:
+            if (worker_for_this_thread) {
+                rv = worker_for_this_thread->do_deploy_table(*db_, ia);
+            } else {
+                rv = ERROR_CODE::NO_TRANSACTION;
+            }
+            break;
+        case ogawayama::common::command::drop_table:
+            if (worker_for_this_thread) {
+                rv = worker_for_this_thread->do_withdraw_table(*db_, ia);
+            } else {
+                rv = ERROR_CODE::NO_TRANSACTION;
+            }
+            break;
+        case ogawayama::common::command::create_index:
+            if (worker_for_this_thread) {
+                rv = worker_for_this_thread->do_deploy_index(*db_, ia);
+            } else {
+                rv = ERROR_CODE::NO_TRANSACTION;
+            }
+            break;
+        case ogawayama::common::command::drop_index:
+            if (worker_for_this_thread) {
+                rv = worker_for_this_thread->do_withdraw_index(*db_, ia);
+            } else {
+                rv = ERROR_CODE::NO_TRANSACTION;
+            }
+            break;
+        case ogawayama::common::command::begin:
+            if (!worker_for_this_thread) {
+                worker_for_this_thread = std::make_unique<Worker>();
+                rv = worker_for_this_thread->begin_ddl(*db_);
+            } else {
+                rv = ERROR_CODE::TRANSACTION_ALREADY_STARTED;
+            }
+            break;
+        case ogawayama::common::command::commit:
+            if (worker_for_this_thread) {
+                rv = worker_for_this_thread->end_ddl(*db_);
+                worker_for_this_thread = nullptr;
+            } else {
+                rv = ERROR_CODE::NO_TRANSACTION;
+            }
+            break;
+        default:
+            return false;
         }
-        break;
-    case ogawayama::common::command::drop_table:
-        if (worker_for_this_thread) {
-            rv = worker_for_this_thread->do_withdraw_table(*db_, ia);
-        } else {
-            rv = ERROR_CODE::NO_TRANSACTION;
-        }
-        break;
-    case ogawayama::common::command::create_index:
-        if (worker_for_this_thread) {
-            rv = worker_for_this_thread->do_deploy_index(*db_, ia);
-        } else {
-            rv = ERROR_CODE::NO_TRANSACTION;
-        }
-        break;
-    case ogawayama::common::command::drop_index:
-        if (worker_for_this_thread) {
-            rv = worker_for_this_thread->do_withdraw_index(*db_, ia);
-        } else {
-            rv = ERROR_CODE::NO_TRANSACTION;
-        }
-        break;
-    case ogawayama::common::command::begin:
-        if (!worker_for_this_thread) {
-            worker_for_this_thread = std::make_unique<Worker>();
-            rv = worker_for_this_thread->begin_ddl(*db_);
-        } else {
-            rv = ERROR_CODE::TRANSACTION_ALREADY_STARTED;
-        }
-        break;
-    case ogawayama::common::command::commit:
-        if (worker_for_this_thread) {
-            rv = worker_for_this_thread->end_ddl(*db_);
-            worker_for_this_thread = nullptr;
-        } else {
-            rv = ERROR_CODE::NO_TRANSACTION;
-        }
-        break;
-    default:
-        return false;
     }
 
     std::ostringstream ofs;
