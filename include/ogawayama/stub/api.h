@@ -181,35 +181,54 @@ public:
 
     /**
      * @brief execute a statement.
-     * @param statement the SQL statement string
+     * @param statement the SQL statement string to be executed
+     * @param num_rows a reference to a variable to which the number of processes
      * @return error code defined in error_code.h
      */
-    ErrorCode execute_statement(std::string_view);
+    ErrorCode execute_statement(std::string_view statement, std::size_t& num_rows);
 
     /**
      * @brief execute a prepared statement.
-     * @param pointer to the prepared statement
-     * @param the parameters to be used for execution of the prepared statement
+     * @param prepared_statement the prepared statement to be executed
+     * @param parameters the parameters to be used for execution of the prepared statement
+     * @param num_rows a reference to a variable to which the number of processes
      * @return error code defined in error_code.h
      */
-    ErrorCode execute_statement(PreparedStatementPtr&, parameters_type&);
+    ErrorCode execute_statement(PreparedStatementPtr& prepared_statement, parameters_type& parameters, std::size_t& num_rows);
+
+    /**
+     * @brief execute a statement.
+     * @param statement the SQL statement string to be executed
+     * @return error code defined in error_code.h
+     */
+    __attribute__((__deprecated__))
+    ErrorCode execute_statement(std::string_view statement);
+
+    /**
+     * @brief execute a prepared statement.
+     * @param prepared_statement the prepared statement to be executed
+     * @param parameters the parameters to be used for execution of the prepared statement
+     * @return error code defined in error_code.h
+     */
+    __attribute__((__deprecated__))
+    ErrorCode execute_statement(PreparedStatementPtr& prepared_statement, parameters_type& parameters);
 
     /**
      * @brief execute a query.
-     * @param query the SQL query string
+     * @param query the SQL query string to be executed
      * @param result_set returns a result set of the query
      * @return error code defined in error_code.h
      */
-    ErrorCode execute_query(std::string_view, ResultSetPtr&);
+    ErrorCode execute_query(std::string_view query, ResultSetPtr& result_set);
 
     /**
      * @brief execute a prepared query.
-     * @param pointer to the prepared query
-     * @param the parameters to be used for execution of the prepared statement
+     * @param prepared_query the prepared query to be executed
+     * @param parameters the parameters to be used for execution of the prepared statement
      * @param result_set returns a result set of the query
      * @return error code defined in error_code.h
      */
-    ErrorCode execute_query(PreparedStatementPtr&, parameters_type&, ResultSetPtr&);
+    ErrorCode execute_query(PreparedStatementPtr& prepared_query, parameters_type& parameters, ResultSetPtr& result_set);
 
     /**
      * @brief commit the current transaction.

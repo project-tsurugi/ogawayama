@@ -74,7 +74,9 @@ int main(int argc, char **argv) {
         err = connection->begin(transaction);
         if (err != ERROR_CODE::OK) { prt_err(__LINE__, err); return 1; }
         std::cerr << "execute_statement \"" << FLAGS_statement << "\"" << std::endl;
-        err = transaction->execute_statement(FLAGS_statement);
+        std::size_t num_rows{};
+        err = transaction->execute_statement(FLAGS_statement, num_rows);
+        std::cerr << "prodessed " << num_rows << " rows" << std::endl;
         if (err != ERROR_CODE::OK) { prt_err(__LINE__, err); return 1; }
         err = transaction->commit();
         if (err != ERROR_CODE::OK) { prt_err(__LINE__, err); return 1; }
