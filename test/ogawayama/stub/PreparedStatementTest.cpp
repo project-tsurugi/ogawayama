@@ -19,7 +19,7 @@
 #include <jogasaki/serializer/value_output.h>
 
 #include "stub_test_root.h"
-
+#include "decimal.h"
 
 namespace ogawayama::testing {
 
@@ -163,6 +163,8 @@ TEST_F(PreparedTest, prepare) {
         parameters.emplace_back("float32_data", static_cast<float>(123.456));
         parameters.emplace_back("float64_data", static_cast<double>(123.456789));
         parameters.emplace_back("text_data", std::string("this is a string for the test"));
+        auto decimal_for_test = takatori::decimal::triple{1, 0, 1, 1};
+        parameters.emplace_back("decimal_data", decimal_for_test);
         auto date_for_test = takatori::datetime::date(2022, 12, 31);
         parameters.emplace_back("date_data", date_for_test);
         auto time_of_day_for_test = takatori::datetime::time_of_day(23, 59, 59, std::chrono::nanoseconds(123457000));
@@ -183,7 +185,7 @@ TEST_F(PreparedTest, prepare) {
 
         auto eps_request = request.execute_prepared_statement();
         EXPECT_EQ(eps_request.prepared_statement_handle().handle(), 1234);
-        EXPECT_EQ(eps_request.parameters_size(), 10);
+        EXPECT_EQ(eps_request.parameters_size(), 11);
 
         // 1st placeholder
         EXPECT_EQ(eps_request.parameters(0).name(), "int32_data");
@@ -206,29 +208,39 @@ TEST_F(PreparedTest, prepare) {
         EXPECT_EQ(eps_request.parameters(4).value_case(), ::jogasaki::proto::sql::request::Parameter::ValueCase::kCharacterValue);
         EXPECT_EQ(eps_request.parameters(4).character_value(), "this is a string for the test");
         // 6th placeholder
-        EXPECT_EQ(eps_request.parameters(5).name(), "date_data");
-        EXPECT_EQ(eps_request.parameters(5).value_case(), ::jogasaki::proto::sql::request::Parameter::ValueCase::kDateValue);
-        EXPECT_EQ(eps_request.parameters(5).date_value(), date_for_test.days_since_epoch());
+        EXPECT_EQ(eps_request.parameters(5).name(), "decimal_data");
+        EXPECT_EQ(eps_request.parameters(5).value_case(), ::jogasaki::proto::sql::request::Parameter::ValueCase::kDecimalValue);
+        auto& dec = eps_request.parameters(5).decimal_value();
+        auto triple = jogasaki::utils::read_decimal(dec.unscaled_value(), -dec.exponent());
+        // compare triple to takatori::decimal::triple{1, 0, 1, 1}
+        EXPECT_EQ(triple.sign(), 1);
+        EXPECT_EQ(triple.coefficient_high(), 0);
+        EXPECT_EQ(triple.coefficient_low(), 1);
+        EXPECT_EQ(triple.exponent(), 1);
         // 7th placeholder
-        EXPECT_EQ(eps_request.parameters(6).name(), "time_data");
-        EXPECT_EQ(eps_request.parameters(6).value_case(), ::jogasaki::proto::sql::request::Parameter::ValueCase::kTimeOfDayValue);
-        EXPECT_EQ(eps_request.parameters(6).time_of_day_value(), time_of_day_for_test.time_since_epoch().count());
+        EXPECT_EQ(eps_request.parameters(6).name(), "date_data");
+        EXPECT_EQ(eps_request.parameters(6).value_case(), ::jogasaki::proto::sql::request::Parameter::ValueCase::kDateValue);
+        EXPECT_EQ(eps_request.parameters(6).date_value(), date_for_test.days_since_epoch());
         // 8th placeholder
-        EXPECT_EQ(eps_request.parameters(7).name(), "timestamp_data");
-        EXPECT_EQ(eps_request.parameters(7).value_case(), ::jogasaki::proto::sql::request::Parameter::ValueCase::kTimePointValue);
-        EXPECT_EQ(eps_request.parameters(7).time_point_value().offset_seconds(), time_point_for_test.seconds_since_epoch().count());
-        EXPECT_EQ(eps_request.parameters(7).time_point_value().nano_adjustment(), time_point_for_test.subsecond().count());
+        EXPECT_EQ(eps_request.parameters(7).name(), "time_data");
+        EXPECT_EQ(eps_request.parameters(7).value_case(), ::jogasaki::proto::sql::request::Parameter::ValueCase::kTimeOfDayValue);
+        EXPECT_EQ(eps_request.parameters(7).time_of_day_value(), time_of_day_for_test.time_since_epoch().count());
         // 9th placeholder
-        EXPECT_EQ(eps_request.parameters(8).name(), "timetz_data");
-        EXPECT_EQ(eps_request.parameters(8).value_case(), ::jogasaki::proto::sql::request::Parameter::ValueCase::kTimeOfDayWithTimeZoneValue);
-        EXPECT_EQ(eps_request.parameters(8).time_of_day_with_time_zone_value().offset_nanoseconds(), time_of_day_for_test.time_since_epoch().count());
-        EXPECT_EQ(eps_request.parameters(8).time_of_day_with_time_zone_value().time_zone_offset(), 720);
+        EXPECT_EQ(eps_request.parameters(8).name(), "timestamp_data");
+        EXPECT_EQ(eps_request.parameters(8).value_case(), ::jogasaki::proto::sql::request::Parameter::ValueCase::kTimePointValue);
+        EXPECT_EQ(eps_request.parameters(8).time_point_value().offset_seconds(), time_point_for_test.seconds_since_epoch().count());
+        EXPECT_EQ(eps_request.parameters(8).time_point_value().nano_adjustment(), time_point_for_test.subsecond().count());
         // 10th placeholder
-        EXPECT_EQ(eps_request.parameters(9).name(), "timestamptz_data");
-        EXPECT_EQ(eps_request.parameters(9).value_case(), ::jogasaki::proto::sql::request::Parameter::ValueCase::kTimePointWithTimeZoneValue);
-        EXPECT_EQ(eps_request.parameters(9).time_point_with_time_zone_value().offset_seconds(), time_point_for_test.seconds_since_epoch().count());
-        EXPECT_EQ(eps_request.parameters(9).time_point_with_time_zone_value().nano_adjustment(), time_point_for_test.subsecond().count());
-        EXPECT_EQ(eps_request.parameters(9).time_point_with_time_zone_value().time_zone_offset(), 720);
+        EXPECT_EQ(eps_request.parameters(9).name(), "timetz_data");
+        EXPECT_EQ(eps_request.parameters(9).value_case(), ::jogasaki::proto::sql::request::Parameter::ValueCase::kTimeOfDayWithTimeZoneValue);
+        EXPECT_EQ(eps_request.parameters(9).time_of_day_with_time_zone_value().offset_nanoseconds(), time_of_day_for_test.time_since_epoch().count());
+        EXPECT_EQ(eps_request.parameters(9).time_of_day_with_time_zone_value().time_zone_offset(), 720);
+        // 11th placeholder
+        EXPECT_EQ(eps_request.parameters(10).name(), "timestamptz_data");
+        EXPECT_EQ(eps_request.parameters(10).value_case(), ::jogasaki::proto::sql::request::Parameter::ValueCase::kTimePointWithTimeZoneValue);
+        EXPECT_EQ(eps_request.parameters(10).time_point_with_time_zone_value().offset_seconds(), time_point_for_test.seconds_since_epoch().count());
+        EXPECT_EQ(eps_request.parameters(10).time_point_with_time_zone_value().nano_adjustment(), time_point_for_test.subsecond().count());
+        EXPECT_EQ(eps_request.parameters(10).time_point_with_time_zone_value().time_zone_offset(), 720);
     }
 
     {
