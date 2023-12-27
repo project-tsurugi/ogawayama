@@ -49,7 +49,7 @@ ErrorCode ResultSet::Impl::get_metadata(MetadataPtr& metadata)
                 case ::jogasaki::proto::sql::common::AtomType::INT8: ogawayama_metadata_.push(Metadata::ColumnType::Type::INT64); break;
                 case ::jogasaki::proto::sql::common::AtomType::FLOAT4: ogawayama_metadata_.push(Metadata::ColumnType::Type::FLOAT32); break;
                 case ::jogasaki::proto::sql::common::AtomType::FLOAT8: ogawayama_metadata_.push(Metadata::ColumnType::Type::FLOAT64); break;
-                case ::jogasaki::proto::sql::common::AtomType::DECIMAL: break;
+                case ::jogasaki::proto::sql::common::AtomType::DECIMAL: ogawayama_metadata_.push(Metadata::ColumnType::Type::DECIMAL); break;
                 case ::jogasaki::proto::sql::common::AtomType::CHARACTER: ogawayama_metadata_.push(Metadata::ColumnType::Type::TEXT); break;
                 case ::jogasaki::proto::sql::common::AtomType::OCTET: break;
                 case ::jogasaki::proto::sql::common::AtomType::BIT: break;
