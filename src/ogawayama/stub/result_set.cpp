@@ -362,6 +362,16 @@ ErrorCode ResultSet::Impl::next_column(takatori::decimal::triple& value) {
     case jogasaki::serializer::entry_type::decimal:
         value = jogasaki::serializer::read_decimal(iter_, buf_.end());
         return ErrorCode::OK;
+    case jogasaki::serializer::entry_type::int_:
+    {
+        auto coefficient = jogasaki::serializer::read_int(iter_, buf_.end());
+        if (coefficient >= 0) {
+            value = takatori::decimal::triple{1, 0, static_cast<std::uint64_t>(coefficient) , 0};
+        } else {
+            value = takatori::decimal::triple{-1, 0, static_cast<std::uint64_t>(-coefficient) , 0};
+        }
+        return ErrorCode::OK;
+    }
     default:
         std::cerr << "error: decimal expected, actually " << jogasaki::serializer::to_string_view(entry_type) << " received" << std::endl;
         return ErrorCode::COLUMN_TYPE_MISMATCH;
