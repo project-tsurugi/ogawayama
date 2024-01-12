@@ -344,7 +344,7 @@ ErrorCode ResultSet::Impl::next_column(takatori::decimal::triple& value) {
     if (auto rv = next_column_common(); rv != ErrorCode::OK) {
         return rv;
     }
-    switch (jogasaki::serializer::peek_type(iter_, buf_.end())) {
+    switch (auto entry_type = jogasaki::serializer::peek_type(iter_, buf_.end())) {
     case jogasaki::serializer::entry_type::end_of_contents:
         jogasaki::serializer::read_end_of_contents(iter_, buf_.end());
         return ErrorCode::END_OF_ROW;
@@ -355,6 +355,7 @@ ErrorCode ResultSet::Impl::next_column(takatori::decimal::triple& value) {
         value = jogasaki::serializer::read_decimal(iter_, buf_.end());
         return ErrorCode::OK;
     default:
+        std::cerr << "error: decimal expected, received, actual " << jogasaki::serializer::to_string_view(entry_type) << std::endl;
         return ErrorCode::COLUMN_TYPE_MISMATCH;
     }
 }
