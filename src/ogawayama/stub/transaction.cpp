@@ -114,7 +114,7 @@ public:
     }
     ::jogasaki::proto::sql::request::Parameter operator()(const decimal_type& triple) {
         auto* value = &parameter_;
-        // the following part is the exact copy of https://github.com/project-tsurugi/jogasaki/blob/b5b8a129b622bd4258099b5cf0a829fd4c81d77d/src/jogasaki/api/kvsservice/serializer.cpp#L212C1-L238C2
+        // the following part is the exact copy of https://github.com/project-tsurugi/jogasaki/blob/206d07d700adc25d19c031bc1df9a08aee16555c/src/jogasaki/api/kvsservice/serializer.cpp#L219-L245
         {
             const auto lo = triple.coefficient_low();
             const auto hi = triple.coefficient_high();

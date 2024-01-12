@@ -349,7 +349,7 @@ ERROR_CODE Worker::do_deploy_table(jogasaki::api::database& db, boost::archive::
                     }
                     p = po.value();
                     if (data_length_vector.size() >= 2) {
-                        auto so = data_length_vector.at(0);
+                        auto so = data_length_vector.at(1);
                         if (!so) {
                             s = so.value();
                         }
