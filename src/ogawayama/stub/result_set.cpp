@@ -106,7 +106,7 @@ ErrorCode ResultSet::Impl::next_column(std::int64_t& value) {
     if (auto rv = next_column_common(); rv != ErrorCode::OK) {
         return rv;
     }
-    switch (jogasaki::serializer::peek_type(iter_, buf_.end())) {
+    switch (auto entry_type = jogasaki::serializer::peek_type(iter_, buf_.end())) {
     case jogasaki::serializer::entry_type::end_of_contents:
         jogasaki::serializer::read_end_of_contents(iter_, buf_.end());
         return ErrorCode::END_OF_ROW;
@@ -117,6 +117,7 @@ ErrorCode ResultSet::Impl::next_column(std::int64_t& value) {
         value = jogasaki::serializer::read_int(iter_, buf_.end());
         return ErrorCode::OK;
     default:
+        std::cerr << "error: int_ expected, actually " << jogasaki::serializer::to_string_view(entry_type) << " received" << std::endl;
         return ErrorCode::COLUMN_TYPE_MISMATCH;
     }
 }
@@ -131,7 +132,7 @@ ErrorCode ResultSet::Impl::next_column(double& value) {
     if (auto rv = next_column_common(); rv != ErrorCode::OK) {
         return rv;
     }
-    switch (jogasaki::serializer::peek_type(iter_, buf_.end())) {
+    switch (auto entry_type = jogasaki::serializer::peek_type(iter_, buf_.end())) {
     case jogasaki::serializer::entry_type::end_of_contents:
         jogasaki::serializer::read_end_of_contents(iter_, buf_.end());
         return ErrorCode::END_OF_ROW;
@@ -145,6 +146,7 @@ ErrorCode ResultSet::Impl::next_column(double& value) {
         value = jogasaki::serializer::read_float4(iter_, buf_.end());
         return ErrorCode::OK;
     default:
+        std::cerr << "error: float4 or float8 expected, actually " << jogasaki::serializer::to_string_view(entry_type) << " received" << std::endl;
         return ErrorCode::COLUMN_TYPE_MISMATCH;
     }
 }
@@ -181,7 +183,7 @@ ErrorCode ResultSet::Impl::next_column(std::string_view& value) {
     if (auto rv = next_column_common(); rv != ErrorCode::OK) {
         return rv;
     }
-    switch (jogasaki::serializer::peek_type(iter_, buf_.end())) {
+    switch (auto entry_type = jogasaki::serializer::peek_type(iter_, buf_.end())) {
     case jogasaki::serializer::entry_type::end_of_contents:
         jogasaki::serializer::read_end_of_contents(iter_, buf_.end());
         return ErrorCode::END_OF_ROW;
@@ -192,6 +194,7 @@ ErrorCode ResultSet::Impl::next_column(std::string_view& value) {
         value = jogasaki::serializer::read_character(iter_, buf_.end());
         return ErrorCode::OK;
     default:
+        std::cerr << "error: character expected, actually " << jogasaki::serializer::to_string_view(entry_type) << " received" << std::endl;
         return ErrorCode::COLUMN_TYPE_MISMATCH;
     }
 }
@@ -219,7 +222,7 @@ ErrorCode ResultSet::Impl::next_column(takatori::datetime::date& value) {
     if (auto rv = next_column_common(); rv != ErrorCode::OK) {
         return rv;
     }
-    switch (jogasaki::serializer::peek_type(iter_, buf_.end())) {
+    switch (auto entry_type = jogasaki::serializer::peek_type(iter_, buf_.end())) {
     case jogasaki::serializer::entry_type::end_of_contents:
         jogasaki::serializer::read_end_of_contents(iter_, buf_.end());
         return ErrorCode::END_OF_ROW;
@@ -230,6 +233,7 @@ ErrorCode ResultSet::Impl::next_column(takatori::datetime::date& value) {
         value = jogasaki::serializer::read_date(iter_, buf_.end());
         return ErrorCode::OK;
     default:
+        std::cerr << "error: date expected, actually " << jogasaki::serializer::to_string_view(entry_type) << " received" << std::endl;
         return ErrorCode::COLUMN_TYPE_MISMATCH;
     }
 }
@@ -244,7 +248,7 @@ ErrorCode ResultSet::Impl::next_column(takatori::datetime::time_of_day& value) {
     if (auto rv = next_column_common(); rv != ErrorCode::OK) {
         return rv;
     }
-    switch (jogasaki::serializer::peek_type(iter_, buf_.end())) {
+    switch (auto entry_type = jogasaki::serializer::peek_type(iter_, buf_.end())) {
     case jogasaki::serializer::entry_type::end_of_contents:
         jogasaki::serializer::read_end_of_contents(iter_, buf_.end());
         return ErrorCode::END_OF_ROW;
@@ -255,6 +259,7 @@ ErrorCode ResultSet::Impl::next_column(takatori::datetime::time_of_day& value) {
         value = jogasaki::serializer::read_time_of_day(iter_, buf_.end());
         return ErrorCode::OK;
     default:
+        std::cerr << "error: time_of_day expected, actually " << jogasaki::serializer::to_string_view(entry_type) << " received" << std::endl;
         return ErrorCode::COLUMN_TYPE_MISMATCH;
     }
 }
@@ -269,7 +274,7 @@ ErrorCode ResultSet::Impl::next_column(takatori::datetime::time_point& value) {
     if (auto rv = next_column_common(); rv != ErrorCode::OK) {
         return rv;
     }
-    switch (jogasaki::serializer::peek_type(iter_, buf_.end())) {
+    switch (auto entry_type = jogasaki::serializer::peek_type(iter_, buf_.end())) {
     case jogasaki::serializer::entry_type::end_of_contents:
         jogasaki::serializer::read_end_of_contents(iter_, buf_.end());
         return ErrorCode::END_OF_ROW;
@@ -280,6 +285,7 @@ ErrorCode ResultSet::Impl::next_column(takatori::datetime::time_point& value) {
         value = jogasaki::serializer::read_time_point(iter_, buf_.end());
         return ErrorCode::OK;
     default:
+        std::cerr << "error: time_point expected, actually " << jogasaki::serializer::to_string_view(entry_type) << " received" << std::endl;
         return ErrorCode::COLUMN_TYPE_MISMATCH;
     }
 }
@@ -294,7 +300,7 @@ ErrorCode ResultSet::Impl::next_column(std::pair<takatori::datetime::time_of_day
     if (auto rv = next_column_common(); rv != ErrorCode::OK) {
         return rv;
     }
-    switch (jogasaki::serializer::peek_type(iter_, buf_.end())) {
+    switch (auto entry_type = jogasaki::serializer::peek_type(iter_, buf_.end())) {
     case jogasaki::serializer::entry_type::end_of_contents:
         jogasaki::serializer::read_end_of_contents(iter_, buf_.end());
         return ErrorCode::END_OF_ROW;
@@ -305,6 +311,7 @@ ErrorCode ResultSet::Impl::next_column(std::pair<takatori::datetime::time_of_day
         value = jogasaki::serializer::read_time_of_day_with_offset(iter_, buf_.end());
         return ErrorCode::OK;
     default:
+        std::cerr << "error: time_of_day_with_offset expected, actually " << jogasaki::serializer::to_string_view(entry_type) << " received" << std::endl;
         return ErrorCode::COLUMN_TYPE_MISMATCH;
     }
 }
@@ -319,7 +326,7 @@ ErrorCode ResultSet::Impl::next_column(std::pair<takatori::datetime::time_point,
     if (auto rv = next_column_common(); rv != ErrorCode::OK) {
         return rv;
     }
-    switch (jogasaki::serializer::peek_type(iter_, buf_.end())) {
+    switch (auto entry_type = jogasaki::serializer::peek_type(iter_, buf_.end())) {
     case jogasaki::serializer::entry_type::end_of_contents:
         jogasaki::serializer::read_end_of_contents(iter_, buf_.end());
         return ErrorCode::END_OF_ROW;
@@ -330,6 +337,7 @@ ErrorCode ResultSet::Impl::next_column(std::pair<takatori::datetime::time_point,
         value = jogasaki::serializer::read_time_point_with_offset(iter_, buf_.end());
         return ErrorCode::OK;
     default:
+        std::cerr << "error: time_point_with_offset expected, actually " << jogasaki::serializer::to_string_view(entry_type) << " received" << std::endl;
         return ErrorCode::COLUMN_TYPE_MISMATCH;
     }
 }
@@ -355,7 +363,7 @@ ErrorCode ResultSet::Impl::next_column(takatori::decimal::triple& value) {
         value = jogasaki::serializer::read_decimal(iter_, buf_.end());
         return ErrorCode::OK;
     default:
-        std::cerr << "error: decimal expected, received, actual " << jogasaki::serializer::to_string_view(entry_type) << std::endl;
+        std::cerr << "error: decimal expected, actually " << jogasaki::serializer::to_string_view(entry_type) << " received" << std::endl;
         return ErrorCode::COLUMN_TYPE_MISMATCH;
     }
 }
