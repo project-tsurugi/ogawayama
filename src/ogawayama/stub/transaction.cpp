@@ -112,6 +112,40 @@ public:
         v->set_nano_adjustment(data.first.subsecond().count());
         return parameter_;
     }
+    ::jogasaki::proto::sql::request::Parameter operator()(const decimal_type& triple) {
+        auto* value = &parameter_;
+        // the following part is the exact copy of https://github.com/project-tsurugi/jogasaki/blob/206d07d700adc25d19c031bc1df9a08aee16555c/src/jogasaki/api/kvsservice/serializer.cpp#L219-L245
+        {
+            const auto lo = triple.coefficient_low();
+            const auto hi = triple.coefficient_high();
+            std::string buf{};
+            const auto buflen = sizeof(lo) + sizeof(hi);
+            buf.reserve(buflen);
+            auto v = lo;
+            for (int i = 0; i < 8; i++) {
+                buf[15 - i] = static_cast<char>(v & 0xffU);
+                v >>= 8U;
+            }
+            v = hi;
+            for (int i = 0; i < 8; i++) {
+                buf[7 - i] = static_cast<char>(v & 0xffU);
+                v >>= 8U;
+            }
+            // skip zero-padding
+            std::size_t start = 0;
+            while (start < buflen - 1) {
+                if (buf[start] != 0) {
+                    break;
+                }
+                start++;
+            }
+            auto *decimal = value->mutable_decimal_value();
+            // NOTE: buf.size() returns 0, not 16
+            decimal->set_unscaled_value(std::addressof(buf[start]), buflen - start);
+            decimal->set_exponent(triple.exponent());
+        }
+        return parameter_;
+    }
 
 private:
     ::jogasaki::proto::sql::request::Parameter parameter_{};

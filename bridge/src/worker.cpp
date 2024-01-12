@@ -334,7 +334,7 @@ ERROR_CODE Worker::do_deploy_table(jogasaki::api::database& db, boost::archive::
             }
             case manager::metadata::DataTypes::DataTypesId::NUMERIC:  // decimal
             {
-                std::size_t p{}, s{};
+                std::optional<takatori::type::decimal::size_type> p{}, s{};
                 std::vector<boost::optional<int64_t>> data_length_vector;
                 get_data_length_vector(column, data_length_vector);
                 if (data_length_vector.size() == 0) {
@@ -342,16 +342,14 @@ ERROR_CODE Worker::do_deploy_table(jogasaki::api::database& db, boost::archive::
                                                                    takatori::type::decimal(),
                                                                    yugawara::variable::nullity(!is_not_null_value)));
                 } else {
-                    auto po = data_length_vector.at(0);
-                    if (!po) {
-                        VLOG(log_debug) << "<-- UNSUPPORTED";
-                        return ERROR_CODE::UNSUPPORTED;
-                    }
-                    p = po.value();
-                    if (data_length_vector.size() >= 2) {
-                        auto so = data_length_vector.at(0);
-                        if (!so) {
-                            s = so.value();
+                    if (data_length_vector.size() > 0) {
+                        if (auto po = data_length_vector.at(0); po) {
+                            p = po.value();
+                        }
+                        if (data_length_vector.size() > 1) {
+                            if (auto so = data_length_vector.at(1); so) {
+                                s = so.value();
+                            }
                         }
                     }
                     columns.emplace_back(yugawara::storage::column(name_value,
