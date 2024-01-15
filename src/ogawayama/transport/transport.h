@@ -20,6 +20,8 @@
 #include <string>
 #include <vector>
 #include <exception>
+#include <sys/types.h>
+#include <unistd.h>
 
 #include <tateyama/utils/protobuf_utils.h>
 #include <tateyama/proto/framework/request.pb.h>
@@ -416,12 +418,23 @@ private:
     std::optional<tateyama::proto::endpoint::response::Handshake> handshake() {
         tateyama::proto::endpoint::request::ClientInformation information{};
         information.set_application_name("fdw");
+
+        tateyama::proto::endpoint::request::WireInformation wire_information{};
+        tateyama::proto::endpoint::request::WireInformation::IpcInformation ipc_information{};
+        ipc_information.set_connection_information(std::to_string(getpid()));
+        wire_information.set_allocated_ipc_information(&ipc_information);
+
         tateyama::proto::endpoint::request::Handshake handshake{};
         handshake.set_allocated_client_information(&information);
+        handshake.set_allocated_wire_information(&wire_information);
         tateyama::proto::endpoint::request::Request request{};
         request.set_allocated_handshake(&handshake);
         auto response = send<tateyama::proto::endpoint::response::Handshake>(request);
         request.release_handshake();
+
+        wire_information.release_ipc_information();
+        handshake.release_wire_information();
+
         handshake.release_client_information();
         return response;
     }
