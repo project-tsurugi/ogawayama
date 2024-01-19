@@ -22,6 +22,11 @@ set(FrameworkProtoFiles
         ${CMAKE_SOURCE_DIR}/src/tateyama/proto/framework/request.proto
         ${CMAKE_SOURCE_DIR}/src/tateyama/proto/framework/response.proto
         ${CMAKE_SOURCE_DIR}/src/tateyama/proto/diagnostics.proto
+        ${CMAKE_SOURCE_DIR}/src/tateyama/proto/endpoint/request.proto
+        ${CMAKE_SOURCE_DIR}/src/tateyama/proto/endpoint/response.proto
+        ${CMAKE_SOURCE_DIR}/src/tateyama/proto/auth/request.proto
+        ${CMAKE_SOURCE_DIR}/src/tateyama/proto/auth/response.proto
+        ${CMAKE_SOURCE_DIR}/src/tateyama/proto/auth/common.proto
         )
 
 # By default, PROTOBUF_GENERATE_CPP generates file path for .pb.cc as if they are in the same directory.

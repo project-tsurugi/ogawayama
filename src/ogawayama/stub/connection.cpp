@@ -46,6 +46,7 @@ ErrorCode Connection::Impl::hello()
 
     std::ostringstream ofs;
     boost::archive::binary_oarchive oa(ofs);
+    oa << common::OGAWAYAMA_MESSAGE_VERSION;
     oa << command;
 
     try {
@@ -252,6 +253,7 @@ ErrorCode Connection::Impl::create_table(std::size_t id)
 
     std::ostringstream ofs;
     boost::archive::binary_oarchive oa(ofs);
+    oa << common::OGAWAYAMA_MESSAGE_VERSION;
     oa << command;
     oa << id;
     oa << table;
@@ -282,6 +284,7 @@ ErrorCode Connection::Impl::drop_table(std::size_t id)
 
     std::ostringstream ofs;
     boost::archive::binary_oarchive oa(ofs);
+    oa << common::OGAWAYAMA_MESSAGE_VERSION;
     oa << command;
     oa << id;
     oa << table;
@@ -346,6 +349,7 @@ ErrorCode Connection::Impl::create_index(std::size_t id)
 
     std::ostringstream ofs;
     boost::archive::binary_oarchive oa(ofs);
+    oa << common::OGAWAYAMA_MESSAGE_VERSION;
     oa << command;
     oa << table_name_opt.value();
     oa << index;
@@ -376,6 +380,7 @@ ErrorCode Connection::Impl::drop_index(std::size_t id)
 
     std::ostringstream ofs;
     boost::archive::binary_oarchive oa(ofs);
+    oa << common::OGAWAYAMA_MESSAGE_VERSION;
     oa << command;
     oa << index;
 
@@ -400,6 +405,7 @@ ErrorCode Connection::Impl::begin_ddl()
 
     std::ostringstream ofs;
     boost::archive::binary_oarchive oa(ofs);
+    oa << common::OGAWAYAMA_MESSAGE_VERSION;
     oa << command;
 
     auto response_opt = transport_.send(ofs.str());
@@ -423,6 +429,7 @@ ErrorCode Connection::Impl::end_ddl()
 
     std::ostringstream ofs;
     boost::archive::binary_oarchive oa(ofs);
+    oa << common::OGAWAYAMA_MESSAGE_VERSION;
     oa << command;
 
     auto response_opt = transport_.send(ofs.str());

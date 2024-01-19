@@ -19,10 +19,15 @@
 #include <optional>
 #include <string>
 #include <vector>
+#include <exception>
+#include <sys/types.h>
+#include <unistd.h>
 
 #include <tateyama/utils/protobuf_utils.h>
 #include <tateyama/proto/framework/request.pb.h>
 #include <tateyama/proto/framework/response.pb.h>
+#include <tateyama/proto/endpoint/request.pb.h>
+#include <tateyama/proto/endpoint/response.pb.h>
 
 #include <jogasaki/proto/sql/request.pb.h>
 #include <jogasaki/proto/sql/common.pb.h>
@@ -38,12 +43,15 @@ constexpr static tateyama::common::wire::message_header::index_type SLOT_FOR_DIS
 constexpr static tateyama::common::wire::message_header::index_type OPT_INDEX = SLOT_FOR_DISPOSE_TRANSACTION + 1;
 
 class transport {
-constexpr static std::size_t HEADER_MESSAGE_VERSION_MAJOR = 0;
-constexpr static std::size_t HEADER_MESSAGE_VERSION_MINOR = 0;
-constexpr static std::size_t SQL_MESSAGE_VERSION_MAJOR = 1;
-constexpr static std::size_t SQL_MESSAGE_VERSION_MINOR = 0;
-constexpr static std::uint32_t SERVICE_ID_SQL = 3;  // from tateyama/framework/component_ids.h
-constexpr static std::uint32_t SERVICE_ID_FDW = 4;  // from tateyama/framework/component_ids.h
+    constexpr static std::size_t HEADER_MESSAGE_VERSION_MAJOR = 0;
+    constexpr static std::size_t HEADER_MESSAGE_VERSION_MINOR = 0;
+    constexpr static std::size_t SQL_MESSAGE_VERSION_MAJOR = 1;
+    constexpr static std::size_t SQL_MESSAGE_VERSION_MINOR = 0;
+    constexpr static std::size_t ENDPOINT_MESSAGE_VERSION_MAJOR = 0;
+    constexpr static std::size_t ENDPOINT_MESSAGE_VERSION_MINOR = 0;
+    constexpr static std::uint32_t SERVICE_ID_ENDPOINT_BROKER = 1;  // from tateyama/framework/component_ids.h
+    constexpr static std::uint32_t SERVICE_ID_SQL = 3;  // from tateyama/framework/component_ids.h
+    constexpr static std::uint32_t SERVICE_ID_FDW = 4;  // from tateyama/framework/component_ids.h
 
 public:
     transport() = delete;
@@ -55,6 +63,13 @@ public:
         bridge_header_.set_service_message_version_major(HEADER_MESSAGE_VERSION_MAJOR);
         bridge_header_.set_service_message_version_minor(HEADER_MESSAGE_VERSION_MINOR);
         bridge_header_.set_service_id(SERVICE_ID_FDW);
+        auto handshake_response = handshake();
+        if (!handshake_response) {
+            throw std::runtime_error("handshake error");
+        }
+        if (handshake_response.value().result_case() != tateyama::proto::endpoint::response::Handshake::ResultCase::kSuccess) {
+            throw std::runtime_error("handshake error");
+        }
     }
 
 /**
@@ -63,7 +78,7 @@ public:
  * @return std::optional of ::jogasaki::proto::sql::request::Begin
  */
     std::optional<::jogasaki::proto::sql::response::Begin> send(::jogasaki::proto::sql::request::Begin& begin_request) {
-        auto request = sql_request();
+        ::jogasaki::proto::sql::request::Request request{};
         *(request.mutable_begin())= begin_request;
         auto response_opt = send<::jogasaki::proto::sql::response::Response>(request);
         request.clear_begin();
@@ -82,7 +97,7 @@ public:
  * @return std::optional of ::jogasaki::proto::sql::request::Prepare
  */
     std::optional<::jogasaki::proto::sql::response::Prepare> send(::jogasaki::proto::sql::request::Prepare& prepare_request) {
-        auto request = sql_request();
+        ::jogasaki::proto::sql::request::Request request{};
         *(request.mutable_prepare())= prepare_request;
         auto response_opt = send<::jogasaki::proto::sql::response::Response>(request);
         request.clear_prepare();
@@ -101,7 +116,7 @@ public:
  * @return std::optional of ::jogasaki::proto::sql::request::ResultOnly
  */
     std::optional<::jogasaki::proto::sql::response::ExecuteResult> send(::jogasaki::proto::sql::request::ExecuteStatement& execute_statement_request) {
-        auto request = sql_request();
+        ::jogasaki::proto::sql::request::Request request{};
         *(request.mutable_execute_statement()) = execute_statement_request;
         auto response_opt = send<::jogasaki::proto::sql::response::Response>(request);
         request.clear_execute_statement();
@@ -120,7 +135,7 @@ public:
  * @return std::optional of ::jogasaki::proto::sql::request::ResultOnly
  */
     std::optional<::jogasaki::proto::sql::response::ExecuteResult> send(::jogasaki::proto::sql::request::ExecutePreparedStatement& execute_statement_request) {
-        auto request = sql_request();
+        ::jogasaki::proto::sql::request::Request request{};
         *(request.mutable_execute_prepared_statement()) = execute_statement_request;
         auto response_opt = send<::jogasaki::proto::sql::response::Response>(request);
         request.clear_execute_statement();
@@ -139,7 +154,7 @@ public:
  * @return std::optional of ::jogasaki::proto::sql::request::ExecuteQuery
  */
     std::optional<::jogasaki::proto::sql::response::ExecuteQuery> send(::jogasaki::proto::sql::request::ExecuteQuery& execute_query_request, std::size_t query_index) {
-        auto request = sql_request();
+        ::jogasaki::proto::sql::request::Request request{};
         *(request.mutable_execute_query()) = execute_query_request;
         auto response_opt = send<::jogasaki::proto::sql::response::Response>(request, query_index);
         request.clear_execute_query();
@@ -161,7 +176,7 @@ public:
  * @return std::optional of ::jogasaki::proto::sql::request::ExecutePreparedQuery
  */
     std::optional<::jogasaki::proto::sql::response::ExecuteQuery> send(::jogasaki::proto::sql::request::ExecutePreparedQuery& execute_query_request, std::size_t query_index) {
-        auto request = sql_request();
+        ::jogasaki::proto::sql::request::Request request{};
         *(request.mutable_execute_prepared_query()) = execute_query_request;
         auto response_opt = send<::jogasaki::proto::sql::response::Response>(request, query_index);
         request.clear_execute_prepared_query();
@@ -191,7 +206,7 @@ public:
  * @return std::optional of ::jogasaki::proto::sql::request::ResultOnly
  */
     std::optional<::jogasaki::proto::sql::response::ResultOnly> send(::jogasaki::proto::sql::request::Commit& commit_request) {
-        auto request = sql_request();
+        ::jogasaki::proto::sql::request::Request request{};
         *(request.mutable_commit()) = commit_request;
         auto response_opt = send<::jogasaki::proto::sql::response::Response>(request);
         request.clear_commit();
@@ -210,7 +225,7 @@ public:
  * @return std::optional of ::jogasaki::proto::sql::request::ResultOnly
  */
     std::optional<::jogasaki::proto::sql::response::ResultOnly> send(::jogasaki::proto::sql::request::Rollback& rollback_request) {
-        auto request = sql_request();
+        ::jogasaki::proto::sql::request::Request request{};
         *(request.mutable_rollback()) = rollback_request;
         auto response_opt = send<::jogasaki::proto::sql::response::Response>(request);
         request.clear_rollback();
@@ -229,7 +244,7 @@ public:
  * @return std::optional of ::jogasaki::proto::sql::request::ResultOnly
  */
     std::optional<ogawayama::stub::ErrorCode> send(::jogasaki::proto::sql::request::DisposeTransaction& r) {
-        auto request = sql_request();
+        ::jogasaki::proto::sql::request::Request request{};
         *(request.mutable_dispose_transaction()) = r;
         auto response_opt = send<::jogasaki::proto::sql::response::Response>(request, SLOT_FOR_DISPOSE_TRANSACTION);
         request.clear_rollback();
@@ -294,8 +309,8 @@ private:
         if(auto res = tateyama::utils::SerializeDelimitedToOstream(header_, std::addressof(ss)); ! res) {
             return std::nullopt;
         }
-        // sql.Request does not have message_version
-        // request.set_message_version(MESSAGE_VERSION);
+        request.set_service_message_version_major(SQL_MESSAGE_VERSION_MAJOR);
+        request.set_service_message_version_minor(SQL_MESSAGE_VERSION_MINOR);
         auto session_handle = request.mutable_session_handle();
         *session_handle = session_;
         if(auto res = tateyama::utils::SerializeDelimitedToOstream(request, std::addressof(ss)); ! res) {
@@ -305,6 +320,26 @@ private:
         wire_.write(ss.str(), index);
         request.clear_session_handle();
 
+        return receive<T>(index);
+    }
+
+    template <typename T>
+    std::optional<T> send(::tateyama::proto::endpoint::request::Request& request, tateyama::common::wire::message_header::index_type index = 0) {
+        tateyama::proto::framework::request::Header fwrq_header{};
+        fwrq_header.set_service_message_version_major(HEADER_MESSAGE_VERSION_MAJOR);
+        fwrq_header.set_service_message_version_minor(HEADER_MESSAGE_VERSION_MINOR);
+        fwrq_header.set_service_id(SERVICE_ID_ENDPOINT_BROKER);
+
+        std::stringstream sst{};
+        if(auto res = tateyama::utils::SerializeDelimitedToOstream(fwrq_header, std::addressof(sst)); ! res) {
+            return std::nullopt;
+        }
+        request.set_service_message_version_major(ENDPOINT_MESSAGE_VERSION_MAJOR);
+        request.set_service_message_version_minor(ENDPOINT_MESSAGE_VERSION_MINOR);
+        if(auto res = tateyama::utils::SerializeDelimitedToOstream(request, std::addressof(sst)); ! res) {
+            return std::nullopt;
+        }
+        wire_.write(sst.str(), index);
         return receive<T>(index);
     }
 
@@ -380,6 +415,30 @@ private:
         return receive(index);
     }
 
+    std::optional<tateyama::proto::endpoint::response::Handshake> handshake() {
+        tateyama::proto::endpoint::request::ClientInformation information{};
+        information.set_application_name("fdw");
+
+        tateyama::proto::endpoint::request::WireInformation wire_information{};
+        tateyama::proto::endpoint::request::WireInformation::IpcInformation ipc_information{};
+        ipc_information.set_connection_information(std::to_string(getpid()));
+        wire_information.set_allocated_ipc_information(&ipc_information);
+
+        tateyama::proto::endpoint::request::Handshake handshake{};
+        handshake.set_allocated_client_information(&information);
+        handshake.set_allocated_wire_information(&wire_information);
+        tateyama::proto::endpoint::request::Request request{};
+        request.set_allocated_handshake(&handshake);
+        auto response = send<tateyama::proto::endpoint::response::Handshake>(request);
+        request.release_handshake();
+
+        wire_information.release_ipc_information();
+        handshake.release_wire_information();
+
+        handshake.release_client_information();
+        return response;
+    }
+
     std::optional<std::string> receive(tateyama::common::wire::message_header::index_type index) {
         auto& response_wire = wire_.get_response_wire();
 
@@ -403,13 +462,6 @@ private:
             return std::nullopt;
         }
         return std::string{response};
-    }
-
-    ::jogasaki::proto::sql::request::Request sql_request() {
-        ::jogasaki::proto::sql::request::Request request{};
-        request.set_service_message_version_major(SQL_MESSAGE_VERSION_MAJOR);
-        request.set_service_message_version_minor(SQL_MESSAGE_VERSION_MINOR);
-        return request;
     }
 };
 
