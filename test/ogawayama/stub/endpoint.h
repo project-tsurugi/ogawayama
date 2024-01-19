@@ -93,7 +93,7 @@ private:
 class endpoint {
     constexpr static tateyama::common::wire::response_header::msg_type RESPONSE_BODY = 1;
     constexpr static tateyama::common::wire::response_header::msg_type RESPONSE_BODYHEAD = 2;
-    constexpr static tateyama::common::wire::response_header::msg_type RESPONSE_CODE = 3;
+    constexpr static tateyama::common::wire::response_header::msg_type RESPONSE_HANDSHAKE = 98;
     constexpr static tateyama::common::wire::response_header::msg_type RESPONSE_HELLO = 99;
 
     constexpr static std::size_t response_array_size = 5;
@@ -124,7 +124,7 @@ public:
                     if(auto res = tateyama::utils::ParseDelimitedFromZeroCopyStream(std::addressof(req_header), std::addressof(in), nullptr); ! res) {
                         throw std::runtime_error("error parsing request message");
                     }
-                    if (req_header.service_id() == tateyama::framework::service_id_fdw) {
+                    if (auto service_id = req_header.service_id(); service_id == tateyama::framework::service_id_fdw) {
                         std::stringstream ss{};
                         ::tateyama::proto::framework::response::Header header{};
                         if(auto res = tateyama::utils::SerializeDelimitedToOstream(header, std::addressof(ss)); ! res) {
@@ -139,6 +139,23 @@ public:
                         }
                         auto reply_message = ss.str();
                         wire_->get_response_wire().write(reply_message.data(), tateyama::common::wire::response_header(index, reply_message.length(), RESPONSE_HELLO));
+                        continue;
+                    } else if (service_id == tateyama::framework::service_id_endpoint_broker) {
+                        std::stringstream ss{};
+                        ::tateyama::proto::framework::response::Header header{};
+                        if(auto res = tateyama::utils::SerializeDelimitedToOstream(header, std::addressof(ss)); ! res) {
+                            throw std::runtime_error("error formatting response message");
+                        }
+                        tateyama::proto::endpoint::response::Handshake rp{};
+                        auto rs = rp.mutable_success();
+                        rs->set_session_id(1);  // session id is dummy, as this is a test
+                        auto body = rp.SerializeAsString();
+                        if(auto res = tateyama::utils::PutDelimitedBodyToOstream(body, std::addressof(ss)); ! res) {
+                            throw std::runtime_error("error formatting response message");
+                        }
+                        rp.clear_success();
+                        auto reply_message = ss.str();
+                        wire_->get_response_wire().write(reply_message.data(), tateyama::common::wire::response_header(index, reply_message.length(), RESPONSE_HANDSHAKE));
                         continue;
                     }
                 }
