@@ -163,7 +163,7 @@ TEST_F(PreparedTest, prepare) {
         parameters.emplace_back("float32_data", static_cast<float>(123.456));
         parameters.emplace_back("float64_data", static_cast<double>(123.456789));
         parameters.emplace_back("text_data", std::string("this is a string for the test"));
-        auto decimal_for_test = takatori::decimal::triple{1, 0, 1, 1};
+        auto decimal_for_test = takatori::decimal::triple{-1, 0, 314, -2};
         parameters.emplace_back("decimal_data", decimal_for_test);
         auto date_for_test = takatori::datetime::date(2022, 12, 31);
         parameters.emplace_back("date_data", date_for_test);
@@ -212,11 +212,11 @@ TEST_F(PreparedTest, prepare) {
         EXPECT_EQ(eps_request.parameters(5).value_case(), ::jogasaki::proto::sql::request::Parameter::ValueCase::kDecimalValue);
         auto& dec = eps_request.parameters(5).decimal_value();
         auto triple = jogasaki::utils::read_decimal(dec.unscaled_value(), -dec.exponent());
-        // compare triple to takatori::decimal::triple{1, 0, 1, 1}
-        EXPECT_EQ(triple.sign(), 1);
+        // compare triple to takatori::decimal::triple{1, 0, 314, -2}
+        EXPECT_EQ(triple.sign(), -1);
         EXPECT_EQ(triple.coefficient_high(), 0);
-        EXPECT_EQ(triple.coefficient_low(), 1);
-        EXPECT_EQ(triple.exponent(), 1);
+        EXPECT_EQ(triple.coefficient_low(), 314);
+        EXPECT_EQ(triple.exponent(), -2);
         // 7th placeholder
         EXPECT_EQ(eps_request.parameters(6).name(), "date_data");
         EXPECT_EQ(eps_request.parameters(6).value_case(), ::jogasaki::proto::sql::request::Parameter::ValueCase::kDateValue);

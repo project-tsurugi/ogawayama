@@ -114,19 +114,19 @@ public:
     }
     ::jogasaki::proto::sql::request::Parameter operator()(const decimal_type& triple) {
         auto* value = &parameter_;
-        // the following part is the exact copy of https://github.com/project-tsurugi/jogasaki/blob/206d07d700adc25d19c031bc1df9a08aee16555c/src/jogasaki/api/kvsservice/serializer.cpp#L219-L245
+        auto [c_hi, c_lo, c_size] = make_signed_coefficient_full(triple);
+
+        // the following part is taken from https://github.com/project-tsurugi/jogasaki/blob/206d07d700adc25d19c031bc1df9a08aee16555c/src/jogasaki/api/kvsservice/serializer.cpp#L219-L245 with using make_signed_coefficient_full()
         {
-            const auto lo = triple.coefficient_low();
-            const auto hi = triple.coefficient_high();
             std::string buf{};
-            const auto buflen = sizeof(lo) + sizeof(hi);
+            const auto buflen = sizeof(c_lo) + sizeof(c_hi);
             buf.reserve(buflen);
-            auto v = lo;
+            auto v = c_lo;
             for (int i = 0; i < 8; i++) {
                 buf[15 - i] = static_cast<char>(v & 0xffU);
                 v >>= 8U;
             }
-            v = hi;
+            v = c_hi;
             for (int i = 0; i < 8; i++) {
                 buf[7 - i] = static_cast<char>(v & 0xffU);
                 v >>= 8U;
@@ -149,6 +149,49 @@ public:
 
 private:
     ::jogasaki::proto::sql::request::Parameter parameter_{};
+
+    // the following method is the copy of https://github.com/project-tsurugi/jogasaki/blob/2a404cdaf6e5599d1b2b8742d3568de58b3ee670/src/jogasaki/serializer/value_output.cpp#L165-L205
+    std::tuple<std::uint64_t, std::uint64_t, std::size_t> make_signed_coefficient_full(takatori::decimal::triple value) {
+        std::uint64_t c_hi = value.coefficient_high();
+        std::uint64_t c_lo = value.coefficient_low();
+
+        if (value.sign() >= 0) {
+            for (std::size_t offset = 0; offset < sizeof(std::uint64_t); ++offset) {
+                std::uint64_t octet = (c_hi >> ((sizeof(std::uint64_t) - offset - 1U) * 8U)) & 0xffU;
+                if (octet != 0) {
+                    std::size_t size { sizeof(std::uint64_t) * 2 - offset };
+                    if ((octet & 0x80U) != 0) {
+                        ++size;
+                    }
+                    return { c_hi, c_lo, size };
+                }
+            }
+            return { c_hi, c_lo, sizeof(std::uint64_t) + 1 };
+        }
+
+        // for negative numbers
+
+        if (value.sign() < 0) {
+            c_lo = ~c_lo + 1;
+            c_hi = ~c_hi;
+            if (c_lo == 0) {
+                c_hi += 1; // carry up
+            }
+        }
+
+        for (std::size_t offset = 0; offset < sizeof(std::uint64_t); ++offset) {
+            std::uint64_t octet = (c_hi >> ((sizeof(std::uint64_t) - offset - 1U) * 8U)) & 0xffU;
+            if (octet != 0xffU) {
+                std::size_t size { sizeof(std::uint64_t) * 2 - offset };
+                if ((octet & 0x80U) == 0) {
+                    ++size;
+                }
+                return { c_hi, c_lo, size };
+            }
+        }
+        return { c_hi, c_lo, sizeof(std::uint64_t) + 1 };
+    }
+
 };
 
 /**
