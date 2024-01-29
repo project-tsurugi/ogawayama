@@ -54,6 +54,7 @@ file(GLOB SOURCES
     "ogawayama/stub/*.cpp"
     "tateyama/utils/*.cpp"
     "jogasaki/serializer/*.cpp"
+    "jogasaki/utils/*.cpp"
 )
 
 set_source_files_properties(
