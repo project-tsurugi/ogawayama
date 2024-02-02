@@ -350,6 +350,8 @@ ERROR_CODE Worker::do_deploy_table(jogasaki::api::database& db, boost::archive::
                             if (auto so = data_length_vector.at(1); so) {
                                 s = so.value();
                             }
+                        } else {
+                            s = 0;
                         }
                     }
                     columns.emplace_back(yugawara::storage::column(name_value,
