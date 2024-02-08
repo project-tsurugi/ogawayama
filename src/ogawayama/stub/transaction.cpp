@@ -14,7 +14,11 @@
  * limitations under the License.
  */
 
-#include "jogasaki/utils/decimal.h"
+#include <array>
+#include <cstdint>
+
+#include <boost/multiprecision/cpp_int.hpp>
+
 #include "prepared_statementImpl.h"
 #include "transactionImpl.h"
 
@@ -116,12 +120,33 @@ public:
 
     ::jogasaki::proto::sql::request::Parameter operator()(const decimal_type& triple) {
         auto* value = &parameter_;
-        auto [hi, lo, sz] = jogasaki::utils::make_signed_coefficient_full(triple);
-        jogasaki::utils::decimal_buffer out{};
-        jogasaki::utils::create_decimal(triple.sign(), lo, hi, sz, out);
-
+        boost::multiprecision::cpp_int v = triple.coefficient_high();
+        v <<= 64;
+        v |= triple.coefficient_low();
+        if (triple.sign() < 0) {
+            v *= -1;
+        }
+        boost::multiprecision::cpp_int mask = UINT8_MAX;
+        constexpr std::size_t max_decimal_length = sizeof(std::uint64_t) * 2 + 1;
+        std::array<std::uint8_t, max_decimal_length> out;
+        for (std::size_t i = 0; i < max_decimal_length; i++) {
+            out.at((max_decimal_length - 1) - i) = static_cast<std::uint8_t>((v >> (i * 8)) & mask);
+        }
+        std::size_t skip = 0;
+        for (std::size_t i = 0; i < (max_decimal_length - 1); i++) {
+            if ((triple.sign() > 0 && (out.at(i) == 0)) || (triple.sign() < 0 && (out.at(i) == UINT8_MAX))) {
+                skip++;
+                continue;
+            }
+            break;
+        }
+        constexpr std::uint8_t sign = 1 << ((sizeof(std::uint8_t) * 8) - 1);
+        if (((triple.sign() > 0) && ((out.at(skip) & sign) != 0))
+            || ((triple.sign() < 0) && ((out.at(skip) & sign) != sign))) {
+            skip--;
+        }
         auto *decimal = value->mutable_decimal_value();
-        decimal->set_unscaled_value(out.data(), sz);
+        decimal->set_unscaled_value(out.data() + skip, max_decimal_length - skip);
         decimal->set_exponent(triple.exponent());
         return parameter_;
     }
