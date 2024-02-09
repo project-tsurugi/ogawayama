@@ -14,6 +14,9 @@
  * limitations under the License.
  */
 
+#include <iostream>
+#include <exception>
+
 #include "result_setImpl.h"
 
 namespace ogawayama::stub {
@@ -28,7 +31,11 @@ ResultSet::Impl::Impl(Transaction::Impl* manager, std::unique_ptr<tateyama::comm
 }
 
 ResultSet::Impl::~Impl() {
-    manager_->receive_body(query_index_);
+    try {
+        manager_->receive_body(query_index_);
+    } catch (std::exception &ex) {
+        std::cerr << ex.what() << std::endl;
+    }
 }
 
 /**

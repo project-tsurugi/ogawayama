@@ -15,6 +15,9 @@
  */
 #pragma once
 
+#include <iostream>
+#include <exception>
+
 #include "wire.h"
 
 namespace tateyama::common::wire {
@@ -30,7 +33,11 @@ public:
             : envelope_(envelope), managed_shm_ptr_(envelope_->managed_shared_memory_.get()) {
         }
         ~resultset_wires_container() {
-            set_closed();
+            try {
+                set_closed();
+            } catch (std::exception &ex) {
+                std::cerr << ex.what() << std::endl;
+            }
         }
 
         resultset_wires_container(const resultset_wires_container&) = delete;

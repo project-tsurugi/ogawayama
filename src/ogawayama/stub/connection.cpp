@@ -15,6 +15,7 @@
  */
 
 #include <iostream>
+#include <exception>
 
 #include <boost/foreach.hpp>
 #define BOOST_BIND_GLOBAL_PLACEHOLDERS  // to retain the current behavior
@@ -37,7 +38,11 @@ Connection::Impl::Impl(Stub::Impl* manager, std::string_view session_id, std::si
 
 Connection::Impl::~Impl()
 {
-    transport_.close();
+    try {
+        transport_.close();
+    } catch (std::exception &ex) {
+        std::cerr << ex.what() << std::endl;
+    }
 }
 
 ErrorCode Connection::Impl::hello() 
@@ -315,7 +320,7 @@ ErrorCode get_index_metadata(std::string_view name, std::size_t id, boost::prope
     if (auto rv = get_indexes(name, indexes); rv != ERROR_CODE::OK) {
         return rv;
     }
-    if (indexes->get(id, index) != manager::metadata::ErrorCode::OK) {
+    if (indexes->get(static_cast<std::int64_t>(id), index) != manager::metadata::ErrorCode::OK) {
         return ERROR_CODE::FILE_IO_ERROR;  // indexes->get() failed
     }
     return ERROR_CODE::OK;

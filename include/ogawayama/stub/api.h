@@ -281,7 +281,7 @@ public:
     /**
      * @brief destructs this object.
      */
-    ~Connection();
+    virtual ~Connection();
 
     Connection(const Connection&) = delete;
     Connection& operator=(const Connection&) = delete;
@@ -419,7 +419,9 @@ public:
 
 
 namespace ogawayama::common::param {
-static const std::string SHARED_MEMORY_NAME = "tsurugi";
+using namespace std::string_view_literals;
+
+static const std::string_view SHARED_MEMORY_NAME = "tsurugi"sv;
 }  // namespace ogawayama::common::param
 
 using StubPtr = std::unique_ptr<ogawayama::stub::Stub>;
