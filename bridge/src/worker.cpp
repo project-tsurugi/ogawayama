@@ -102,10 +102,9 @@ ERROR_CODE Worker::deploy_table(jogasaki::api::database& db, std::string_view st
     return do_deploy_table(db, ia);
 }
 
-ERROR_CODE Worker::do_deploy_table(jogasaki::api::database& db, boost::archive::binary_iarchive& ia)
+ERROR_CODE Worker::do_deploy_table(jogasaki::api::database& db, boost::archive::binary_iarchive& ia)  //NOLINT(readability-function-cognitive-complexity)
 {
-    std::size_t table_id;
-
+    std::size_t table_id{};
     boost::property_tree::ptree table;
     ia >> table_id;
     ia >> table;
@@ -299,7 +298,7 @@ ERROR_CODE Worker::do_deploy_table(jogasaki::api::database& db, boost::archive::
                 bool use_default_length = false;
                 std::vector<boost::optional<int64_t>> data_length_vector;
                 get_data_length_vector(column, data_length_vector);
-                if (data_length_vector.size() == 0) {
+                if (data_length_vector.empty()) {
                     if(varying_value) {  // no data_length field, use default
                         use_default_length = true;
                     }
@@ -334,15 +333,16 @@ ERROR_CODE Worker::do_deploy_table(jogasaki::api::database& db, boost::archive::
             }
             case manager::metadata::DataTypes::DataTypesId::NUMERIC:  // decimal
             {
-                std::optional<takatori::type::decimal::size_type> p{}, s{};
+                std::optional<takatori::type::decimal::size_type> p{};
+                std::optional<takatori::type::decimal::size_type> s{};
                 std::vector<boost::optional<int64_t>> data_length_vector;
                 get_data_length_vector(column, data_length_vector);
-                if (data_length_vector.size() == 0) {
+                if (data_length_vector.empty()) {
                     columns.emplace_back(yugawara::storage::column(name_value,
                                                                    takatori::type::decimal(),
                                                                    yugawara::variable::nullity(!is_not_null_value)));
                 } else {
-                    if (data_length_vector.size() > 0) {
+                    if (!data_length_vector.empty()) {
                         if (auto po = data_length_vector.at(0); po) {
                             p = po.value();
                         }
@@ -371,7 +371,7 @@ ERROR_CODE Worker::do_deploy_table(jogasaki::api::database& db, boost::archive::
                         return ERROR_CODE::INVALID_PARAMETER;
                     }
                     std::string dvs = default_expression_value.substr(1, index - 2);
-                    struct tm tm;
+                    struct tm tm{};
                     memset(&tm, 0, sizeof(struct tm));
                     if (auto ts = strptime(dvs.c_str(), "%Y-%m-%d", &tm); ts == nullptr) {
                         VLOG(log_debug) << "<-- INVALID_PARAMETER";
@@ -396,7 +396,7 @@ ERROR_CODE Worker::do_deploy_table(jogasaki::api::database& db, boost::archive::
                         return ERROR_CODE::INVALID_PARAMETER;
                     }
                     std::string dvs = default_expression_value.substr(1, index - 2);
-                    struct tm tm;
+                    struct tm tm{};
                     memset(&tm, 0, sizeof(struct tm));
                     if (auto ts = strptime(dvs.c_str(), "%H:%M:%S", &tm); ts != nullptr) {
                         std::string rem(ts);
@@ -424,7 +424,7 @@ ERROR_CODE Worker::do_deploy_table(jogasaki::api::database& db, boost::archive::
                     }
                     std::string dvs = default_expression_value.substr(1, index - 2);
                     std::string dvs_t = dvs.substr(0, index - 5);
-                    struct tm tm;
+                    struct tm tm{};
                     memset(&tm, 0, sizeof(struct tm));
                     if (auto ts = strptime(dvs_t.c_str(), "%H:%M:%S", &tm); ts != nullptr) {
                         auto td = stoi(dvs.substr(index - 5, index - 2));  // FIXME use time differnce value
@@ -454,7 +454,7 @@ ERROR_CODE Worker::do_deploy_table(jogasaki::api::database& db, boost::archive::
                         return ERROR_CODE::INVALID_PARAMETER;
                     }
                     std::string dvs = default_expression_value.substr(1, index - 2);
-                    struct tm tm;
+                    struct tm tm{};
                     memset(&tm, 0, sizeof(struct tm));
                     if (auto ts = strptime(dvs.c_str(), "%Y-%m-%d %H:%M:%S", &tm); ts != nullptr) {
                         std::string rem(ts);
@@ -482,7 +482,7 @@ ERROR_CODE Worker::do_deploy_table(jogasaki::api::database& db, boost::archive::
                     }
                     std::string dvs = default_expression_value.substr(1, index - 2);
                     std::string dvs_t = dvs.substr(0, index - 5);
-                    struct tm tm;
+                    struct tm tm{};
                     memset(&tm, 0, sizeof(struct tm));
                     if (auto ts = strptime(dvs_t.c_str(), "%Y-%m-%d %H:%M:%S", &tm); ts != nullptr) {
                         auto td = stoi(dvs.substr(index - 5, index - 2));  // FIXME use time differnce value
@@ -623,9 +623,7 @@ ERROR_CODE Worker::withdraw_table(jogasaki::api::database& db, std::string_view 
 
 ERROR_CODE Worker::do_withdraw_table(jogasaki::api::database& db, boost::archive::binary_iarchive& ia)
 {
-    manager::metadata::ErrorCode error;
-    std::size_t table_id;
-
+    std::size_t table_id{};
     boost::property_tree::ptree table;
     ia >> table_id;
     ia >> table;
@@ -652,7 +650,7 @@ ERROR_CODE Worker::do_withdraw_table(jogasaki::api::database& db, boost::archive
     return ERROR_CODE::OK;
 }
 
-ERROR_CODE Worker::do_deploy_index(jogasaki::api::database& db, boost::archive::binary_iarchive& ia)
+ERROR_CODE Worker::do_deploy_index(jogasaki::api::database& db, boost::archive::binary_iarchive& ia)  //NOLINT(readability-function-cognitive-complexity)
 {
     std::string table_name;
     boost::property_tree::ptree index;

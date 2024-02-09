@@ -54,12 +54,17 @@ public:
     /**
      * @brief Construct a new object.
      */
-    ResultSet(std::unique_ptr<Impl>);
+    explicit ResultSet(std::unique_ptr<Impl>);
 
     /**
      * @brief destructs this object.
      */
     ~ResultSet();
+
+    ResultSet(const ResultSet&) = delete;
+    ResultSet& operator=(const ResultSet&) = delete;
+    ResultSet(ResultSet&&) = delete;
+    ResultSet& operator=(ResultSet&&) = delete;
 
     /**
      * @brief get metadata for the result set.
@@ -118,12 +123,17 @@ public:
     /**
      * @brief Construct a new object.
      */
-    PreparedStatement(std::unique_ptr<Impl>);
+    explicit PreparedStatement(std::unique_ptr<Impl>);
 
     /**
      * @brief destructs this object.
      */
     ~PreparedStatement();
+
+    PreparedStatement(const PreparedStatement&) = delete;
+    PreparedStatement& operator=(const PreparedStatement&) = delete;
+    PreparedStatement(PreparedStatement&&) = delete;
+    PreparedStatement& operator=(PreparedStatement&&) = delete;
 
 private:
     std::unique_ptr<Impl> impl_;
@@ -157,12 +167,17 @@ public:
     /**
      * @brief Construct a new object.
      */
-    Transaction(std::unique_ptr<Impl>);
+    explicit Transaction(std::unique_ptr<Impl>);
 
     /**
      * @brief destructs this object.
      */
     ~Transaction();
+
+    Transaction(const Transaction&) = delete;
+    Transaction& operator=(const Transaction&) = delete;
+    Transaction(Transaction&&) = delete;
+    Transaction& operator=(Transaction&&) = delete;
 
     /**
      * @brief execute a statement.
@@ -242,12 +257,17 @@ public:
     /**
      * @brief Construct a new object.
      */
-    Connection(std::unique_ptr<Impl> impl);
+    explicit Connection(std::unique_ptr<Impl> impl);
 
     /**
      * @brief destructs this object.
      */
     ~Connection();
+
+    Connection(const Connection&) = delete;
+    Connection& operator=(const Connection&) = delete;
+    Connection(Connection&&) = delete;
+    Connection& operator=(Connection&&) = delete;
 
     /**
      * @brief begin a transaction and get Transaction class.
@@ -276,37 +296,37 @@ public:
      * @brief implements begin_ddl() procedure
      * @return Status defined in message-broker/include/manager/message/status.h
      */
-    manager::message::Status receive_begin_ddl(const int64_t mode) const;
+    [[nodiscard]] manager::message::Status receive_begin_ddl(int64_t mode) const override;
 
     /**
      * @brief implements end_ddl() procedure
      * @return Status defined in message-broker/include/manager/message/status.h
      */
-    manager::message::Status receive_end_ddl() const;
+    [[nodiscard]] manager::message::Status receive_end_ddl() const override;
 
     /**
      * @brief implements receive_create_table() procedure
      * @return Status defined in message-broker/include/manager/message/status.h
      */
-    manager::message::Status receive_create_table(const manager::metadata::ObjectIdType object_id) const;
+    [[nodiscard]] manager::message::Status receive_create_table(manager::metadata::ObjectIdType object_id) const override;
 
     /**
      * @brief implements drop_table() procedure
      * @return Status defined in message-broker/include/manager/message/status.h
      */
-    manager::message::Status receive_drop_table(const manager::metadata::ObjectIdType object_id) const;
+    [[nodiscard]] manager::message::Status receive_drop_table(manager::metadata::ObjectIdType object_id) const override;
 
     /**
      * @brief implements receive_create_index() procedure
      * @return Status defined in message-broker/include/manager/message/status.h
      */
-    manager::message::Status receive_create_index(const manager::metadata::ObjectIdType object_id) const;
+    [[nodiscard]] manager::message::Status receive_create_index(manager::metadata::ObjectIdType object_id) const override;
 
     /**
      * @brief implements drop_index() procedure
      * @return Status defined in message-broker/include/manager/message/status.h
      */
-    manager::message::Status receive_drop_index(const manager::metadata::ObjectIdType object_id) const;
+    [[nodiscard]] manager::message::Status receive_drop_index(manager::metadata::ObjectIdType object_id) const override;
 
 private:
     std::unique_ptr<Impl> impl_;
@@ -337,12 +357,17 @@ public:
     /**
      * @brief Construct a new object.
      */
-    Stub(std::string_view);
+    explicit Stub(std::string_view);
 
     /**
      * @brief destructs this object.
      */
     ~Stub();
+
+    Stub(Stub const& other) = delete;
+    Stub& operator=(Stub const& other) = delete;
+    Stub(Stub&& other) noexcept = delete;
+    Stub& operator=(Stub&& other) noexcept = delete;
 
     /**
      * @brief connect to the DB and get Connection class.

@@ -21,7 +21,7 @@ namespace ogawayama::stub {
 ResultSet::Impl::Impl(Transaction::Impl* manager, std::unique_ptr<tateyama::common::wire::session_wire_container::resultset_wires_container> resultset_wire, ::jogasaki::proto::sql::response::ResultSetMetadata metadata, std::size_t query_index)
     : manager_(manager),
       resultset_wire_(std::move(resultset_wire)),
-      metadata_(metadata),
+      metadata_(std::move(metadata)),
       column_number_(metadata_.columns_size()),
       query_index_(query_index)
 {
@@ -87,7 +87,7 @@ ErrorCode ResultSet::Impl::next()
         c_idx_ = 0;
     }
     auto record = resultset_wire_->get_chunk();
-    if (record.size() == 0) {
+    if (record.empty()) {
         return ErrorCode::END_OF_ROW;
     }
     buf_ = jogasaki::serializer::buffer_view(const_cast<char*>(record.data()), record.size());
@@ -152,24 +152,24 @@ ErrorCode ResultSet::Impl::next_column(double& value) {
 }
 
 template<>
-ErrorCode ResultSet::Impl::next_column(short& value) {
+ErrorCode ResultSet::Impl::next_column(std::int16_t& value) {
     std::int64_t v{};
     auto rv = next_column(v);
-    value = v;
+    value = static_cast<std::int16_t>(v);
     return rv;
 }
 template<>
-ErrorCode ResultSet::Impl::next_column(int& value) {
+ErrorCode ResultSet::Impl::next_column(std::int32_t& value) {
     std::int64_t v{};
     auto rv = next_column(v);
-    value = v;
+    value = static_cast<std::int32_t>(v);
     return rv;
 }
 template<>
 ErrorCode ResultSet::Impl::next_column(float& value) {
     double v{};
     auto rv = next_column(v);
-    value = v;
+    value = static_cast<float>(v);
     return rv;
 }
 

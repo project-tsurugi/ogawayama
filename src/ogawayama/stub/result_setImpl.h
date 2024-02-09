@@ -30,6 +30,12 @@ class ResultSet::Impl
 public:
     Impl(Transaction::Impl*, std::unique_ptr<tateyama::common::wire::session_wire_container::resultset_wires_container>, ::jogasaki::proto::sql::response::ResultSetMetadata, std::size_t query_index);
     ~Impl();
+
+    Impl(const Impl&) = delete;
+    Impl& operator=(const Impl&) = delete;
+    Impl(Impl&&) = delete;
+    Impl& operator=(Impl&&) = delete;
+
     ErrorCode get_metadata(MetadataPtr &);
     ErrorCode next();
     template<typename T>

@@ -31,6 +31,11 @@ public:
     Impl(Stub::Impl*, std::string_view, std::size_t);
     ~Impl();
 
+    Impl(const Impl&) = delete;
+    Impl& operator=(const Impl&) = delete;
+    Impl(Impl&&) = delete;
+    Impl& operator=(Impl&&) = delete;
+
     /**
      * @brief begin transaction
      * @param reference to a TransactionPtr

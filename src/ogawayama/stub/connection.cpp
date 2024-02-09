@@ -52,7 +52,7 @@ ErrorCode Connection::Impl::hello()
     try {
         auto response_opt = transport_.send(ofs.str());
         if (response_opt) {
-            ERROR_CODE rv;
+            ERROR_CODE rv{};
             std::istringstream ifs(response_opt.value());
             boost::archive::binary_iarchive ia(ifs);
             ia >> rv;
@@ -90,7 +90,7 @@ ErrorCode Connection::Impl::begin(TransactionPtr& transaction)
  * @param reference to a TransactionPtr
  * @return error code defined in error_code.h
  */
-ErrorCode Connection::Impl::begin(const boost::property_tree::ptree& option, TransactionPtr& transaction)
+ErrorCode Connection::Impl::begin(const boost::property_tree::ptree& option, TransactionPtr& transaction)  //NOLINT(readability-function-cognitive-complexity)
 {
     ::jogasaki::proto::sql::request::Begin request{};
 
@@ -232,7 +232,7 @@ ErrorCode get_table_metadata(std::string_view name, std::size_t id, boost::prope
     if (auto rv = get_tables(name, tables); rv != ERROR_CODE::OK) {
         return rv;
     }
-    if (tables->get(id, table) != manager::metadata::ErrorCode::OK) {
+    if (tables->get(static_cast<std::int64_t>(id), table) != manager::metadata::ErrorCode::OK) {
         return ERROR_CODE::FILE_IO_ERROR;  // tables->get() failed
     }
     return ERROR_CODE::OK;
@@ -260,7 +260,7 @@ ErrorCode Connection::Impl::create_table(std::size_t id)
 
     auto response_opt = transport_.send(ofs.str());
     if (response_opt) {
-        ERROR_CODE rv;
+        ERROR_CODE rv{};
         std::istringstream ifs(response_opt.value());
         boost::archive::binary_iarchive ia(ifs);
         ia >> rv;
@@ -291,7 +291,7 @@ ErrorCode Connection::Impl::drop_table(std::size_t id)
 
     auto response_opt = transport_.send(ofs.str());
     if (response_opt) {
-        ERROR_CODE rv;
+        ERROR_CODE rv{};
         std::istringstream ifs(response_opt.value());
         boost::archive::binary_iarchive ia(ifs);
         ia >> rv;
@@ -356,7 +356,7 @@ ErrorCode Connection::Impl::create_index(std::size_t id)
 
     auto response_opt = transport_.send(ofs.str());
     if (response_opt) {
-        ERROR_CODE rv;
+        ERROR_CODE rv{};
         std::istringstream ifs(response_opt.value());
         boost::archive::binary_iarchive ia(ifs);
         ia >> rv;
@@ -386,7 +386,7 @@ ErrorCode Connection::Impl::drop_index(std::size_t id)
 
     auto response_opt = transport_.send(ofs.str());
     if (response_opt) {
-        ERROR_CODE rv;
+        ERROR_CODE rv{};
         std::istringstream ifs(response_opt.value());
         boost::archive::binary_iarchive ia(ifs);
         ia >> rv;
@@ -410,7 +410,7 @@ ErrorCode Connection::Impl::begin_ddl()
 
     auto response_opt = transport_.send(ofs.str());
     if (response_opt) {
-        ERROR_CODE rv;
+        ERROR_CODE rv{};
         std::istringstream ifs(response_opt.value());
         boost::archive::binary_iarchive ia(ifs);
         ia >> rv;
@@ -434,7 +434,7 @@ ErrorCode Connection::Impl::end_ddl()
 
     auto response_opt = transport_.send(ofs.str());
     if (response_opt) {
-        ERROR_CODE rv;
+        ERROR_CODE rv{};
         std::istringstream ifs(response_opt.value());
         boost::archive::binary_iarchive ia(ifs);
         ia >> rv;
@@ -475,7 +475,7 @@ ErrorCode Connection::prepare(std::string_view sql, const placeholders_type& pla
 manager::message::Status Connection::receive_begin_ddl(const int64_t mode) const
 {
     ErrorCode reply = impl_->begin_ddl();
-    return manager::message::Status(reply == ErrorCode::OK ? manager::message::ErrorCode::SUCCESS : manager::message::ErrorCode::FAILURE, static_cast<int>(reply));
+    return {reply == ErrorCode::OK ? manager::message::ErrorCode::SUCCESS : manager::message::ErrorCode::FAILURE, static_cast<int>(reply)};
 }
 
 /**
@@ -484,7 +484,7 @@ manager::message::Status Connection::receive_begin_ddl(const int64_t mode) const
 manager::message::Status Connection::receive_end_ddl() const
 {
     ErrorCode reply = impl_->end_ddl();
-    return manager::message::Status(reply == ErrorCode::OK ? manager::message::ErrorCode::SUCCESS : manager::message::ErrorCode::FAILURE, static_cast<int>(reply));
+    return {reply == ErrorCode::OK ? manager::message::ErrorCode::SUCCESS : manager::message::ErrorCode::FAILURE, static_cast<int>(reply)};
 }
 
 /**
@@ -493,7 +493,7 @@ manager::message::Status Connection::receive_end_ddl() const
 manager::message::Status Connection::receive_create_table(const manager::metadata::ObjectIdType object_id) const
 {
     ErrorCode reply = impl_->create_table(static_cast<std::size_t>(object_id));
-    return manager::message::Status(reply == ErrorCode::OK ? manager::message::ErrorCode::SUCCESS : manager::message::ErrorCode::FAILURE, static_cast<int>(reply));
+    return {reply == ErrorCode::OK ? manager::message::ErrorCode::SUCCESS : manager::message::ErrorCode::FAILURE, static_cast<int>(reply)};
 }
 
 /**
@@ -502,7 +502,7 @@ manager::message::Status Connection::receive_create_table(const manager::metadat
 manager::message::Status Connection::receive_drop_table(const manager::metadata::ObjectIdType object_id) const
 {
     ErrorCode reply = impl_->drop_table(static_cast<std::size_t>(object_id));
-    return manager::message::Status(reply == ErrorCode::OK ? manager::message::ErrorCode::SUCCESS : manager::message::ErrorCode::FAILURE, static_cast<int>(reply));
+    return {reply == ErrorCode::OK ? manager::message::ErrorCode::SUCCESS : manager::message::ErrorCode::FAILURE, static_cast<int>(reply)};
 }
 
 /**
@@ -511,7 +511,7 @@ manager::message::Status Connection::receive_drop_table(const manager::metadata:
 manager::message::Status Connection::receive_create_index(const manager::metadata::ObjectIdType object_id) const
 {
     ErrorCode reply = impl_->create_index(static_cast<std::size_t>(object_id));
-    return manager::message::Status(reply == ErrorCode::OK ? manager::message::ErrorCode::SUCCESS : manager::message::ErrorCode::FAILURE, static_cast<int>(reply));
+    return {reply == ErrorCode::OK ? manager::message::ErrorCode::SUCCESS : manager::message::ErrorCode::FAILURE, static_cast<int>(reply)};
 }
 
 /**
@@ -520,7 +520,7 @@ manager::message::Status Connection::receive_create_index(const manager::metadat
 manager::message::Status Connection::receive_drop_index(const manager::metadata::ObjectIdType object_id) const
 {
     ErrorCode reply = impl_->drop_index(static_cast<std::size_t>(object_id));
-    return manager::message::Status(reply == ErrorCode::OK ? manager::message::ErrorCode::SUCCESS : manager::message::ErrorCode::FAILURE, static_cast<int>(reply));
+    return {reply == ErrorCode::OK ? manager::message::ErrorCode::SUCCESS : manager::message::ErrorCode::FAILURE, static_cast<int>(reply)};
 }
 
 }  // namespace ogawayama::stub

@@ -31,6 +31,12 @@ class Stub::Impl
 public:
     Impl(Stub *, std::string_view);
     ~Impl();
+
+    Impl(const Impl&) = delete;
+    Impl& operator=(const Impl&) = delete;
+    Impl(Impl&&) = delete;
+    Impl& operator=(Impl&&) = delete;
+
     ErrorCode get_connection(ConnectionPtr&, std::size_t);
     std::string_view get_database_name() { return database_name_; }
 

@@ -112,7 +112,7 @@ public:
          * @param type tag for the column type
          * @param byte length for the column data
          */
-        ColumnType(Type type) : type_(type) {}
+        explicit ColumnType(Type type) : type_(type) {}
         
         /**
          * @brief Copy and move constructers.
@@ -132,7 +132,7 @@ public:
          * @brief get type for this column.
          * @return Type of this column
          */
-        ColumnType::Type get_type() const { return type_; }
+        [[nodiscard]] ColumnType::Type get_type() const { return type_; }
     
     private:
         Type type_{};
@@ -153,12 +153,17 @@ public:
      */
     ~Metadata() noexcept = default;
 
+    Metadata(Metadata const& other) = delete;
+    Metadata& operator=(Metadata const& other) = delete;
+    Metadata(Metadata&& other) noexcept = delete;
+    Metadata& operator=(Metadata&& other) noexcept = delete;
+
     /**
      * @brief get a set of type data for this result set.
      * @param columns returns the type data
      * @return error code defined in error_code.h
      */
-    const SetOfTypeData& get_types() const noexcept { return columns_; }
+    [[nodiscard]] const SetOfTypeData& get_types() const noexcept { return columns_; }
 
     /**
      * @brief push a column type.

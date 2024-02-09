@@ -25,8 +25,7 @@
 namespace ogawayama::stub {
 
 Transaction::Impl::Impl(Connection::Impl* manager, tateyama::bootstrap::wire::transport& transport, ::jogasaki::proto::sql::common::Transaction transaction_handle)
-    : manager_(manager), transport_(transport), transaction_handle_(transaction_handle)
-{
+    : manager_(manager), transport_(transport), transaction_handle_(std::move(transaction_handle)) {
 }
 
 Transaction::Impl::~Impl()
@@ -64,7 +63,7 @@ ErrorCode Transaction::Impl::execute_statement(std::string_view statement) {
 
 class parameter {
 public:
-    parameter(std::string name) {
+    explicit parameter(const std::string& name) {
         parameter_.set_name(name);
     }
     ::jogasaki::proto::sql::request::Parameter operator()(const std::monostate& data) {
@@ -121,14 +120,14 @@ public:
     ::jogasaki::proto::sql::request::Parameter operator()(const decimal_type& triple) {
         auto* value = &parameter_;
         boost::multiprecision::cpp_int v = triple.coefficient_high();
-        v <<= 64;
+        v <<= sizeof(std::uint64_t) * 8;
         v |= triple.coefficient_low();
         if (triple.sign() < 0) {
             v *= -1;
         }
-        boost::multiprecision::cpp_int mask = UINT8_MAX;
         constexpr std::size_t max_decimal_length = sizeof(std::uint64_t) * 2 + 1;
-        std::array<std::uint8_t, max_decimal_length> out;
+        std::array<std::uint8_t, max_decimal_length> out{};
+        boost::multiprecision::cpp_int mask = UINT8_MAX;
         for (std::size_t i = 0; i < max_decimal_length; i++) {
             out.at((max_decimal_length - 1) - i) = static_cast<std::uint8_t>((v >> (i * 8)) & mask);
         }
@@ -140,7 +139,7 @@ public:
             }
             break;
         }
-        constexpr std::uint8_t sign = 1 << ((sizeof(std::uint8_t) * 8) - 1);
+        constexpr std::uint8_t sign = static_cast<std::uint8_t>(1) << ((sizeof(std::uint8_t) * 8) - 1);
         if (((triple.sign() > 0) && ((out.at(skip) & sign) != 0))
             || ((triple.sign() < 0) && ((out.at(skip) & sign) != sign))) {
             skip--;

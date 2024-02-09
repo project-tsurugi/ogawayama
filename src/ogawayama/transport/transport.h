@@ -251,13 +251,13 @@ public:
         if (response_opt) {
             auto response_message = response_opt.value();
             if (response_message.has_result_only()) {
-                auto ro = response_message.result_only();
+                const auto& ro = response_message.result_only();
                 if (ro.has_success()) {
                     return ogawayama::stub::ErrorCode::OK;
                 }
             }
             if (response_message.has_dispose_transaction()) {
-                auto ro = response_message.dispose_transaction();
+                const auto& ro = response_message.dispose_transaction();
                 if (ro.has_success()) {
                     return ogawayama::stub::ErrorCode::OK;
                 }
@@ -344,7 +344,7 @@ private:
     }
 
     template <typename T>
-    std::optional<T> receive(tateyama::common::wire::message_header::index_type index) {
+    std::optional<T> receive(tateyama::common::wire::message_header::index_type index) { //NOLINT(readability-function-cognitive-complexity)
         auto& response_wire = wire_.get_response_wire();
 
         while (true) {
@@ -457,7 +457,7 @@ private:
             return std::nullopt;
         }
         std::string_view response{};
-        bool eof;
+        bool eof{};
         if(auto res = tateyama::utils::GetDelimitedBodyFromZeroCopyStream(std::addressof(in), &eof, response); ! res) {
             return std::nullopt;
         }

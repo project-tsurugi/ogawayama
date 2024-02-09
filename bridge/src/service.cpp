@@ -55,7 +55,7 @@ bool service::shutdown(tateyama::framework::environment& env) {
 
 static thread_local std::unique_ptr<Worker> worker_for_this_thread{};
 
-bool service::operator()(std::shared_ptr<tateyama::api::server::request> req, std::shared_ptr<tateyama::api::server::response> res) {
+bool service::operator()(std::shared_ptr<tateyama::api::server::request> req, std::shared_ptr<tateyama::api::server::response> res) { //NOLINT(readability-function-cognitive-complexity)
     auto payload = req->payload();
     std::istringstream ifs(std::string{payload});
     boost::archive::binary_iarchive ia(ifs);

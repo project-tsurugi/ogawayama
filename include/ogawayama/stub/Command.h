@@ -22,9 +22,9 @@ class Command {
     public:
         // C'tors
         Command(std::string command_type_name, uint64_t object_id)
-            : command_type_name(command_type_name), object_id(object_id) {};
+            : command_type_name(std::move(command_type_name)), object_id(object_id) {};
     std::string get_command_type_name() { return command_type_name; }
-        uint64_t get_object_id() { return object_id; }
+    [[nodiscard]] uint64_t get_object_id() const { return object_id; }
 
     private:
         std::string command_type_name; //command type name ex)"CREATE TABLE"

@@ -34,6 +34,11 @@ public:
     Impl(Connection::Impl*, tateyama::bootstrap::wire::transport&, ::jogasaki::proto::sql::common::Transaction);
     ~Impl();
 
+    Impl(const Impl&) = delete;
+    Impl& operator=(const Impl&) = delete;
+    Impl(Impl&&) = delete;
+    Impl& operator=(Impl&&) = delete;
+
     /**
      * @brief execute a statement.
      * @param statement the SQL statement string
@@ -99,7 +104,7 @@ private:
         put_query_index(query_index);
         auto body_opt = transport_.receive_body(query_index);
         if (!body_opt) {
-            std::cerr << "error at " << __func__ << std::endl;
+            std::cerr << "error at " << __func__ << std::endl;  // NOLINT FIXME revise error handling
         }
     }
 

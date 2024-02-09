@@ -51,7 +51,7 @@ bool ParseDelimitedFromCodedStream(
     int position_after_size = input->CurrentPosition();
 
     // Tell the stream not to read beyond that size.
-    google::protobuf::io::CodedInputStream::Limit limit = input->PushLimit(size);
+    google::protobuf::io::CodedInputStream::Limit limit = input->PushLimit(static_cast<int>(size));
 
     // Parse the message.
     if (!message->MergeFromCodedStream(input)) return false;
@@ -85,7 +85,7 @@ bool SerializeDelimitedToCodedStream(
     output->WriteVarint32(size);
 
     // Write the content.
-    google::protobuf::uint8* buffer = output->GetDirectBufferForNBytesAndAdvance(size);
+    google::protobuf::uint8* buffer = output->GetDirectBufferForNBytesAndAdvance(static_cast<int>(size));
     if (buffer != nullptr) {
         // Optimization: The message fits in one buffer, so use the faster
         // direct-to-array serialization path.
@@ -129,7 +129,7 @@ bool GetDelimitedBodyFromCodedStream(
     int position_after_size = input->CurrentPosition();
 
     // Tell the stream not to read beyond that size.
-    google::protobuf::io::CodedInputStream::Limit limit = input->PushLimit(size);
+    google::protobuf::io::CodedInputStream::Limit limit = input->PushLimit(static_cast<int>(size));
 
     void const* data{};
     int sz{};
@@ -182,10 +182,8 @@ bool PutDelimitedBodyToCodedStream(std::string_view in, google::protobuf::io::Co
     output->WriteVarint32(size);
 
     // Write the content.
-    output->WriteRaw(in.data(), size);
+    output->WriteRaw(in.data(), static_cast<int>(size));
     return true;
 }
 
-
 }
-

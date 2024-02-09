@@ -29,9 +29,9 @@ public:
     Impl(Connection::Impl* manager, std::size_t id, bool has_result_records)
         : manager_(manager), id_(id), has_result_records_(has_result_records) {}
 
-    auto get_id() { return id_; }
+    [[nodiscard]] auto get_id() const { return id_; }
 
-    bool has_result_records() { return has_result_records_; }
+    [[nodiscard]] bool has_result_records() const { return has_result_records_; }
 
     /**
      * @brief get the object to which this belongs

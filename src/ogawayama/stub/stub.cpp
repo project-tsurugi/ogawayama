@@ -25,7 +25,7 @@ namespace ogawayama::stub {
 Stub::Impl::Impl(Stub *stub, std::string_view database_name)
     : envelope_(stub), database_name_(database_name), connection_container_(database_name) {}
 
-Stub::Impl::~Impl() {}
+Stub::Impl::~Impl() = default;
 
 /**
  * @brief connect to the DB and get Connection class

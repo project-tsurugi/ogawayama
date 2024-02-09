@@ -29,9 +29,15 @@ public:
         explicit resultset_wires_container(session_wire_container *envelope) noexcept
             : envelope_(envelope), managed_shm_ptr_(envelope_->managed_shared_memory_.get()) {
         }
-        ~resultset_wires_container() noexcept {
+        ~resultset_wires_container() {
             set_closed();
         }
+
+        resultset_wires_container(const resultset_wires_container&) = delete;
+        resultset_wires_container& operator=(const resultset_wires_container&) = delete;
+        resultset_wires_container(resultset_wires_container&&) = delete;
+        resultset_wires_container& operator=(resultset_wires_container&&) = delete;
+
         void connect(std::string_view name) {
             rsw_name_ = name;
             shm_resultset_wires_ = managed_shm_ptr_->find<shm_resultset_wires>(rsw_name_.c_str()).first;
@@ -58,7 +64,7 @@ public:
                 wrap_around_ += extrusion;
                 return wrap_around_;
             }
-            return std::string_view(nullptr, 0);
+            return {nullptr, 0};
         }
         void dispose() {
             if (current_wire_ != nullptr) {
@@ -71,7 +77,7 @@ public:
         bool is_eor() noexcept {
             return shm_resultset_wires_->is_eor();
         }
-        void set_closed() noexcept {
+        void set_closed() {
             shm_resultset_wires_->set_closed();
         }
         session_wire_container* get_envelope() noexcept {
