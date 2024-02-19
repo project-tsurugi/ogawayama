@@ -42,17 +42,19 @@ public:
     /**
      * @brief execute a statement.
      * @param statement the SQL statement string
+     * @param num_rows a reference to a variable to which the number of processes
      * @return true in error, otherwise false
      */
-    ErrorCode execute_statement(std::string_view statement);
+    ErrorCode execute_statement(std::string_view statement, std::size_t& num_rows);
 
     /**
      * @brief execute a prepared statement.
      * @param pointer to the prepared statement
      * @param the parameters to be used for execution of the prepared statement
+     * @param num_rows a reference to a variable to which the number of processes
      * @return error code defined in error_code.h
      */
-    ErrorCode execute_statement(PreparedStatementPtr& prepared_statement, const parameters_type& parameters);
+    ErrorCode execute_statement(PreparedStatementPtr& prepared_statement, const parameters_type& parameters, std::size_t& num_rows);
 
     /**
      * @brief execute a query.

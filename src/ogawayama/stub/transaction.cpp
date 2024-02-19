@@ -36,12 +36,27 @@ Transaction::Impl::~Impl()
     }
 }
 
+static inline std::size_t num_rows_processed(const ::jogasaki::proto::sql::response::ExecuteResult::Success& message) {
+    std::size_t num_rows{};
+    auto counters = message.counters();
+    for (auto&& e: counters) {
+        auto type = e.type();
+        if (type == ::jogasaki::proto::sql::response::ExecuteResult::INSERTED_ROWS ||
+            type == ::jogasaki::proto::sql::response::ExecuteResult::UPDATED_ROWS ||
+            type == ::jogasaki::proto::sql::response::ExecuteResult::MERGED_ROWS ||
+            type == ::jogasaki::proto::sql::response::ExecuteResult::DELETED_ROWS) {
+            num_rows += e.value();
+        }
+    }
+    return num_rows;
+}
+
 /**
  * @brief execute a statement.
  * @param statement the SQL statement string
  * @return error code defined in error_code.h
  */
-ErrorCode Transaction::Impl::execute_statement(std::string_view statement) {
+ErrorCode Transaction::Impl::execute_statement(std::string_view statement, std::size_t& num_rows) {
     if (alive_) {
         ::jogasaki::proto::sql::request::ExecuteStatement request{};
         *(request.mutable_transaction_handle()) = transaction_handle_;
@@ -54,6 +69,7 @@ ErrorCode Transaction::Impl::execute_statement(std::string_view statement) {
         }
         auto response = response_opt.value();
         if (response.has_success()) {
+            num_rows = num_rows_processed(response.success());
             return ErrorCode::OK;
         }
         return ErrorCode::SERVER_FAILURE;
@@ -159,7 +175,7 @@ private:
  * @param prepared statement object with parameters
  * @return error code defined in error_code.h
  */
-ErrorCode Transaction::Impl::execute_statement(PreparedStatementPtr& prepared, const parameters_type& parameters) {
+ErrorCode Transaction::Impl::execute_statement(PreparedStatementPtr& prepared, const parameters_type& parameters, std::size_t& num_rows) {
     if (alive_) {
         auto* ps_impl = prepared->get_impl();
 
@@ -188,6 +204,7 @@ ErrorCode Transaction::Impl::execute_statement(PreparedStatementPtr& prepared, c
         }
         auto response = response_opt.value();
         if (response.has_success()) {
+            num_rows = num_rows_processed(response.success());
             return ErrorCode::OK;
         }
         return ErrorCode::SERVER_FAILURE;
@@ -352,14 +369,27 @@ Transaction::Transaction(std::unique_ptr<Impl> impl) : impl_(std::move(impl)) {}
  */
 Transaction::~Transaction() = default;
 
-ErrorCode Transaction::execute_statement(std::string_view statement)
+ErrorCode Transaction::execute_statement(std::string_view statement, std::size_t& num_rows)
 {
-    return impl_->execute_statement(statement);
+    return impl_->execute_statement(statement, num_rows);
 }
 
+ErrorCode Transaction::execute_statement(PreparedStatementPtr& prepared, parameters_type& parameters, std::size_t& num_rows)
+{
+    return impl_->execute_statement(prepared, parameters, num_rows);
+}
+
+// deprecated
+ErrorCode Transaction::execute_statement(std::string_view statement)
+{
+    std::size_t num_rows;
+    return impl_->execute_statement(statement, num_rows);
+}
+// deprecated
 ErrorCode Transaction::execute_statement(PreparedStatementPtr& prepared, parameters_type& parameters)
 {
-    return impl_->execute_statement(prepared, parameters);
+    std::size_t num_rows;
+    return impl_->execute_statement(prepared, parameters, num_rows);
 }
 
 ErrorCode Transaction::execute_query(std::string_view query, std::shared_ptr<ResultSet> &result_set)

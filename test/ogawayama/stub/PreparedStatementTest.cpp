@@ -152,6 +152,9 @@ TEST_F(PreparedTest, prepare) {
         // build reply message for test
         jogasaki::proto::sql::response::ExecuteResult er{};
         jogasaki::proto::sql::response::ExecuteResult_Success s{};
+        auto* c = s.add_counters();
+        c->set_type(jogasaki::proto::sql::response::ExecuteResult::INSERTED_ROWS);
+        c->set_value(1234);
         er.set_allocated_success(&s);
         server_->response_message(er);
         er.release_success();
@@ -175,7 +178,9 @@ TEST_F(PreparedTest, prepare) {
         parameters.emplace_back("timetz_data", timetz_for_test);
         auto time_pointtz_for_test = std::pair<takatori::datetime::time_point, std::int32_t>{time_point_for_test, 720};
         parameters.emplace_back("timestamptz_data", time_pointtz_for_test);
-        EXPECT_EQ(ERROR_CODE::OK, transaction->execute_statement(prepared_statement, parameters));
+        std::size_t num_rows{};
+        EXPECT_EQ(ERROR_CODE::OK, transaction->execute_statement(prepared_statement, parameters, num_rows));
+        EXPECT_EQ(num_rows, 1234);
 
         // verify request message
         std::optional<jogasaki::proto::sql::request::Request> request_opt = server_->request_message();
