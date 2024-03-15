@@ -22,7 +22,7 @@
 #include "stubImpl.h"
 #include "transactionImpl.h"
 
-DEFINE_string(dbname, ogawayama::common::param::SHARED_MEMORY_NAME, "database name");  // NOLINT
+DEFINE_string(dbname, std::string(ogawayama::common::param::SHARED_MEMORY_NAME), "database name");  // NOLINT
 DEFINE_string(statement, "", "SQL statement");  // NOLINT
 DEFINE_string(query, "", "SQL query");  // NOLINT
 DEFINE_int32(schema, -1, "object id for recieve_message()");  // NOLINT

@@ -14,6 +14,8 @@
  * limitations under the License.
  */
 
+#include <iostream>
+#include <exception>
 #include <array>
 #include <cstdint>
 
@@ -30,9 +32,13 @@ Transaction::Impl::Impl(Connection::Impl* manager, tateyama::bootstrap::wire::tr
 
 Transaction::Impl::~Impl()
 {
-    if (alive_) {
-        rollback();
-        alive_ = false;
+    try {
+        if (alive_) {
+            rollback();
+            alive_ = false;
+        }
+    } catch (std::exception &ex) {
+        std::cerr << ex.what() << std::endl;
     }
 }
 
