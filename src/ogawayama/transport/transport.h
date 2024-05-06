@@ -430,12 +430,12 @@ private:
         tateyama::proto::endpoint::request::Request request{};
         request.set_allocated_handshake(&handshake);
         auto response = send<tateyama::proto::endpoint::response::Handshake>(request);
-        request.release_handshake();
+        (void)request.release_handshake();
 
-        wire_information.release_ipc_information();
-        handshake.release_wire_information();
+        (void)wire_information.release_ipc_information();
+        (void)handshake.release_wire_information();
 
-        handshake.release_client_information();
+        (void)handshake.release_client_information();
         return response;
     }
 
