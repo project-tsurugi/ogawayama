@@ -422,21 +422,16 @@ private:
         tateyama::proto::endpoint::request::WireInformation wire_information{};
         tateyama::proto::endpoint::request::WireInformation::IpcInformation ipc_information{};
         ipc_information.set_connection_information(std::to_string(getpid()));
-        wire_information.set_allocated_ipc_information(&ipc_information);
+        *(wire_information.mutable_ipc_information()) = ipc_information;
 
         tateyama::proto::endpoint::request::Handshake handshake{};
-        handshake.set_allocated_client_information(&information);
-        handshake.set_allocated_wire_information(&wire_information);
+        *(handshake.mutable_client_information()) = information;
+        *(handshake.mutable_wire_information()) = wire_information;
+
         tateyama::proto::endpoint::request::Request request{};
-        request.set_allocated_handshake(&handshake);
-        auto response = send<tateyama::proto::endpoint::response::Handshake>(request);
-        (void)request.release_handshake();
+        *(request.mutable_handshake()) = handshake;
 
-        (void)wire_information.release_ipc_information();
-        (void)handshake.release_wire_information();
-
-        (void)handshake.release_client_information();
-        return response;
+        return send<tateyama::proto::endpoint::response::Handshake>(request);
     }
 
     std::optional<std::string> receive(tateyama::common::wire::message_header::index_type index) {
