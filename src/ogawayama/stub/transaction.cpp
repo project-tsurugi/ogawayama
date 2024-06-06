@@ -195,15 +195,12 @@ ErrorCode Transaction::Impl::execute_statement(PreparedStatementPtr& prepared, c
         ::jogasaki::proto::sql::common::PreparedStatement prepaed_statement{};
         prepaed_statement.set_handle(ps_impl->get_id());
         prepaed_statement.set_has_result_records(ps_impl->has_result_records());
-        request.set_allocated_prepared_statement_handle(&prepaed_statement);
+        *(request.mutable_prepared_statement_handle()) = prepaed_statement;
 
         for (auto& e : parameters) {
             *(request.add_parameters()) = std::visit(parameter(e.first), e.second);
         }
         auto response_opt = transport_.send(request);
-        request.clear_parameters();
-        request.release_prepared_statement_handle();
-        request.clear_transaction_handle();
         
         if (!response_opt) {
             return ErrorCode::SERVER_FAILURE;
@@ -274,16 +271,13 @@ ErrorCode Transaction::Impl::execute_query(PreparedStatementPtr& prepared, const
         ::jogasaki::proto::sql::common::PreparedStatement prepaed_statement{};
         prepaed_statement.set_handle(ps_impl->get_id());
         prepaed_statement.set_has_result_records(ps_impl->has_result_records());
-        request.set_allocated_prepared_statement_handle(&prepaed_statement);
+        *(request.mutable_prepared_statement_handle()) = prepaed_statement;
         try {
             for (auto& e : parameters) {
                 *(request.add_parameters()) = std::visit(parameter(e.first), e.second);
             }
             std::size_t query_index = get_query_index();
             auto response_opt = transport_.send(request, query_index);
-            request.clear_parameters();
-            request.release_prepared_statement_handle();
-            request.clear_transaction_handle();
             if (!response_opt) {
                 return ErrorCode::SERVER_FAILURE;
             }
