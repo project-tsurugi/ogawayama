@@ -135,9 +135,9 @@ TEST_F(PreparedTest, prepare) {
         s.set_allocated_transaction_id(&tid);
         b.set_allocated_success(&s);
         server_->response_message(b);
-        s.release_transaction_handle();
-        s.release_transaction_id();
-        b.release_success();
+        (void) s.release_transaction_handle();
+        (void) s.release_transaction_id();
+        (void) b.release_success();
 
         EXPECT_EQ(ERROR_CODE::OK, connection->begin(transaction));
 
@@ -157,7 +157,7 @@ TEST_F(PreparedTest, prepare) {
         c->set_value(1234);
         er.set_allocated_success(&s);
         server_->response_message(er);
-        er.release_success();
+        (void) er.release_success();
 
         // execute_statement()
         ogawayama::stub::parameters_type parameters{};
@@ -260,8 +260,8 @@ TEST_F(PreparedTest, prepare) {
         server_->response_message(rod, 1);
 
         EXPECT_EQ(ERROR_CODE::OK, transaction->commit());
-        roc.release_success();
-        rod.release_success();
+        (void) roc.release_success();
+        (void) rod.release_success();
 
         std::optional<jogasaki::proto::sql::request::Request> requestc_opt = server_->request_message();
         EXPECT_TRUE(requestc_opt);

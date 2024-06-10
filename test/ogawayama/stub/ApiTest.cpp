@@ -57,9 +57,9 @@ TEST_F(ApiTest, begin_commit) {
         b.set_allocated_success(&s);
         server_->response_message(b);
         EXPECT_EQ(ERROR_CODE::OK, connection->begin(transaction));
-        s.release_transaction_handle();
-        s.release_transaction_id();
-        b.release_success();
+        (void) s.release_transaction_handle();
+        (void) s.release_transaction_id();
+        (void) b.release_success();
 
         std::optional<jogasaki::proto::sql::request::Request> request_opt = server_->request_message();
         EXPECT_TRUE(request_opt);
@@ -79,8 +79,8 @@ TEST_F(ApiTest, begin_commit) {
         server_->response_message(rod, 1);
 
         EXPECT_EQ(ERROR_CODE::OK, transaction->commit());
-        roc.release_success();
-        rod.release_success();
+        (void) roc.release_success();
+        (void) rod.release_success();
 
         std::optional<jogasaki::proto::sql::request::Request> requestc_opt = server_->request_message();
         EXPECT_TRUE(requestc_opt);
@@ -128,9 +128,9 @@ TEST_F(ApiTest, long_transaction) {
         b.set_allocated_success(&s);
         server_->response_message(b);
         EXPECT_EQ(ERROR_CODE::OK, connection->begin(option, transaction));
-        s.release_transaction_handle();
-        s.release_transaction_id();
-        b.release_success();
+        (void) s.release_transaction_handle();
+        (void) s.release_transaction_id();
+        (void) b.release_success();
 
         std::optional<jogasaki::proto::sql::request::Request> request_opt = server_->request_message();
         EXPECT_TRUE(request_opt);
@@ -161,8 +161,8 @@ TEST_F(ApiTest, long_transaction) {
         server_->response_message(rod, 1);
 
         EXPECT_EQ(ERROR_CODE::OK, transaction->commit());
-        roc.release_success();
-        rod.release_success();
+        (void) roc.release_success();
+        (void) rod.release_success();
 
         std::optional<jogasaki::proto::sql::request::Request> request_opt = server_->request_message();
         EXPECT_TRUE(request_opt);
@@ -210,9 +210,9 @@ TEST_F(ApiTest, long_transaction_inclusive_read_area) {
         b.set_allocated_success(&s);
         server_->response_message(b);
         EXPECT_EQ(ERROR_CODE::OK, connection->begin(option, transaction));
-        s.release_transaction_handle();
-        s.release_transaction_id();
-        b.release_success();
+        (void) s.release_transaction_handle();
+        (void) s.release_transaction_id();
+        (void) b.release_success();
 
         std::optional<jogasaki::proto::sql::request::Request> request_opt = server_->request_message();
         EXPECT_TRUE(request_opt);
@@ -243,8 +243,8 @@ TEST_F(ApiTest, long_transaction_inclusive_read_area) {
         server_->response_message(rod, 1);
 
         EXPECT_EQ(ERROR_CODE::OK, transaction->commit());
-        roc.release_success();
-        rod.release_success();
+        (void) roc.release_success();
+        (void) rod.release_success();
 
         std::optional<jogasaki::proto::sql::request::Request> requestc_opt = server_->request_message();
         EXPECT_TRUE(requestc_opt);
@@ -292,9 +292,9 @@ TEST_F(ApiTest, long_transaction_exclusive_read_area) {
         b.set_allocated_success(&s);
         server_->response_message(b);
         EXPECT_EQ(ERROR_CODE::OK, connection->begin(option, transaction));
-        s.release_transaction_handle();
-        s.release_transaction_id();
-        b.release_success();
+        (void) s.release_transaction_handle();
+        (void) s.release_transaction_id();
+        (void) b.release_success();
 
         std::optional<jogasaki::proto::sql::request::Request> request_opt = server_->request_message();
         EXPECT_TRUE(request_opt);
@@ -325,8 +325,8 @@ TEST_F(ApiTest, long_transaction_exclusive_read_area) {
         server_->response_message(rod, 1);
 
         EXPECT_EQ(ERROR_CODE::OK, transaction->commit());
-        roc.release_success();
-        rod.release_success();
+        (void) roc.release_success();
+        (void) rod.release_success();
 
         std::optional<jogasaki::proto::sql::request::Request> requestc_opt = server_->request_message();
         EXPECT_TRUE(requestc_opt);
@@ -363,9 +363,9 @@ TEST_F(ApiTest, result_set) {
         b.set_allocated_success(&s);
         server_->response_message(b);
         EXPECT_EQ(ERROR_CODE::OK, connection->begin(transaction));
-        s.release_transaction_handle();
-        s.release_transaction_id();
-        b.release_success();
+        (void) s.release_transaction_handle();
+        (void) s.release_transaction_id();
+        (void) b.release_success();
 
         std::optional<jogasaki::proto::sql::request::Request> request_opt = server_->request_message();
         EXPECT_TRUE(request_opt);
@@ -409,7 +409,7 @@ TEST_F(ApiTest, result_set) {
         // set response
         server_->response_with_resultset(m, resultset, ro);
         // clear fields
-        ro.release_success();
+        (void) ro.release_success();
         m.clear_columns();
 
         EXPECT_EQ(ERROR_CODE::OK, transaction->execute_query("SELECT * FROM T2", result_set));
@@ -478,8 +478,8 @@ TEST_F(ApiTest, result_set) {
         server_->response_message(rod, 1);
 
         EXPECT_EQ(ERROR_CODE::OK, transaction->commit());
-        roc.release_success();
-        rod.release_success();
+        (void) roc.release_success();
+        (void) rod.release_success();
 
         std::optional<jogasaki::proto::sql::request::Request> requestc_opt = server_->request_message();
         EXPECT_TRUE(requestc_opt);

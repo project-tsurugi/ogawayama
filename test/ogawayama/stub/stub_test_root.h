@@ -72,9 +72,9 @@ public:
         // set response
         endpoint_.get_worker()->response_message(rh, resultset_name, resultset, rb, index);
         // release
-        rb.release_result_only();
-        rh.release_execute_query();
-        e.release_record_meta();
+        (void) rb.release_result_only();
+        (void) rh.release_execute_query();
+        (void) e.release_record_meta();
     }
 
     std::optional<jogasaki::proto::sql::request::Request> request_message() {
@@ -112,14 +112,14 @@ inline void server::response_message<jogasaki::proto::sql::response::Begin>(joga
     jogasaki::proto::sql::response::Response r{};
     r.set_allocated_begin(&b);
     endpoint_.get_worker()->response_message(r);
-    r.release_begin();
+    (void) r.release_begin();
 }
 template<>
 inline void server::response_message<jogasaki::proto::sql::response::ResultOnly>(jogasaki::proto::sql::response::ResultOnly& ro, std::size_t index) {
     jogasaki::proto::sql::response::Response r{};
     r.set_allocated_result_only(&ro);
     endpoint_.get_worker()->response_message(r, index);
-    r.release_result_only();
+    (void) r.release_result_only();
 }
 template<>
 inline void server::response_message<jogasaki::proto::sql::response::ResultOnly>(jogasaki::proto::sql::response::ResultOnly& ro) {
@@ -130,14 +130,14 @@ inline void server::response_message<jogasaki::proto::sql::response::Prepare>(jo
     jogasaki::proto::sql::response::Response r{};
     r.set_allocated_prepare(&p);
     endpoint_.get_worker()->response_message(r);
-    r.release_prepare();
+    (void) r.release_prepare();
 }
 template<>
 inline void server::response_message<jogasaki::proto::sql::response::ExecuteResult>(jogasaki::proto::sql::response::ExecuteResult& er, std::size_t index) {
     jogasaki::proto::sql::response::Response r{};
     r.set_allocated_execute_result(&er);
     endpoint_.get_worker()->response_message(r, index);
-    r.release_execute_result();
+    (void) r.release_execute_result();
 }
 template<>
 inline void server::response_message<jogasaki::proto::sql::response::ExecuteResult>(jogasaki::proto::sql::response::ExecuteResult& er) {
