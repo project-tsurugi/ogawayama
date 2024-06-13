@@ -111,9 +111,9 @@ public:
         }
         void operator()() {
             while(true) {
-                auto h = wire_->get_request_wire()->peep(true);
+                auto h = wire_->get_request_wire()->peep();
                 auto index = h.get_idx();
-                if (h.get_length() == 0 && index == tateyama::common::wire::message_header::termination_request) { break; }
+                if (h.get_length() == 0 && index == tateyama::common::wire::message_header::terminate_request) { break; }
                 std::string message;
                 message.resize(h.get_length());
                 wire_->get_request_wire()->read(message.data());
@@ -272,7 +272,8 @@ public:
             session_name += "-";
             session_name += std::to_string(session_id);
             auto wire = std::make_unique<tateyama::common::server_wire::server_wire_container>(session_name);
-            std::size_t index = connection_queue.accept(session_id);
+            std::size_t index = connection_queue.slot();
+            connection_queue.accept(index, session_id);
             try {
                 std::unique_lock<std::mutex> lk(mutex_);
                 worker_ = std::make_unique<worker>(session_name, std::move(wire), [&connection_queue, index](){ connection_queue.disconnect(index); });
