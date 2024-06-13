@@ -284,8 +284,8 @@ public:
             wire_ = wire;
             bip_buffer_ = bip_buffer;
         }
-        message_header peep(bool wait = false) {
-            return wire_->peep(bip_buffer_, wait);
+        message_header peep() {
+            return wire_->peep(bip_buffer_);
         }
         std::string_view payload() {
             return wire_->payload(bip_buffer_);

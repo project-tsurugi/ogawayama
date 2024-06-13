@@ -109,14 +109,14 @@ public:
     public:
         wire_container() = default;
         wire_container(unidirectional_message_wire* wire, char* bip_buffer) noexcept : wire_(wire), bip_buffer_(bip_buffer) {};
-        message_header peep(bool wait = false) {
-            return wire_->peep(bip_buffer_, wait);
+        message_header peep() {
+            return wire_->peep(bip_buffer_);
         }
         void write(const std::string& s, message_header::index_type index) {
             wire_->write(bip_buffer_, s.data(), message_header(index, s.length()));
         }
         void disconnect() {
-            wire_->write(bip_buffer_, nullptr, message_header(message_header::termination_request, 0));
+            wire_->terminate();
         }
 
     private:
@@ -230,13 +230,15 @@ public:
     }
 
     std::string connect() {
-        auto& q = get_connection_queue();
-        auto id = q.request();  // connect
-        auto session_id = q.wait(id);  // wait
-        std::string sn{db_name_};
-        sn += "-";
-        sn += std::to_string(session_id);
-        return sn;
+        auto& que = get_connection_queue();
+        auto rid = que.request();  // connect
+        if (auto session_id = que.wait(rid); session_id != tateyama::common::wire::connection_queue::session_id_indicating_error) { // wait
+            std::string name{db_name_};
+            name += "-";
+            name += std::to_string(session_id);
+            return name;
+        }
+        throw std::runtime_error("IPC connection establishment failure");
     }
     
 private:
