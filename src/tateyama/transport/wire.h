@@ -1004,27 +1004,49 @@ public:
         index_queue(std::size_t size, boost::interprocess::managed_shared_memory::segment_manager* mgr) : queue_(mgr), capacity_(size) {
             queue_.resize(capacity_);
         }
-        void fill() {
+        void fill(std::uint8_t admin_slots) {
             for (std::size_t i = 0; i < capacity_; i++) {
                 queue_.at(i) = i;
             }
-            pushed_.store(capacity_);
+            pushed_.store(capacity_ - admin_slots);
         }
-        void push(std::size_t len) {
+        void push(std::size_t sid, std::size_t admin_slots = 0) {
             boost::interprocess::scoped_lock lock(mutex_);
-            queue_.at(index(pushed_.load())) = len;
-            pushed_.fetch_add(1);
+            if (admin_slots > 0 && is_admin(sid)) {
+                queue_.at(index(pushed_.load() + admin_slots)) = reset_admin(sid);
+                admin_slots_in_use_.fetch_sub(1, std::memory_order_release);
+                pushed_.fetch_add(1);
+            } else {
+                queue_.at(index(pushed_.load() + admin_slots)) = sid;
+                pushed_.fetch_add(1, std::memory_order_release);
+            }
             std::atomic_thread_fence(std::memory_order_acq_rel);
             condition_.notify_one();
         }
         [[nodiscard]] std::size_t try_pop() {
+            boost::interprocess::scoped_lock lock(mutex_);  // trade off
             auto current = poped_.load();
             while (true) {
-                if (pushed_.load() == current) {
-                    throw std::runtime_error("no request available");
+                auto ps = pushed_.load(std::memory_order_acquire);
+                if ((ps + admin_slots_in_use_.load()) <= current) {
+                    throw std::runtime_error("no request slot is available for normal request");
                 }
                 if (poped_.compare_exchange_strong(current, current + 1)) {
                     return queue_.at(index(current));
+                }
+            }
+        }
+        [[nodiscard]] std::size_t try_pop(std::uint8_t admin_slots) {
+            boost::interprocess::scoped_lock lock(mutex_);
+            auto current = poped_.load();
+            while (true) {
+                auto ps = pushed_.load(std::memory_order_acquire);
+                if ((ps + (admin_slots - admin_slots_in_use_.load())) <= current) {
+                    throw std::runtime_error("no request slot is available for admin request");
+                }
+                if (poped_.compare_exchange_strong(current, current + 1)) {
+                    admin_slots_in_use_.fetch_add(1);
+                    return set_admin(queue_.at(index(current)));
                 }
             }
         }
@@ -1053,7 +1075,8 @@ public:
         }
     private:
         boost::interprocess::vector<std::size_t, long_allocator> queue_;
-        std::size_t capacity_;
+        std::uint32_t capacity_;
+        std::atomic_uint8_t admin_slots_in_use_{0};
         boost::interprocess::interprocess_mutex mutex_{};
         boost::interprocess::interprocess_condition condition_{};
 
@@ -1125,12 +1148,18 @@ public:
 
     using element_allocator = boost::interprocess::allocator<element, boost::interprocess::managed_shared_memory::segment_manager>;
     constexpr static std::size_t session_id_indicating_error = UINT64_MAX;
+    constexpr static std::size_t admin_bit = 1ULL << 63UL;
+
+    static std::size_t set_admin(std::size_t slot) { return slot | admin_bit; }
+    static std::size_t reset_admin(std::size_t slot) { return slot & ~admin_bit; }
+    static bool is_admin(std::size_t slot) { return (slot & admin_bit) != 0; }
 
     /**
      * @brief Construct a new object.
      */
-    connection_queue(std::size_t n, boost::interprocess::managed_shared_memory::segment_manager* mgr) : q_free_(n, mgr), q_requested_(n, mgr), v_requested_(n, mgr) {
-        q_free_.fill();
+    connection_queue(std::size_t n, boost::interprocess::managed_shared_memory::segment_manager* mgr, std::uint8_t as_n)
+        : q_free_(n + as_n, mgr), q_requested_(n + as_n, mgr), v_requested_(n + as_n, mgr), admin_slots_(as_n) {
+        q_free_.fill(as_n);
     }
     ~connection_queue() = default;
 
@@ -1143,12 +1172,17 @@ public:
     connection_queue& operator = (connection_queue&&) = delete;
 
     std::size_t request() {
-        auto rid = q_free_.try_pop();
-        q_requested_.push(rid);
-        return rid;
+        auto sid = q_free_.try_pop();
+        q_requested_.push(sid);
+        return sid;
     }
-    std::size_t wait(std::size_t rid, std::int64_t timeout = 0) {
-        auto& entry = v_requested_.at(rid);
+    std::size_t request_admin() {
+        auto sid = q_free_.try_pop(admin_slots_);
+        q_requested_.push(sid);
+        return sid;
+    }
+    std::size_t wait(std::size_t sid, std::int64_t timeout = 0) {
+        auto& entry = v_requested_.at(reset_admin(sid));
         try {
             auto rtnv = entry.wait(timeout);
             entry.reuse();
@@ -1158,8 +1192,8 @@ public:
             throw ex;
         }
     }
-    bool check(std::size_t rid) {
-        return v_requested_.at(rid).check();
+    bool check(std::size_t sid) {
+        return v_requested_.at(reset_admin(sid)).check();
     }
     std::size_t listen() {
         if (q_requested_.wait(terminate_)) {
@@ -1173,16 +1207,16 @@ public:
     // either accept() or reject() must be called
     void accept(std::size_t sid, std::size_t session_id) {
         q_requested_.pop();
-        v_requested_.at(sid).accept(session_id);
+        v_requested_.at(reset_admin(sid)).accept(session_id);
     }
     // either accept() or reject() must be called
     void reject(std::size_t sid) {
         q_requested_.pop();
-        v_requested_.at(sid).reject();
-        q_free_.push(sid);
+        v_requested_.at(reset_admin(sid)).reject();
+        q_free_.push(sid, admin_slots_);
     }
-    void disconnect(std::size_t rid) {
-        q_free_.push(rid);
+    void disconnect(std::size_t sid) {
+        q_free_.push(sid, admin_slots_);
     }
 
     // for terminate
@@ -1209,6 +1243,7 @@ private:
     boost::interprocess::vector<element, element_allocator> v_requested_;
 
     std::atomic_bool terminate_{false};
+    std::uint8_t admin_slots_;
     boost::interprocess::interprocess_semaphore s_terminated_{0};
 
     std::size_t session_id_{};
