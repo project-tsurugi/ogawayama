@@ -22,6 +22,8 @@ set(FrameworkProtoFiles
         ${CMAKE_SOURCE_DIR}/src/tateyama/proto/framework/request.proto
         ${CMAKE_SOURCE_DIR}/src/tateyama/proto/framework/response.proto
         ${CMAKE_SOURCE_DIR}/src/tateyama/proto/diagnostics.proto
+        ${CMAKE_SOURCE_DIR}/src/tateyama/proto/core/request.proto
+        ${CMAKE_SOURCE_DIR}/src/tateyama/proto/core/response.proto
         ${CMAKE_SOURCE_DIR}/src/tateyama/proto/endpoint/request.proto
         ${CMAKE_SOURCE_DIR}/src/tateyama/proto/endpoint/response.proto
         ${CMAKE_SOURCE_DIR}/src/tateyama/proto/auth/request.proto
