@@ -157,6 +157,22 @@ public:
                         auto reply_message = ss.str();
                         wire_->get_response_wire().write(reply_message.data(), tateyama::common::wire::response_header(index, reply_message.length(), RESPONSE_HANDSHAKE));
                         continue;
+                    } else if (service_id == tateyama::framework::service_id_routing) {
+                        std::stringstream ss{};
+                        ::tateyama::proto::framework::response::Header header{};
+                        if(auto res = tateyama::utils::SerializeDelimitedToOstream(header, std::addressof(ss)); ! res) {
+                            throw std::runtime_error("error formatting response message");
+                        }
+                        tateyama::proto::core::response::UpdateExpirationTime rp{};
+                        (void) rp.mutable_success();
+                        auto body = rp.SerializeAsString();
+                        if(auto res = tateyama::utils::PutDelimitedBodyToOstream(body, std::addressof(ss)); ! res) {
+                            throw std::runtime_error("error formatting response message");
+                        }
+                        rp.clear_success();
+                        auto reply_message = ss.str();
+                        wire_->get_response_wire().write(reply_message.data(), tateyama::common::wire::response_header(index, reply_message.length(), RESPONSE_HANDSHAKE));
+                        continue;
                     }
                 }
 
