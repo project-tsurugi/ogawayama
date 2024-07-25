@@ -26,6 +26,8 @@
 #include <tateyama/utils/protobuf_utils.h>
 #include <tateyama/proto/framework/request.pb.h>
 #include <tateyama/proto/framework/response.pb.h>
+#include <tateyama/proto/core/request.pb.h>
+#include <tateyama/proto/core/response.pb.h>
 #include <tateyama/proto/endpoint/request.pb.h>
 #include <tateyama/proto/endpoint/response.pb.h>
 
@@ -45,13 +47,17 @@ constexpr static tateyama::common::wire::message_header::index_type OPT_INDEX = 
 class transport {
     constexpr static std::size_t HEADER_MESSAGE_VERSION_MAJOR = 0;
     constexpr static std::size_t HEADER_MESSAGE_VERSION_MINOR = 0;
+    constexpr static std::size_t CORE_MESSAGE_VERSION_MAJOR = 0;
+    constexpr static std::size_t CORE_MESSAGE_VERSION_MINOR = 0;
     constexpr static std::size_t SQL_MESSAGE_VERSION_MAJOR = 1;
     constexpr static std::size_t SQL_MESSAGE_VERSION_MINOR = 0;
     constexpr static std::size_t ENDPOINT_MESSAGE_VERSION_MAJOR = 0;
     constexpr static std::size_t ENDPOINT_MESSAGE_VERSION_MINOR = 0;
+    constexpr static std::uint32_t SERVICE_ID_ROUTING = 0;  // from tateyama/framework/component_ids.h
     constexpr static std::uint32_t SERVICE_ID_ENDPOINT_BROKER = 1;  // from tateyama/framework/component_ids.h
     constexpr static std::uint32_t SERVICE_ID_SQL = 3;  // from tateyama/framework/component_ids.h
     constexpr static std::uint32_t SERVICE_ID_FDW = 4;  // from tateyama/framework/component_ids.h
+    constexpr static std::uint32_t MAX_EXPIRATION_TIME = (24 * 60 * 60 * 1000);
 
 public:
     transport() = delete;
@@ -69,6 +75,13 @@ public:
         }
         if (handshake_response.value().result_case() != tateyama::proto::endpoint::response::Handshake::ResultCase::kSuccess) {
             throw std::runtime_error("handshake error");
+        }
+        auto update_expiration_time_response = update_expiration_time();
+        if (!update_expiration_time_response) {
+            throw std::runtime_error("update_expiration_time error");
+        }
+        if (update_expiration_time_response.value().result_case() != tateyama::proto::core::response::UpdateExpirationTime::ResultCase::kSuccess) {
+            throw std::runtime_error("update_expiration_time error");
         }
     }
 
@@ -324,6 +337,26 @@ private:
     }
 
     template <typename T>
+    std::optional<T> send(::tateyama::proto::core::request::Request& request, tateyama::common::wire::message_header::index_type index = 0) {
+        tateyama::proto::framework::request::Header fwrq_header{};
+        fwrq_header.set_service_message_version_major(HEADER_MESSAGE_VERSION_MAJOR);
+        fwrq_header.set_service_message_version_minor(HEADER_MESSAGE_VERSION_MINOR);
+        fwrq_header.set_service_id(SERVICE_ID_ROUTING);
+
+        std::stringstream sst{};
+        if(auto res = tateyama::utils::SerializeDelimitedToOstream(fwrq_header, std::addressof(sst)); ! res) {
+            return std::nullopt;
+        }
+        request.set_service_message_version_major(CORE_MESSAGE_VERSION_MAJOR);
+        request.set_service_message_version_minor(CORE_MESSAGE_VERSION_MINOR);
+        if(auto res = tateyama::utils::SerializeDelimitedToOstream(request, std::addressof(sst)); ! res) {
+            return std::nullopt;
+        }
+        wire_.write(sst.str(), index);
+        return receive<T>(index);
+    }
+
+    template <typename T>
     std::optional<T> send(::tateyama::proto::endpoint::request::Request& request, tateyama::common::wire::message_header::index_type index = 0) {
         tateyama::proto::framework::request::Header fwrq_header{};
         fwrq_header.set_service_message_version_major(HEADER_MESSAGE_VERSION_MAJOR);
@@ -432,6 +465,16 @@ private:
         *(request.mutable_handshake()) = handshake;
 
         return send<tateyama::proto::endpoint::response::Handshake>(request);
+    }
+
+    std::optional<tateyama::proto::core::response::UpdateExpirationTime> update_expiration_time() {
+        tateyama::proto::core::request::UpdateExpirationTime uet_request{};
+        uet_request.set_expiration_time(MAX_EXPIRATION_TIME);
+
+        tateyama::proto::core::request::Request request{};
+        *(request.mutable_update_expiration_time()) = uet_request;
+
+        return send<tateyama::proto::core::response::UpdateExpirationTime>(request);
     }
 
     std::optional<std::string> receive(tateyama::common::wire::message_header::index_type index) {
