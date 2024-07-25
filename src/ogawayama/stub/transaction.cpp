@@ -317,6 +317,7 @@ ErrorCode Transaction::Impl::commit()
         if (response.has_success()) {
             return dispose_transaction();
         }
+        dispose_transaction();
         return ErrorCode::SERVER_FAILURE;
     }
     return ErrorCode::NO_TRANSACTION;
