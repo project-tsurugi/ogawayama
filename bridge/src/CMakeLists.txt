@@ -39,7 +39,6 @@ target_link_libraries(bridge
     PRIVATE yugawara
     PRIVATE shakujo-common
     PRIVATE metadata-manager-api
-    PRIVATE message-manager-interface
     PRIVATE glog::glog
     PRIVATE Boost::serialization
     PRIVATE pthread
