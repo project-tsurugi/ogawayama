@@ -27,7 +27,7 @@ set_target_properties(bridge PROPERTIES
 target_include_directories(bridge
     PRIVATE ${CMAKE_SOURCE_DIR}/include
     PRIVATE ${CMAKE_SOURCE_DIR}/common/include
-    PRIVATE ${CMAKE_BINARY_DIR}/src
+    PRIVATE ${CMAKE_SOURCE_DIR}/third_party/metadata-manager/include
 )
 
 target_link_libraries(bridge
@@ -38,7 +38,6 @@ target_link_libraries(bridge
     PRIVATE takatori
     PRIVATE yugawara
     PRIVATE shakujo-common
-    PRIVATE metadata-manager-api
     PRIVATE glog::glog
     PRIVATE Boost::serialization
     PRIVATE pthread
