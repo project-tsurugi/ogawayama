@@ -76,7 +76,7 @@ TEST_F(ApiTest, begin_commit) {
         jogasaki::proto::sql::response::ResultOnly rod{};
         jogasaki::proto::sql::response::Success sd{};
         rod.set_allocated_success(&sd);
-        server_->response_message(rod, 1);
+        server_->response_message(rod);
 
         EXPECT_EQ(ERROR_CODE::OK, transaction->commit());
         (void) roc.release_success();
@@ -158,7 +158,7 @@ TEST_F(ApiTest, long_transaction) {
         jogasaki::proto::sql::response::ResultOnly rod{};
         jogasaki::proto::sql::response::Success sd{};
         rod.set_allocated_success(&sd);
-        server_->response_message(rod, 1);
+        server_->response_message(rod);
 
         EXPECT_EQ(ERROR_CODE::OK, transaction->commit());
         (void) roc.release_success();
@@ -240,7 +240,7 @@ TEST_F(ApiTest, long_transaction_inclusive_read_area) {
         jogasaki::proto::sql::response::ResultOnly rod{};
         jogasaki::proto::sql::response::Success sd{};
         rod.set_allocated_success(&sd);
-        server_->response_message(rod, 1);
+        server_->response_message(rod);
 
         EXPECT_EQ(ERROR_CODE::OK, transaction->commit());
         (void) roc.release_success();
@@ -322,7 +322,7 @@ TEST_F(ApiTest, long_transaction_exclusive_read_area) {
         jogasaki::proto::sql::response::ResultOnly rod{};
         jogasaki::proto::sql::response::Success sd{};
         rod.set_allocated_success(&sd);
-        server_->response_message(rod, 1);
+        server_->response_message(rod);
 
         EXPECT_EQ(ERROR_CODE::OK, transaction->commit());
         (void) roc.release_success();
@@ -475,7 +475,7 @@ TEST_F(ApiTest, result_set) {
         jogasaki::proto::sql::response::ResultOnly rod{};
         jogasaki::proto::sql::response::Success sd{};
         rod.set_allocated_success(&sd);
-        server_->response_message(rod, 1);
+        server_->response_message(rod);
 
         EXPECT_EQ(ERROR_CODE::OK, transaction->commit());
         (void) roc.release_success();

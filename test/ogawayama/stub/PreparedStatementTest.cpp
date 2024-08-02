@@ -257,7 +257,7 @@ TEST_F(PreparedTest, prepare) {
         jogasaki::proto::sql::response::ResultOnly rod{};
         jogasaki::proto::sql::response::Success sd{};
         rod.set_allocated_success(&sd);
-        server_->response_message(rod, 1);
+        server_->response_message(rod);
 
         EXPECT_EQ(ERROR_CODE::OK, transaction->commit());
         (void) roc.release_success();

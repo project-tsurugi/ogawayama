@@ -1,5 +1,5 @@
 /*
- * Copyright 2022-2023 Project Tsurugi.
+ * Copyright 2022-2024 Project Tsurugi.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -40,9 +40,6 @@
 #include "tateyama/transport/client_wire.h"
 
 namespace tateyama::bootstrap::wire {
-
-constexpr static tateyama::common::wire::message_header::index_type SLOT_FOR_DISPOSE_TRANSACTION = 1;
-constexpr static tateyama::common::wire::message_header::index_type OPT_INDEX = SLOT_FOR_DISPOSE_TRANSACTION + 1;
 
 class transport {
     constexpr static std::size_t HEADER_MESSAGE_VERSION_MAJOR = 0;
@@ -91,9 +88,10 @@ public:
  * @return std::optional of ::jogasaki::proto::sql::request::Begin
  */
     std::optional<::jogasaki::proto::sql::response::Begin> send(::jogasaki::proto::sql::request::Begin& begin_request) {
+        tateyama::common::wire::message_header::index_type slot_index{};
         ::jogasaki::proto::sql::request::Request request{};
         *(request.mutable_begin())= begin_request;
-        auto response_opt = send<::jogasaki::proto::sql::response::Response>(request);
+        auto response_opt = send<::jogasaki::proto::sql::response::Response>(request, slot_index);
         request.clear_begin();
         if (response_opt) {
             auto response_message = response_opt.value();
@@ -110,9 +108,10 @@ public:
  * @return std::optional of ::jogasaki::proto::sql::request::Prepare
  */
     std::optional<::jogasaki::proto::sql::response::Prepare> send(::jogasaki::proto::sql::request::Prepare& prepare_request) {
+        tateyama::common::wire::message_header::index_type slot_index{};
         ::jogasaki::proto::sql::request::Request request{};
         *(request.mutable_prepare())= prepare_request;
-        auto response_opt = send<::jogasaki::proto::sql::response::Response>(request);
+        auto response_opt = send<::jogasaki::proto::sql::response::Response>(request, slot_index);
         request.clear_prepare();
         if (response_opt) {
             auto response_message = response_opt.value();
@@ -129,9 +128,10 @@ public:
  * @return std::optional of ::jogasaki::proto::sql::request::ResultOnly
  */
     std::optional<::jogasaki::proto::sql::response::ExecuteResult> send(::jogasaki::proto::sql::request::ExecuteStatement& execute_statement_request) {
+        tateyama::common::wire::message_header::index_type slot_index{};
         ::jogasaki::proto::sql::request::Request request{};
         *(request.mutable_execute_statement()) = execute_statement_request;
-        auto response_opt = send<::jogasaki::proto::sql::response::Response>(request);
+        auto response_opt = send<::jogasaki::proto::sql::response::Response>(request, slot_index);
         request.clear_execute_statement();
         if (response_opt) {
             auto response_message = response_opt.value();
@@ -148,9 +148,10 @@ public:
  * @return std::optional of ::jogasaki::proto::sql::request::ResultOnly
  */
     std::optional<::jogasaki::proto::sql::response::ExecuteResult> send(::jogasaki::proto::sql::request::ExecutePreparedStatement& execute_statement_request) {
+        tateyama::common::wire::message_header::index_type slot_index{};
         ::jogasaki::proto::sql::request::Request request{};
         *(request.mutable_execute_prepared_statement()) = execute_statement_request;
-        auto response_opt = send<::jogasaki::proto::sql::response::Response>(request);
+        auto response_opt = send<::jogasaki::proto::sql::response::Response>(request, slot_index);
         request.clear_execute_statement();
         if (response_opt) {
             auto response_message = response_opt.value();
@@ -166,9 +167,10 @@ public:
  * @param execute_query_request a execute query request message in ::jogasaki::proto::sql::request::ExecuteQuery
  * @return std::optional of ::jogasaki::proto::sql::request::ExecuteQuery
  */
-    std::optional<::jogasaki::proto::sql::response::ExecuteQuery> send(::jogasaki::proto::sql::request::ExecuteQuery& execute_query_request, std::size_t query_index) {
+    std::optional<::jogasaki::proto::sql::response::ExecuteQuery> send(::jogasaki::proto::sql::request::ExecuteQuery& execute_query_request, tateyama::common::wire::message_header::index_type& query_index) {
         ::jogasaki::proto::sql::request::Request request{};
         *(request.mutable_execute_query()) = execute_query_request;
+
         auto response_opt = send<::jogasaki::proto::sql::response::Response>(request, query_index);
         request.clear_execute_query();
         if (response_opt) {
@@ -188,7 +190,7 @@ public:
  * @param execute_query_request a execute query request message in ::jogasaki::proto::sql::request::ExecutePreparedQuery
  * @return std::optional of ::jogasaki::proto::sql::request::ExecutePreparedQuery
  */
-    std::optional<::jogasaki::proto::sql::response::ExecuteQuery> send(::jogasaki::proto::sql::request::ExecutePreparedQuery& execute_query_request, std::size_t query_index) {
+    std::optional<::jogasaki::proto::sql::response::ExecuteQuery> send(::jogasaki::proto::sql::request::ExecutePreparedQuery& execute_query_request, tateyama::common::wire::message_header::index_type& query_index) {
         ::jogasaki::proto::sql::request::Request request{};
         *(request.mutable_execute_prepared_query()) = execute_query_request;
         auto response_opt = send<::jogasaki::proto::sql::response::Response>(request, query_index);
@@ -219,9 +221,10 @@ public:
  * @return std::optional of ::jogasaki::proto::sql::request::ResultOnly
  */
     std::optional<::jogasaki::proto::sql::response::ResultOnly> send(::jogasaki::proto::sql::request::Commit& commit_request) {
+        tateyama::common::wire::message_header::index_type slot_index{};
         ::jogasaki::proto::sql::request::Request request{};
         *(request.mutable_commit()) = commit_request;
-        auto response_opt = send<::jogasaki::proto::sql::response::Response>(request);
+        auto response_opt = send<::jogasaki::proto::sql::response::Response>(request, slot_index);
         request.clear_commit();
         if (response_opt) {
             auto response_message = response_opt.value();
@@ -238,9 +241,10 @@ public:
  * @return std::optional of ::jogasaki::proto::sql::request::ResultOnly
  */
     std::optional<::jogasaki::proto::sql::response::ResultOnly> send(::jogasaki::proto::sql::request::Rollback& rollback_request) {
+        tateyama::common::wire::message_header::index_type slot_index{};
         ::jogasaki::proto::sql::request::Request request{};
         *(request.mutable_rollback()) = rollback_request;
-        auto response_opt = send<::jogasaki::proto::sql::response::Response>(request);
+        auto response_opt = send<::jogasaki::proto::sql::response::Response>(request, slot_index);
         request.clear_rollback();
         if (response_opt) {
             auto response_message = response_opt.value();
@@ -252,14 +256,15 @@ public:
     }
 
 /**
- * @brief send a rollback request to the sql service.
+ * @brief send a dispose transaction to the sql service.
  * @param rollback_request a rollback request message in ::jogasaki::proto::sql::request::Rollback
  * @return std::optional of ::jogasaki::proto::sql::request::ResultOnly
  */
     std::optional<ogawayama::stub::ErrorCode> send(::jogasaki::proto::sql::request::DisposeTransaction& r) {
+        tateyama::common::wire::message_header::index_type slot_index{};
         ::jogasaki::proto::sql::request::Request request{};
         *(request.mutable_dispose_transaction()) = r;
-        auto response_opt = send<::jogasaki::proto::sql::response::Response>(request, SLOT_FOR_DISPOSE_TRANSACTION);
+        auto response_opt = send<::jogasaki::proto::sql::response::Response>(request, slot_index);
         request.clear_rollback();
         if (response_opt) {
             auto response_message = response_opt.value();
@@ -317,7 +322,7 @@ private:
     std::vector<std::string> query_results_{};
     
     template <typename T>
-    std::optional<T> send(::jogasaki::proto::sql::request::Request& request, tateyama::common::wire::message_header::index_type index = 0) {
+    std::optional<T> send(::jogasaki::proto::sql::request::Request& request, tateyama::common::wire::message_header::index_type& slot_index) {
         std::stringstream ss{};
         if(auto res = tateyama::utils::SerializeDelimitedToOstream(header_, std::addressof(ss)); ! res) {
             return std::nullopt;
@@ -330,14 +335,15 @@ private:
             request.clear_session_handle();
             return std::nullopt;
         }
-        wire_.write(ss.str(), index);
+        slot_index = wire_.search_slot();
+        wire_.send(ss.str(), slot_index);
         request.clear_session_handle();
 
-        return receive<T>(index);
+        return receive<T>(slot_index);
     }
 
     template <typename T>
-    std::optional<T> send(::tateyama::proto::core::request::Request& request, tateyama::common::wire::message_header::index_type index = 0) {
+    std::optional<T> send(::tateyama::proto::core::request::Request& request) {
         tateyama::proto::framework::request::Header fwrq_header{};
         fwrq_header.set_service_message_version_major(HEADER_MESSAGE_VERSION_MAJOR);
         fwrq_header.set_service_message_version_minor(HEADER_MESSAGE_VERSION_MINOR);
@@ -352,12 +358,13 @@ private:
         if(auto res = tateyama::utils::SerializeDelimitedToOstream(request, std::addressof(sst)); ! res) {
             return std::nullopt;
         }
-        wire_.write(sst.str(), index);
-        return receive<T>(index);
+        auto slot_index = wire_.search_slot();
+        wire_.send(sst.str(), slot_index);
+        return receive<T>(slot_index);
     }
 
     template <typename T>
-    std::optional<T> send(::tateyama::proto::endpoint::request::Request& request, tateyama::common::wire::message_header::index_type index = 0) {
+    std::optional<T> send(::tateyama::proto::endpoint::request::Request& request) {
         tateyama::proto::framework::request::Header fwrq_header{};
         fwrq_header.set_service_message_version_major(HEADER_MESSAGE_VERSION_MAJOR);
         fwrq_header.set_service_message_version_minor(HEADER_MESSAGE_VERSION_MINOR);
@@ -372,42 +379,25 @@ private:
         if(auto res = tateyama::utils::SerializeDelimitedToOstream(request, std::addressof(sst)); ! res) {
             return std::nullopt;
         }
-        wire_.write(sst.str(), index);
-        return receive<T>(index);
+        auto slot_index = wire_.search_slot();
+        wire_.send(sst.str(), slot_index);
+        return receive<T>(slot_index);
     }
 
     template <typename T>
-    std::optional<T> receive(tateyama::common::wire::message_header::index_type index) { //NOLINT(readability-function-cognitive-complexity)
-        auto& response_wire = wire_.get_response_wire();
-
+    std::optional<T> receive(tateyama::common::wire::message_header::index_type slot_index) { //NOLINT(readability-function-cognitive-complexity)
         while (true) {
             std::string response_message{};
-
-            if (index == 0 && !statement_result_.empty()) {
-                response_message = statement_result_;
-                statement_result_.clear();
-            } else if (index == OPT_INDEX && !query_result_for_the_one_.empty()) {
-                response_message = query_result_for_the_one_;
-                query_result_for_the_one_.clear();
-            } else if (index > OPT_INDEX && !query_results_at(index).empty()) {
-                response_message = query_results_at(index);
-                query_results_at(index).clear();
-            } else {
-                response_wire.await();
-                auto slot = response_wire.get_idx();
-                if (slot == index) {
-                    response_message.resize(response_wire.get_length());
-                    response_wire.read(response_message.data());
-                } else {
-                    if (slot == 0) {
-                        statement_result_.resize(response_wire.get_length());
-                        response_wire.read(statement_result_.data());
-                    } else {
-                        std::string& body = (slot == OPT_INDEX) ? query_result_for_the_one_ : query_results_at(slot);
-                        body.resize(response_wire.get_length());
-                        response_wire.read(body.data());
-                    }
-                    continue;
+            while (true) {
+                try {
+                    wire_.receive(response_message, slot_index);
+                    break;
+                } catch (std::runtime_error &e) {
+//                    if (status_info_->alive()) {  // FIXME alive check
+//                        continue;
+//                    }
+                    std::cerr << e.what() << std::endl;
+                    return std::nullopt;
                 }
             }
             ::tateyama::proto::framework::response::Header header{};
@@ -427,15 +417,11 @@ private:
         }
     }
 
-    std::string& query_results_at(std::size_t index) {
-        auto vector_index = index - (OPT_INDEX + 1);
-        if (query_results_.size() < (vector_index + 1)) {
-            query_results_.resize(vector_index + 1);
-        }
-        return query_results_.at(vector_index);
+    std::string& query_results_at(std::size_t slot_index) {
+        return query_results_.at(slot_index);
     }
 
-    std::optional<std::string> send_bridge_request(std::string_view request, tateyama::common::wire::message_header::index_type index = 0) {
+    std::optional<std::string> send_bridge_request(std::string_view request) {
         std::stringstream ss{};
         if(auto res = tateyama::utils::SerializeDelimitedToOstream(bridge_header_, std::addressof(ss)); ! res) {
             return std::nullopt;
@@ -443,9 +429,10 @@ private:
         if(auto res = tateyama::utils::PutDelimitedBodyToOstream(request, std::addressof(ss)); ! res) {
             return std::nullopt;
         }
-        wire_.write(ss.str(), index);
+        auto slot_index = wire_.search_slot();
+        wire_.send(ss.str(), slot_index);
 
-        return receive(index);
+        return receive(slot_index);
     }
 
     std::optional<tateyama::proto::endpoint::response::Handshake> handshake() {
@@ -477,16 +464,20 @@ private:
         return send<tateyama::proto::core::response::UpdateExpirationTime>(request);
     }
 
-    std::optional<std::string> receive(tateyama::common::wire::message_header::index_type index) {
-        auto& response_wire = wire_.get_response_wire();
-
+    std::optional<std::string> receive(tateyama::common::wire::message_header::index_type slot_index) {
         std::string response_message{};
 
-        response_wire.await();
-        auto slot = response_wire.get_idx();
-        if (slot == index) {
-            response_message.resize(response_wire.get_length());
-            response_wire.read(response_message.data());
+        while (true) {
+            try {
+                wire_.receive(response_message, slot_index);
+                break;
+            } catch (std::runtime_error &e) {
+//                    if (status_info_->alive()) {  // FIXME alive check
+//                        continue;
+//                    }
+                std::cerr << e.what() << std::endl;
+                return std::nullopt;
+            }
         }
 
         ::tateyama::proto::framework::response::Header header{};

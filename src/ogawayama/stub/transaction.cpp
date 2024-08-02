@@ -227,7 +227,7 @@ ErrorCode Transaction::Impl::execute_query(std::string_view query, std::shared_p
         *(request.mutable_transaction_handle()) = transaction_handle_;
         *(request.mutable_sql()) = query;
         try {
-            std::size_t query_index = get_query_index();
+            tateyama::common::wire::message_header::index_type query_index{};
             auto response_opt = transport_.send(request, query_index);
             request.clear_sql();
             request.clear_transaction_handle();
@@ -276,7 +276,7 @@ ErrorCode Transaction::Impl::execute_query(PreparedStatementPtr& prepared, const
             for (auto& e : parameters) {
                 *(request.add_parameters()) = std::visit(parameter(e.first), e.second);
             }
-            std::size_t query_index = get_query_index();
+            tateyama::common::wire::message_header::index_type query_index{};
             auto response_opt = transport_.send(request, query_index);
             if (!response_opt) {
                 return ErrorCode::SERVER_FAILURE;
