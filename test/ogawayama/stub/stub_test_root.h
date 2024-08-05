@@ -57,9 +57,9 @@ public:
     template<typename T>
     void response_message(T& reply, std::size_t) = delete;
 
-    void response_with_resultset(jogasaki::proto::sql::response::ResultSetMetadata& metadata, std::queue<std::string>& resultset, jogasaki::proto::sql::response::ResultOnly& ro, std::size_t index = 2) {
+    void response_with_resultset(jogasaki::proto::sql::response::ResultSetMetadata& metadata, std::queue<std::string>& resultset, jogasaki::proto::sql::response::ResultOnly& ro) {
         std::string resultset_name{resultset_name_prefix};
-        resultset_name += std::to_string(index);
+        resultset_name += std::to_string(resultset_number_++);
         // body_head
         jogasaki::proto::sql::response::ExecuteQuery e{};
         jogasaki::proto::sql::response::Response rh{};
@@ -70,7 +70,7 @@ public:
         jogasaki::proto::sql::response::Response rb{};
         rb.set_allocated_result_only(&ro);
         // set response
-        endpoint_.get_worker()->response_message(rh, resultset_name, resultset, rb, index);
+        endpoint_.get_worker()->response_message(rh, resultset_name, resultset, rb);
         // release
         (void) rb.release_result_only();
         (void) rh.release_execute_query();
@@ -98,6 +98,7 @@ public:
 private:
     std::string name_;
     endpoint endpoint_;
+    std::size_t resultset_number_{};
 
     void remove_shm() {
         std::string cmd = "if [ -f /dev/shm/" + name_ + " ]; then rm -f /dev/shm/" + name_ + "*; fi";
@@ -115,15 +116,11 @@ inline void server::response_message<jogasaki::proto::sql::response::Begin>(joga
     (void) r.release_begin();
 }
 template<>
-inline void server::response_message<jogasaki::proto::sql::response::ResultOnly>(jogasaki::proto::sql::response::ResultOnly& ro, std::size_t index) {
+inline void server::response_message<jogasaki::proto::sql::response::ResultOnly>(jogasaki::proto::sql::response::ResultOnly& ro) {
     jogasaki::proto::sql::response::Response r{};
     r.set_allocated_result_only(&ro);
-    endpoint_.get_worker()->response_message(r, index);
+    endpoint_.get_worker()->response_message(r);
     (void) r.release_result_only();
-}
-template<>
-inline void server::response_message<jogasaki::proto::sql::response::ResultOnly>(jogasaki::proto::sql::response::ResultOnly& ro) {
-    response_message<jogasaki::proto::sql::response::ResultOnly>(ro, 0);
 }
 template<>
 inline void server::response_message<jogasaki::proto::sql::response::Prepare>(jogasaki::proto::sql::response::Prepare& p) {
@@ -133,15 +130,11 @@ inline void server::response_message<jogasaki::proto::sql::response::Prepare>(jo
     (void) r.release_prepare();
 }
 template<>
-inline void server::response_message<jogasaki::proto::sql::response::ExecuteResult>(jogasaki::proto::sql::response::ExecuteResult& er, std::size_t index) {
+inline void server::response_message<jogasaki::proto::sql::response::ExecuteResult>(jogasaki::proto::sql::response::ExecuteResult& er) {
     jogasaki::proto::sql::response::Response r{};
     r.set_allocated_execute_result(&er);
-    endpoint_.get_worker()->response_message(r, index);
+    endpoint_.get_worker()->response_message(r);
     (void) r.release_execute_result();
-}
-template<>
-inline void server::response_message<jogasaki::proto::sql::response::ExecuteResult>(jogasaki::proto::sql::response::ExecuteResult& er) {
-    response_message<jogasaki::proto::sql::response::ExecuteResult>(er, 0);
 }
 
 }  // namespace ogawayama::testing
