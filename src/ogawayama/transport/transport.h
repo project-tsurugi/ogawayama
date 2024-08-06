@@ -38,6 +38,7 @@
 #include <ogawayama/stub/error_code.h>
 
 #include "tateyama/transport/client_wire.h"
+#include "tateyama/transport/timer.h"
 
 namespace tateyama::bootstrap::wire {
 
@@ -54,7 +55,7 @@ class transport {
     constexpr static std::uint32_t SERVICE_ID_ENDPOINT_BROKER = 1;  // from tateyama/framework/component_ids.h
     constexpr static std::uint32_t SERVICE_ID_SQL = 3;  // from tateyama/framework/component_ids.h
     constexpr static std::uint32_t SERVICE_ID_FDW = 4;  // from tateyama/framework/component_ids.h
-    constexpr static std::uint32_t MAX_EXPIRATION_TIME = (24 * 60 * 60 * 1000);
+    constexpr static std::uint32_t EXPIRATION_SECONDS = 60;
 
 public:
     transport() = delete;
@@ -73,14 +74,31 @@ public:
         if (handshake_response.value().result_case() != tateyama::proto::endpoint::response::Handshake::ResultCase::kSuccess) {
             throw std::runtime_error("handshake error");
         }
-        auto update_expiration_time_response = update_expiration_time();
-        if (!update_expiration_time_response) {
-            throw std::runtime_error("update_expiration_time error");
-        }
-        if (update_expiration_time_response.value().result_case() != tateyama::proto::core::response::UpdateExpirationTime::ResultCase::kSuccess) {
-            throw std::runtime_error("update_expiration_time error");
+
+        timer_ = std::make_unique<tateyama::common::wire::timer>(EXPIRATION_SECONDS, [this](){
+            auto ret = update_expiration_time();
+            if (ret.has_value()) {
+                return ret.value().result_case() == tateyama::proto::core::response::UpdateExpirationTime::ResultCase::kSuccess;
+            }
+            return false;
+        });
+    }
+
+    ~transport() {
+        try {
+            timer_ = nullptr;
+            if (!closed_) {
+                close();
+            }
+        } catch (std::exception &ex) {
+            std::cerr << ex.what() << std::endl;
         }
     }
+
+    transport(transport const& other) = delete;
+    transport& operator=(transport const& other) = delete;
+    transport(transport&& other) noexcept = delete;
+    transport& operator=(transport&& other) noexcept = delete;
 
 /**
  * @brief send a begin request to the sql service.
@@ -286,6 +304,7 @@ public:
 
     void close() {
         wire_.close();
+        closed_ = true;
     }
 
     std::unique_ptr<tateyama::common::wire::session_wire_container::resultset_wires_container> create_resultset_wire(std::string_view name) {
@@ -320,7 +339,9 @@ private:
     std::string statement_result_{};
     std::string query_result_for_the_one_{};
     std::vector<std::string> query_results_{};
-    
+    bool closed_{};
+    std::unique_ptr<tateyama::common::wire::timer> timer_{};    
+
     template <typename T>
     std::optional<T> send(::jogasaki::proto::sql::request::Request& request, tateyama::common::wire::message_header::index_type& slot_index) {
         std::stringstream ss{};
@@ -456,7 +477,6 @@ private:
 
     std::optional<tateyama::proto::core::response::UpdateExpirationTime> update_expiration_time() {
         tateyama::proto::core::request::UpdateExpirationTime uet_request{};
-        uet_request.set_expiration_time(MAX_EXPIRATION_TIME);
 
         tateyama::proto::core::request::Request request{};
         *(request.mutable_update_expiration_time()) = uet_request;

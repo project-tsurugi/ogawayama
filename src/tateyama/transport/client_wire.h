@@ -18,6 +18,7 @@
 #include <atomic>
 #include <array>
 #include <mutex>
+#include <condition_variable>
 #include <stdexcept> // std::runtime_error
 
 #include "wire.h"
@@ -261,25 +262,29 @@ public:
         slot& my_slot = slot_status_.at(static_cast<std::size_t>(slot_index));
 
         while (true) {
-            if (my_slot.valid()) {
-                my_slot.consume(res_message);
-                return;
-            }
             {
                 std::unique_lock<std::mutex> lock(mtx_receive_);
+                cnd_receive_.wait(lock, [this, slot_index]{ return slot_status_.at(static_cast<std::size_t>(slot_index)).valid() || !using_wire_.load(); });
+            }
+            if (my_slot.valid()) {
+                my_slot.consume(res_message);
+                cnd_receive_.notify_all();
+                return;
+            }
+            bool expected = false;
+            if (!using_wire_.compare_exchange_weak(expected, true)) {
+                continue;
+            }
 
-                // check again to avoid race
-                if (my_slot.valid()) {
-                    my_slot.consume(res_message);
-                    return;
-                }
-
+            try {
                 auto header_received = response_wire_.await();
                 auto index_received = header_received.get_idx();
                 if (index_received == slot_index) {
                     res_message.resize(header_received.get_length());
                     response_wire_.read(res_message.data());
                     my_slot.receive_and_consume(header_received.get_type());
+                    using_wire_.store(false);
+                    cnd_receive_.notify_all();
                     return;
                 }
                 auto& slot_received = slot_status_.at(static_cast<std::size_t>(index_received));
@@ -287,6 +292,12 @@ public:
                 message_received.resize(header_received.get_length());
                 response_wire_.read(message_received.data());
                 slot_received.post_receive();
+                using_wire_.store(false);
+                cnd_receive_.notify_all();
+            } catch (std::runtime_error& ex) {
+                using_wire_.store(false);
+                cnd_receive_.notify_all();
+                throw ex;
             }
         }
     }
@@ -304,6 +315,8 @@ private:
     std::array<slot, slot_size> slot_status_{};
     std::mutex mtx_send_{};
     std::mutex mtx_receive_{};
+    std::condition_variable cnd_receive_{};
+    std::atomic_bool using_wire_{};
 
     void dispose_resultset_wire(std::unique_ptr<resultset_wires_container>& container) {
         container->set_closed();

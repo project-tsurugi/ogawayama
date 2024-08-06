@@ -383,13 +383,13 @@ ErrorCode Transaction::execute_statement(PreparedStatementPtr& prepared, paramet
 // deprecated
 ErrorCode Transaction::execute_statement(std::string_view statement)
 {
-    std::size_t num_rows;
+    std::size_t num_rows{};
     return impl_->execute_statement(statement, num_rows);
 }
 // deprecated
 ErrorCode Transaction::execute_statement(PreparedStatementPtr& prepared, parameters_type& parameters)
 {
-    std::size_t num_rows;
+    std::size_t num_rows{};
     return impl_->execute_statement(prepared, parameters, num_rows);
 }
 
