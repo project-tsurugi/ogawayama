@@ -11,7 +11,7 @@ namespace tateyama::common::wire {
 
 class timer {
   public:
-    timer(std::int64_t interval, const std::function<bool()>& work) : work_(work), tfd_(timerfd_create(CLOCK_MONOTONIC, TFD_CLOEXEC)) {
+    timer(std::int64_t interval, std::function<bool()> work) : work_(std::move(work)), tfd_(timerfd_create(CLOCK_MONOTONIC, TFD_CLOEXEC)) {
         struct itimerspec its{};
         its.it_value.tv_sec = interval;
         its.it_value.tv_nsec = 0;
@@ -58,7 +58,7 @@ class timer {
     }
     
   private:
-    const std::function<bool()>& work_;
+    const std::function<bool()> work_;
     int tfd_;
     std::thread thread_{};
     std::atomic_bool stop_flag_{};
