@@ -37,7 +37,6 @@ target_link_libraries(bridge
     PRIVATE tateyama-${SHARKSFIN_IMPLEMENTATION}-engine
     PRIVATE takatori
     PRIVATE yugawara
-    PRIVATE shakujo-common
     PRIVATE glog::glog
     PRIVATE Boost::serialization
     PRIVATE pthread
