@@ -61,7 +61,7 @@ available options:
 * `-DBUILD_BRIDGE_ONLY=ON` - build the bridge only
 * `-DBUILD_TESTS=OFF` - never build test programs
 * `-DFORCE_INSTALL_RPATH=ON` - force set RPATH for non-default library paths
-* `-DINSTALL_EXAMPLES=ON` - also install example programs
+* `-DBUILD_EXAMPLES=ON` - also build example programs
 * `-DCMAKE_PREFIX_PATH=<installation directory>` - indicate prerequiste installation directory
 * `-DSHARKSFIN_IMPLEMENTATION=<implementation name>` - switch sharksfin implementation. Available options are `memory` and `shirakami` (default: `shirakami`)
 * for debugging only
