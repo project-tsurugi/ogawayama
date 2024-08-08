@@ -177,24 +177,12 @@ public:
                 }
 
                 requests_.push(message);
-                // use saved body, if it exists
-                if (!bodies_.at(index).empty()) {
-                    std::cerr << __func__ << ":" << __LINE__ << ":" << index << std::endl;
-                    auto& body = bodies_.at(index);
-                    wire_->get_response_wire().write(body.data(), tateyama::common::wire::response_header(index, body.length(), RESPONSE_BODY));
-                    body.clear();
-                    continue;
-                }
-
                 auto reply = responses_.front();
-                std::cerr << __func__ << ":" << __LINE__ << ":" << reply.get_type() << std::endl;
                 responses_.pop();
                 if (reply.get_type() == endpoint_response::BODY_ONLY) {
-                std::cerr << __func__ << ":" << __LINE__ << ":" << reply.get_type() << std::endl;
                     auto reply_message = reply.get_body();
                     wire_->get_response_wire().write(reply_message.data(), tateyama::common::wire::response_header(index, reply_message.length(), RESPONSE_BODY));
                 } else if (reply.get_type() == endpoint_response::WHTH_BODYHEAD) {
-                    std::cerr << __func__ << ":" << __LINE__ << ":" << reply.get_type() << ":" << reply.get_name() << ":" << index << std::endl;
                     resultset_wires_array_.at(index) = wire_->create_resultset_wires(reply.get_name());
                     auto& resultset_wires = resultset_wires_array_.at(index);
                     resultset_wire_array_.at(index) = resultset_wires->acquire();
@@ -213,10 +201,10 @@ public:
                     }
                     resultset_wires->set_eor();
 
-                    // save body
-                    bodies_.at(index) = reply.get_body();
+                    // body
+                    auto reply_message = reply.get_body();
+                    wire_->get_response_wire().write(reply_message.data(), tateyama::common::wire::response_header(index, reply_message.length(), RESPONSE_BODY));
                 } else {
-                std::cerr << __func__ << ":" << __LINE__ << ":" << reply.get_type() << std::endl;
                     throw std::runtime_error("response for the request has not been set");
                 }
             }
@@ -231,7 +219,6 @@ public:
             if(auto res = tateyama::utils::SerializeDelimitedToOstream(message, std::addressof(ss)); ! res) {
                 throw std::runtime_error("error formatting response message");
             }
-            std::cerr << __func__ << ":" << __LINE__ << std::endl;
             responses_.emplace(endpoint_response(ss.str()));
         }
         void response_message(const jogasaki::proto::sql::response::Response& head, std::string_view name, std::queue<std::string>& resultset, const jogasaki::proto::sql::response::Response& body) {
@@ -251,7 +238,6 @@ public:
             if(auto res = tateyama::utils::SerializeDelimitedToOstream(body, std::addressof(ss_body)); ! res) {
                 throw std::runtime_error("error formatting response message");
             }
-            std::cerr << __func__ << ":" << __LINE__ << ":" << name << std::endl;
             responses_.emplace(endpoint_response(ss_head.str(), name, resultset, ss_body.str()));
         }
         std::string_view request_message() {
@@ -267,7 +253,6 @@ public:
 
         std::queue<std::string> requests_;
         std::queue<endpoint_response> responses_;
-        std::array<std::string, response_array_size> bodies_{};
         std::array<tateyama::common::server_wire::server_wire_container::unq_p_resultset_wires_conteiner, response_array_size> resultset_wires_array_;
         std::array<tateyama::common::server_wire::server_wire_container::unq_p_resultset_wire_conteiner, response_array_size> resultset_wire_array_;
         std::string current_request_;
