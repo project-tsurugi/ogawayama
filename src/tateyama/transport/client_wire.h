@@ -176,6 +176,7 @@ public:
             }
             if (expected_ == 2 && received_.load() == 0) {
                 received_++;
+                consumed_++;
             } else {
                 finish_receive();
             }
