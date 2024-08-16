@@ -360,6 +360,7 @@ public:
 
             request_wire_.initialize(req_wire, req_wire->get_bip_address(managed_shared_memory_.get()));
             response_wire_.initialize(res_wire, res_wire->get_bip_address(managed_shared_memory_.get()));
+            status_provider_ = managed_shared_memory_->construct<tateyama::common::wire::status_provider>(tateyama::common::wire::status_provider_name)(managed_shared_memory_.get(), "dummy_mutex_file");
         } catch(const boost::interprocess::interprocess_exception& ex) {
             LOG(ERROR) << ex.what() << " on server_wire_container::server_wire_container()";
             pthread_exit(nullptr);  // FIXME
@@ -410,6 +411,7 @@ private:
     std::unique_ptr<boost::interprocess::managed_shared_memory> managed_shared_memory_{};
     wire_container request_wire_{};
     response_wire_container response_wire_{};
+    tateyama::common::wire::status_provider* status_provider_{};
     bool session_closed_{false};
     std::mutex mtx_shm_{};
 };
