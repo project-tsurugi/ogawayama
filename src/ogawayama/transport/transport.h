@@ -60,7 +60,7 @@ class transport {
 public:
     transport() = delete;
 
-    explicit transport(tateyama::common::wire::session_wire_container& wire) : wire_(wire) {
+    explicit transport(tateyama::common::wire::session_wire_container& wire) : wire_(wire), status_provider_(wire_.get_status_provider()) {
         header_.set_service_message_version_major(HEADER_MESSAGE_VERSION_MAJOR);
         header_.set_service_message_version_minor(HEADER_MESSAGE_VERSION_MINOR);
         header_.set_service_id(SERVICE_ID_SQL);
@@ -333,6 +333,7 @@ public:
 
 private:
     tateyama::common::wire::session_wire_container& wire_;
+    tateyama::common::wire::status_provider &status_provider_;
     ::tateyama::proto::framework::request::Header header_{};
     ::tateyama::proto::framework::request::Header bridge_header_{};
     ::jogasaki::proto::sql::common::Session session_{};
@@ -414,9 +415,9 @@ private:
                     wire_.receive(response_message, slot_index);
                     break;
                 } catch (std::runtime_error &e) {
-//                    if (status_info_->alive()) {  // FIXME alive check
-//                        continue;
-//                    }
+                    if (status_provider_.is_alive().empty()) {
+                        continue;
+                    }
                     std::cerr << e.what() << std::endl;
                     return std::nullopt;
                 }
@@ -492,9 +493,9 @@ private:
                 wire_.receive(response_message, slot_index);
                 break;
             } catch (std::runtime_error &e) {
-//                    if (status_info_->alive()) {  // FIXME alive check
-//                        continue;
-//                    }
+                if (status_provider_.is_alive().empty()) {
+                    continue;
+                }
                 std::cerr << e.what() << std::endl;
                 return std::nullopt;
             }

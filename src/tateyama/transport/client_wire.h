@@ -54,14 +54,23 @@ public:
                 current_wire_ = active_wire();
             }
             if (current_wire_ != nullptr) {
-                std::string_view extrusion{};
-                auto rtnv = current_wire_->get_chunk(current_wire_->get_bip_address(managed_shm_ptr_), extrusion);
-                if (extrusion.length() == 0) {
-                    return rtnv;
+                while (true) {
+                    try {
+                        std::string_view extrusion{};
+                        auto rtnv = current_wire_->get_chunk(current_wire_->get_bip_address(managed_shm_ptr_), extrusion);
+                        if (extrusion.length() == 0) {
+                            return rtnv;
+                        }
+                        wrap_around_ = rtnv;
+                        wrap_around_ += extrusion;
+                        return wrap_around_;
+                    } catch (std::runtime_error &ex) {
+                        if (auto err = envelope_->get_status_provider().is_alive(); !err.empty()) {
+                            throw ex;  // FIXME handle this
+                        }
+                        continue;
+                    }
                 }
-                wrap_around_ = rtnv;
-                wrap_around_ += extrusion;
-                return wrap_around_;
             }
             return {nullptr, 0};
         }
@@ -119,7 +128,8 @@ public:
     class response_wire_container {
     public:
         response_wire_container() = default;
-        response_wire_container(unidirectional_response_wire* wire, char* bip_buffer) noexcept : wire_(wire), bip_buffer_(bip_buffer) {};
+        response_wire_container(session_wire_container* envelope, unidirectional_response_wire* wire, char* bip_buffer) noexcept
+            : envelope_(envelope), wire_(wire), bip_buffer_(bip_buffer) {};
         [[nodiscard]] response_header::length_type get_length() const noexcept {
             return wire_->get_length();
         }
@@ -137,11 +147,21 @@ public:
         }
 
     private:
+        session_wire_container* envelope_{};
         unidirectional_response_wire* wire_{};
         char* bip_buffer_{};
 
         response_header await() {
-            return wire_->await(bip_buffer_);
+            while (true) {
+                try {
+                    return wire_->await(bip_buffer_);
+                } catch (std::runtime_error &ex) {
+                    if (auto err = envelope_->get_status_provider().is_alive(); !err.empty()) {
+                        throw ex;  // FIXME handle this
+                    }
+                    continue;
+                }
+            }
         }
 
         friend class session_wire_container;
@@ -216,11 +236,12 @@ public:
             managed_shared_memory_ = std::make_unique<boost::interprocess::managed_shared_memory>(boost::interprocess::open_only, db_name_.c_str());
             auto req_wire = managed_shared_memory_->find<unidirectional_message_wire>(request_wire_name).first;
             auto res_wire = managed_shared_memory_->find<unidirectional_response_wire>(response_wire_name).first;
-            if (req_wire == nullptr || res_wire == nullptr) {
+            status_provider_ = managed_shared_memory_->find<status_provider>(status_provider_name).first;
+            if (req_wire == nullptr || res_wire == nullptr || status_provider_ == nullptr) {
                 throw std::runtime_error("cannot find the session wire");
             }
             request_wire_ = request_wire_container(req_wire, req_wire->get_bip_address(managed_shared_memory_.get()));
-            response_wire_ = response_wire_container(res_wire, res_wire->get_bip_address(managed_shared_memory_.get()));
+            response_wire_ = response_wire_container(this, res_wire, res_wire->get_bip_address(managed_shared_memory_.get()));
         }
         catch(const boost::interprocess::interprocess_exception& ex) {
             throw std::runtime_error("cannot find a session with the specified name");
@@ -308,11 +329,16 @@ public:
         return std::make_unique<resultset_wires_container>(this);
     }
 
+    status_provider& get_status_provider() {
+        return *status_provider_;
+    }
+
 private:
     std::string db_name_;
     std::unique_ptr<boost::interprocess::managed_shared_memory> managed_shared_memory_{};
     request_wire_container request_wire_{};
     response_wire_container response_wire_{};
+    status_provider* status_provider_{};
     std::array<slot, slot_size> slot_status_{};
     std::mutex mtx_send_{};
     std::mutex mtx_receive_{};
