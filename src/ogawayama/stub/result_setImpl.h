@@ -28,7 +28,7 @@ namespace ogawayama::stub {
 class ResultSet::Impl
 {
 public:
-    Impl(Transaction::Impl*, std::unique_ptr<tateyama::common::wire::session_wire_container::resultset_wires_container>, ::jogasaki::proto::sql::response::ResultSetMetadata, std::size_t query_index);
+    Impl(Transaction::Impl*, std::unique_ptr<tateyama::bootstrap::wire::transport::resultset_wire_wrapper>, ::jogasaki::proto::sql::response::ResultSetMetadata, std::size_t query_index);
     ~Impl();
 
     Impl(const Impl&) = delete;
@@ -43,7 +43,7 @@ public:
 
  private:
     Transaction::Impl* manager_;
-    std::unique_ptr<tateyama::common::wire::session_wire_container::resultset_wires_container> resultset_wire_;
+    std::unique_ptr<tateyama::bootstrap::wire::transport::resultset_wire_wrapper> resultset_wire_;
     ::jogasaki::proto::sql::response::ResultSetMetadata metadata_;
     std::size_t column_number_;
     std::size_t query_index_;

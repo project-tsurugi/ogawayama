@@ -58,6 +58,33 @@ class transport {
     constexpr static std::uint32_t EXPIRATION_SECONDS = 60;
 
 public:
+    class resultset_wire_wrapper {
+    public:
+        resultset_wire_wrapper(transport* envelope, std::unique_ptr<tateyama::common::wire::session_wire_container::resultset_wires_container> rw ) :
+            envelope_(envelope),
+            wire_(std::move(rw)) {
+        }
+        std::string_view get_chunk() {
+            while (true) {
+                try {
+                    return wire_->get_chunk();
+                } catch (std::runtime_error &e) {
+                    if (envelope_->status_provider_.is_alive().empty()) {
+                        continue;
+                    }
+                    std::cerr << e.what() << std::endl;
+                    return {};
+                }
+            }
+        }
+        void dispose() {
+            wire_->dispose();
+        }
+    private:
+        transport* envelope_;
+        std::unique_ptr<tateyama::common::wire::session_wire_container::resultset_wires_container> wire_;
+    };
+
     transport() = delete;
 
     explicit transport(tateyama::common::wire::session_wire_container& wire) : wire_(wire), status_provider_(wire_.get_status_provider()) {
@@ -307,11 +334,11 @@ public:
         closed_ = true;
     }
 
-    std::unique_ptr<tateyama::common::wire::session_wire_container::resultset_wires_container> create_resultset_wire(std::string_view name) {
+    std::unique_ptr<resultset_wire_wrapper> create_resultset_wire(std::string_view name) {
         auto rw = wire_.create_resultset_wire();
         try {
             rw->connect(name);
-            return rw;
+            return std::make_unique<resultset_wire_wrapper>(this, std::move(rw));
         } catch (std::runtime_error& e) {
             std::cerr << e.what() << std::endl;
         }
