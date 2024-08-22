@@ -19,13 +19,9 @@
 
 #include <gtest/gtest.h>
 #include <glog/logging.h>
-#include <ogawayama/logging.h>
 
 #include <unordered_map>
-#include <jogasaki/api.h>
 #include <ogawayama/stub/api.h>
-#include <ogawayama/bridge/service.h>
-#include <tateyama/framework/server.h>
 #include <tateyama/utils/protobuf_utils.h>
 #include <jogasaki/proto/sql/common.pb.h>
 #include <jogasaki/proto/sql/request.pb.h>

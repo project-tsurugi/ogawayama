@@ -23,7 +23,6 @@
 #include <thread>
 
 #include <glog/logging.h>
-#include <tateyama/logging.h>
 
 #include "tateyama/transport/wire.h"
 
