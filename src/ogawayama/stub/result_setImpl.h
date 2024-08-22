@@ -1,5 +1,5 @@
 /*
- * Copyright 2019-2023 Project Tsurugi.
+ * Copyright 2019-2024 Project Tsurugi.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -28,7 +28,7 @@ namespace ogawayama::stub {
 class ResultSet::Impl
 {
 public:
-    Impl(Transaction::Impl*, std::unique_ptr<tateyama::bootstrap::wire::transport::resultset_wire_wrapper>, ::jogasaki::proto::sql::response::ResultSetMetadata, std::size_t query_index);
+    Impl(Transaction::Impl*, std::unique_ptr<tateyama::common::wire::session_wire_container::resultset_wires_container>, ::jogasaki::proto::sql::response::ResultSetMetadata, std::size_t query_index);
     ~Impl();
 
     Impl(const Impl&) = delete;
@@ -43,7 +43,7 @@ public:
 
  private:
     Transaction::Impl* manager_;
-    std::unique_ptr<tateyama::bootstrap::wire::transport::resultset_wire_wrapper> resultset_wire_;
+    std::unique_ptr<tateyama::common::wire::session_wire_container::resultset_wires_container> resultset_wire_;
     ::jogasaki::proto::sql::response::ResultSetMetadata metadata_;
     std::size_t column_number_;
     std::size_t query_index_;

@@ -1,5 +1,5 @@
 /*
- * Copyright 2019-2023 Project Tsurugi.
+ * Copyright 2019-2024 Project Tsurugi.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -21,7 +21,7 @@
 
 namespace ogawayama::stub {
 
-ResultSet::Impl::Impl(Transaction::Impl* manager, std::unique_ptr<tateyama::bootstrap::wire::transport::resultset_wire_wrapper> resultset_wire, ::jogasaki::proto::sql::response::ResultSetMetadata metadata, std::size_t query_index)
+ResultSet::Impl::Impl(Transaction::Impl* manager, std::unique_ptr<tateyama::common::wire::session_wire_container::resultset_wires_container> resultset_wire, ::jogasaki::proto::sql::response::ResultSetMetadata metadata, std::size_t query_index)
     : manager_(manager),
       resultset_wire_(std::move(resultset_wire)),
       metadata_(std::move(metadata)),

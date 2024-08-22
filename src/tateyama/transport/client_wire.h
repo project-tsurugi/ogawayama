@@ -1,5 +1,5 @@
 /*
- * Copyright 2019-2023 Project Tsurugi.
+ * Copyright 2019-2024 Project Tsurugi.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -47,15 +47,15 @@ public:
             }
         }
         std::string_view get_chunk() {
-            if (!wrap_around_.empty()) {
-                wrap_around_.clear();
-            }
-            if (current_wire_ == nullptr) {
-                current_wire_ = active_wire();
-            }
-            if (current_wire_ != nullptr) {
-                while (true) {
-                    try {
+            while (true) {
+                try {
+                    if (!wrap_around_.empty()) {
+                        wrap_around_.clear();
+                    }
+                    if (current_wire_ == nullptr) {
+                        current_wire_ = active_wire();
+                    }
+                    if (current_wire_ != nullptr) {
                         std::string_view extrusion{};
                         auto rtnv = current_wire_->get_chunk(current_wire_->get_bip_address(managed_shm_ptr_), extrusion);
                         if (extrusion.length() == 0) {
@@ -64,15 +64,16 @@ public:
                         wrap_around_ = rtnv;
                         wrap_around_ += extrusion;
                         return wrap_around_;
-                    } catch (std::runtime_error &ex) {
-                        if (auto err = envelope_->get_status_provider().is_alive(); !err.empty()) {
-                            throw ex;  // FIXME handle this
-                        }
+                    }
+                    return {nullptr, 0};
+                } catch (std::runtime_error &ex) {
+                    if (envelope_->get_status_provider().is_alive().empty()) {
                         continue;
                     }
+                    std::cerr << ex.what() << std::endl;
+                    throw ex;
                 }
             }
-            return {nullptr, 0};
         }
         void dispose() {
             if (current_wire_ != nullptr) {
@@ -317,6 +318,10 @@ public:
                 using_wire_.store(false);
                 cnd_receive_.notify_all();
             } catch (std::runtime_error& ex) {
+                if (status_provider_->is_alive().empty()) {
+                    continue;
+                }
+                std::cerr << ex.what() << std::endl;
                 using_wire_.store(false);
                 cnd_receive_.notify_all();
                 throw ex;

@@ -58,36 +58,9 @@ class transport {
     constexpr static std::uint32_t EXPIRATION_SECONDS = 60;
 
 public:
-    class resultset_wire_wrapper {
-    public:
-        resultset_wire_wrapper(transport* envelope, std::unique_ptr<tateyama::common::wire::session_wire_container::resultset_wires_container> rw ) :
-            envelope_(envelope),
-            wire_(std::move(rw)) {
-        }
-        std::string_view get_chunk() {
-            while (true) {
-                try {
-                    return wire_->get_chunk();
-                } catch (std::runtime_error &e) {
-                    if (envelope_->status_provider_.is_alive().empty()) {
-                        continue;
-                    }
-                    std::cerr << e.what() << std::endl;
-                    return {};
-                }
-            }
-        }
-        void dispose() {
-            wire_->dispose();
-        }
-    private:
-        transport* envelope_;
-        std::unique_ptr<tateyama::common::wire::session_wire_container::resultset_wires_container> wire_;
-    };
-
     transport() = delete;
 
-    explicit transport(tateyama::common::wire::session_wire_container& wire) : wire_(wire), status_provider_(wire_.get_status_provider()) {
+    explicit transport(tateyama::common::wire::session_wire_container& wire) : wire_(wire) {
         header_.set_service_message_version_major(HEADER_MESSAGE_VERSION_MAJOR);
         header_.set_service_message_version_minor(HEADER_MESSAGE_VERSION_MINOR);
         header_.set_service_id(SERVICE_ID_SQL);
@@ -334,11 +307,11 @@ public:
         closed_ = true;
     }
 
-    std::unique_ptr<resultset_wire_wrapper> create_resultset_wire(std::string_view name) {
+    std::unique_ptr<tateyama::common::wire::session_wire_container::resultset_wires_container> create_resultset_wire(std::string_view name) {
         auto rw = wire_.create_resultset_wire();
         try {
             rw->connect(name);
-            return std::make_unique<resultset_wire_wrapper>(this, std::move(rw));
+            return rw;
         } catch (std::runtime_error& e) {
             std::cerr << e.what() << std::endl;
         }
@@ -360,7 +333,6 @@ public:
 
 private:
     tateyama::common::wire::session_wire_container& wire_;
-    tateyama::common::wire::status_provider &status_provider_;
     ::tateyama::proto::framework::request::Header header_{};
     ::tateyama::proto::framework::request::Header bridge_header_{};
     ::jogasaki::proto::sql::common::Session session_{};
@@ -437,18 +409,8 @@ private:
     std::optional<T> receive(tateyama::common::wire::message_header::index_type slot_index) { //NOLINT(readability-function-cognitive-complexity)
         while (true) {
             std::string response_message{};
-            while (true) {
-                try {
-                    wire_.receive(response_message, slot_index);
-                    break;
-                } catch (std::runtime_error &e) {
-                    if (status_provider_.is_alive().empty()) {
-                        continue;
-                    }
-                    std::cerr << e.what() << std::endl;
-                    return std::nullopt;
-                }
-            }
+            wire_.receive(response_message, slot_index);
+
             ::tateyama::proto::framework::response::Header header{};
             google::protobuf::io::ArrayInputStream in{response_message.data(), static_cast<int>(response_message.length())};
             if(auto res = tateyama::utils::ParseDelimitedFromZeroCopyStream(std::addressof(header), std::addressof(in), nullptr); ! res) {
@@ -514,19 +476,7 @@ private:
 
     std::optional<std::string> receive(tateyama::common::wire::message_header::index_type slot_index) {
         std::string response_message{};
-
-        while (true) {
-            try {
-                wire_.receive(response_message, slot_index);
-                break;
-            } catch (std::runtime_error &e) {
-                if (status_provider_.is_alive().empty()) {
-                    continue;
-                }
-                std::cerr << e.what() << std::endl;
-                return std::nullopt;
-            }
-        }
+        wire_.receive(response_message, slot_index);
 
         ::tateyama::proto::framework::response::Header header{};
         google::protobuf::io::ArrayInputStream in{response_message.data(), static_cast<int>(response_message.length())};
