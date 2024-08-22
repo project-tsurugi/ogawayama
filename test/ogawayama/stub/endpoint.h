@@ -27,16 +27,13 @@
 #include <glog/logging.h>
 
 #include <unordered_map>
-#include <jogasaki/api.h>
 #include <ogawayama/stub/api.h>
-#include <ogawayama/bridge/service.h>
-#include <tateyama/framework/server.h>
 #include <tateyama/utils/protobuf_utils.h>
-#include <tateyama/framework/component_ids.h>
 #include <jogasaki/proto/sql/common.pb.h>
 #include <jogasaki/proto/sql/request.pb.h>
 #include <jogasaki/proto/sql/response.pb.h>
 
+#include "tateyama/framework/component_ids.h"
 #include "server_wires_impl.h"
 #include "endpoint_proto_utils.h"
 #include "ogawayama/stub/stubImpl.h"

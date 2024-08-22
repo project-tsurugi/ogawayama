@@ -17,9 +17,6 @@
 
 #include <string_view>
 
-#include <tateyama/api/server/request.h>
-
-#include "tateyama/framework/component_ids.h"
 #include <tateyama/proto/framework/request.pb.h>
 #include <tateyama/proto/framework/response.pb.h>
 #include <tateyama/utils/protobuf_utils.h>

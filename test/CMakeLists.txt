@@ -21,9 +21,6 @@ register_tests(
     TARGET stub
     DEPENDS
       message-manager-interface
-      jogasaki-${SHARKSFIN_IMPLEMENTATION}-api
-      tateyama-${SHARKSFIN_IMPLEMENTATION}-api
-      sharksfin-api
       Boost::serialization
       glog::glog
       gflags::gflags
@@ -34,7 +31,7 @@ register_tests(
       ${CMAKE_SOURCE_DIR}/src
       ${CMAKE_SOURCE_DIR}/include
       ${CMAKE_SOURCE_DIR}/common/include
-      ${CMAKE_SOURCE_DIR}/bridge/include
+      ${CMAKE_SOURCE_DIR}/test/include
       ${CMAKE_BINARY_DIR}/src
 )
 endif()
