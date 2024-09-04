@@ -79,6 +79,7 @@ add_dependencies(stub
 
 set_target_properties(stub
     PROPERTIES
+        INSTALL_RPATH "\$ORIGIN/../lib"
         LIBRARY_OUTPUT_NAME "ogawayama-stub"
 )
 

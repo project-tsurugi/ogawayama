@@ -20,8 +20,10 @@ add_library(bridge
     ${SOURCES}
 )
 
-set_target_properties(bridge PROPERTIES
-    OUTPUT_NAME "ogawayama-bridge-${SHARKSFIN_IMPLEMENTATION}"
+set_target_properties(bridge
+    PROPERTIES
+        INSTALL_RPATH "\$ORIGIN/../lib"
+        OUTPUT_NAME "ogawayama-bridge-${SHARKSFIN_IMPLEMENTATION}"
 )
 
 target_include_directories(bridge

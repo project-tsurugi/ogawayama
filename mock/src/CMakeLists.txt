@@ -27,6 +27,7 @@ target_include_directories(stub-mock
 
 set_target_properties(stub-mock
     PROPERTIES
+        INSTALL_RPATH "\$ORIGIN/../lib"
         LIBRARY_OUTPUT_NAME "ogawayama-stub-mock"
 )
 
