@@ -22,6 +22,7 @@ add_executable(tpcc
 
 set_target_properties(tpcc
     PROPERTIES
+        INSTALL_RPATH "\$ORIGIN/../lib"
         RUNTIME_OUTPUT_NAME "ogawayama-tpcc"
 )
 
