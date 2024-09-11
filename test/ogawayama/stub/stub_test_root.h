@@ -26,6 +26,7 @@
 #include <jogasaki/proto/sql/common.pb.h>
 #include <jogasaki/proto/sql/request.pb.h>
 #include <jogasaki/proto/sql/response.pb.h>
+#include <tateyama/proto/framework/response.pb.h>
 
 #include "server_wires_impl.h"
 #include "endpoint_proto_utils.h"
@@ -41,10 +42,13 @@ class server {
     constexpr static std::string_view resultset_name_prefix = "resultset_for_test_";  // NOLINT
 
 public:
-    server(std::string name) : name_(name), endpoint_(name_) {
+    server(std::string name) : name_(name), endpoint_(name_), thread_(std::thread(std::ref(endpoint_))) {
     }
     ~server() {
         endpoint_.terminate();
+        if (thread_.joinable()) {
+            thread_.join();
+        }
         remove_shm();
     }
 
@@ -95,6 +99,7 @@ private:
     std::string name_;
     endpoint endpoint_;
     std::size_t resultset_number_{};
+    std::thread thread_;
 
     void remove_shm() {
         std::string cmd = "if [ -f /dev/shm/" + name_ + " ]; then rm -f /dev/shm/" + name_ + "*; fi";
@@ -131,6 +136,10 @@ inline void server::response_message<jogasaki::proto::sql::response::ExecuteResu
     r.set_allocated_execute_result(&er);
     endpoint_.get_worker()->response_message(r);
     (void) r.release_execute_result();
+}
+template<>
+inline void server::response_message<tateyama::proto::framework::response::Header>(tateyama::proto::framework::response::Header& h) {
+    endpoint_.framework_error(h);
 }
 
 }  // namespace ogawayama::testing

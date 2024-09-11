@@ -98,13 +98,8 @@ class endpoint {
 public:
     class worker {
       public:
-        worker(std::string session_id, std::unique_ptr<tateyama::common::server_wire::server_wire_container> wire, std::function<void(void)> clean_up)
-            : session_id_(session_id), wire_(std::move(wire)), clean_up_(std::move(clean_up)), thread_(std::thread(std::ref(*this))) {
-        }
-        ~worker() {
-            if (thread_.joinable()) {
-                thread_.join();
-            }
+        worker(std::string session_id, std::unique_ptr<tateyama::common::server_wire::server_wire_container> wire, std::function<void(void)> clean_up, endpoint* ep)
+            : session_id_(session_id), wire_(std::move(wire)), clean_up_(std::move(clean_up)), endpoint_(ep) {
         }
         void operator()() {
             while(true) {
@@ -116,6 +111,10 @@ public:
                 wire_->get_request_wire()->read(message.data());
 
                 {
+                    if (endpoint_->framework_error_) {
+                        send_framework_error(index);
+                        continue;
+                    }
                     ::tateyama::proto::framework::request::Header req_header{};
                     google::protobuf::io::ArrayInputStream in{message.data(), static_cast<int>(message.length())};
                     if(auto res = tateyama::utils::ParseDelimitedFromZeroCopyStream(std::addressof(req_header), std::addressof(in), nullptr); ! res) {
@@ -124,6 +123,7 @@ public:
                     if (auto service_id = req_header.service_id(); service_id == tateyama::framework::service_id_fdw) {
                         std::stringstream ss{};
                         ::tateyama::proto::framework::response::Header header{};
+                        header.set_payload_type(tateyama::proto::framework::response::Header_PayloadType::Header_PayloadType_SERVICE_RESULT);
                         if(auto res = tateyama::utils::SerializeDelimitedToOstream(header, std::addressof(ss)); ! res) {
                             throw std::runtime_error("error formatting response message");
                         }
@@ -140,6 +140,7 @@ public:
                     } else if (service_id == tateyama::framework::service_id_endpoint_broker) {
                         std::stringstream ss{};
                         ::tateyama::proto::framework::response::Header header{};
+                        header.set_payload_type(tateyama::proto::framework::response::Header_PayloadType::Header_PayloadType_SERVICE_RESULT);
                         if(auto res = tateyama::utils::SerializeDelimitedToOstream(header, std::addressof(ss)); ! res) {
                             throw std::runtime_error("error formatting response message");
                         }
@@ -157,6 +158,7 @@ public:
                     } else if (service_id == tateyama::framework::service_id_routing) {
                         std::stringstream ss{};
                         ::tateyama::proto::framework::response::Header header{};
+                        header.set_payload_type(tateyama::proto::framework::response::Header_PayloadType::Header_PayloadType_SERVICE_RESULT);
                         if(auto res = tateyama::utils::SerializeDelimitedToOstream(header, std::addressof(ss)); ! res) {
                             throw std::runtime_error("error formatting response message");
                         }
@@ -173,6 +175,7 @@ public:
                     }
                 }
 
+                // handle SQL
                 requests_.push(message);
                 auto reply = responses_.front();
                 responses_.pop();
@@ -210,6 +213,7 @@ public:
         void response_message(const jogasaki::proto::sql::response::Response& message) {
             std::stringstream ss{};
             ::tateyama::proto::framework::response::Header header{};
+            header.set_payload_type(tateyama::proto::framework::response::Header_PayloadType::Header_PayloadType_SERVICE_RESULT);
             if(auto res = tateyama::utils::SerializeDelimitedToOstream(header, std::addressof(ss)); ! res) {
                 throw std::runtime_error("error formatting response message");
             }
@@ -221,6 +225,7 @@ public:
         void response_message(const jogasaki::proto::sql::response::Response& head, std::string_view name, std::queue<std::string>& resultset, const jogasaki::proto::sql::response::Response& body) {
             std::stringstream ss_head{};
             ::tateyama::proto::framework::response::Header header{};
+            header.set_payload_type(tateyama::proto::framework::response::Header_PayloadType::Header_PayloadType_SERVICE_RESULT);
             if(auto res = tateyama::utils::SerializeDelimitedToOstream(header, std::addressof(ss_head)); ! res) {
                 throw std::runtime_error("error formatting response message");
             }
@@ -246,17 +251,33 @@ public:
         std::string session_id_;
         std::unique_ptr<tateyama::common::server_wire::server_wire_container> wire_;
         std::function<void(void)> clean_up_;
-        std::thread thread_;
+        endpoint* endpoint_;
 
         std::queue<std::string> requests_;
         std::queue<endpoint_response> responses_;
         std::array<tateyama::common::server_wire::server_wire_container::unq_p_resultset_wires_conteiner, response_array_size> resultset_wires_array_;
         std::array<tateyama::common::server_wire::server_wire_container::unq_p_resultset_wire_conteiner, response_array_size> resultset_wire_array_;
         std::string current_request_;
+
+        void send_framework_error(int index) {
+            std::stringstream ss{};
+            if(auto res = tateyama::utils::SerializeDelimitedToOstream(endpoint_->framework_header_, std::addressof(ss)); ! res) {
+                throw std::runtime_error("error formatting response message");
+            }
+            std::ostringstream ofs;
+            boost::archive::binary_oarchive oa(ofs);
+            oa << ERROR_CODE::OK;
+            std::string code = ofs.str();
+            if(auto res = tateyama::utils::PutDelimitedBodyToOstream(code, std::addressof(ss)); ! res) {
+                throw std::runtime_error("error formatting response message");
+            }
+            auto reply_message = ss.str();
+            wire_->get_response_wire().write(reply_message.data(), tateyama::common::wire::response_header(index, reply_message.length(), RESPONSE_BODY));
+        }
     };
 
     endpoint(std::string name)
-        : name_(name), container_(std::make_unique<tateyama::common::server_wire::connection_container>(name_, 1)), thread_(std::thread(std::ref(*this))) {
+        : name_(name), container_(std::make_unique<tateyama::common::server_wire::connection_container>(name_, 1)) {
     }
     ~endpoint() {
         if (thread_.joinable()) {
@@ -289,13 +310,18 @@ public:
             connection_queue.accept(index, session_id);
             try {
                 std::unique_lock<std::mutex> lk(mutex_);
-                worker_ = std::make_unique<worker>(session_name, std::move(wire), [&connection_queue, index](){ connection_queue.disconnect(index); });
+                worker_ = std::make_unique<worker>(session_name, std::move(wire), [&connection_queue, index](){ connection_queue.disconnect(index); }, this);
+                thread_ = std::thread(std::ref(*worker_));
                 condition_.notify_all();
             } catch (std::exception& ex) {
                 LOG(ERROR) << ex.what();
                 break;
             }
         }
+    }
+    void framework_error(::tateyama::proto::framework::response::Header& h) {
+        framework_error_ = true;
+        framework_header_ = h;
     }
     void terminate() {
         container_->get_connection_queue().request_terminate();
@@ -308,6 +334,8 @@ private:
     std::unique_ptr<worker> worker_{};
     std::mutex mutex_{};
     std::condition_variable condition_{};
+    bool framework_error_{};
+    ::tateyama::proto::framework::response::Header framework_header_{};
 };
 
 }  // namespace ogawayama::testing

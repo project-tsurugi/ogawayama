@@ -114,7 +114,9 @@ public:
         if (response_opt) {
             auto response_message = response_opt.value();
             if (response_message.has_begin()) {
-                return response_message.begin();
+                auto response = response_message.begin();
+                sql_error_ = response.has_error() ? response.error() : ::jogasaki::proto::sql::response::Error{};
+                return response;
             }
         }
         return std::nullopt;
@@ -134,7 +136,9 @@ public:
         if (response_opt) {
             auto response_message = response_opt.value();
             if (response_message.has_prepare()) {
-                return response_message.prepare();
+                auto response = response_message.prepare();
+                sql_error_ = response.has_error() ? response.error() : ::jogasaki::proto::sql::response::Error{};
+                return response;
             }
         }
         return std::nullopt;
@@ -143,7 +147,7 @@ public:
 /**
  * @brief send a execute statement request to the sql service.
  * @param execute_statement_request a execute statement request message in ::jogasaki::proto::sql::request::ExecuteStatement
- * @return std::optional of ::jogasaki::proto::sql::request::ResultOnly
+ * @return std::optional of ::jogasaki::proto::sql::request::ExecuteResult
  */
     std::optional<::jogasaki::proto::sql::response::ExecuteResult> send(::jogasaki::proto::sql::request::ExecuteStatement& execute_statement_request) {
         tateyama::common::wire::message_header::index_type slot_index{};
@@ -154,7 +158,9 @@ public:
         if (response_opt) {
             auto response_message = response_opt.value();
             if (response_message.has_execute_result()) {
-                return response_message.execute_result();
+                auto response = response_message.execute_result();
+                sql_error_ = response.has_error() ? response.error() : ::jogasaki::proto::sql::response::Error{};
+                return response;
             }
         }
         return std::nullopt;
@@ -163,7 +169,7 @@ public:
 /**
  * @brief send a execute statement request to the sql service.
  * @param execute_statement_request a execute statement request message in ::jogasaki::proto::sql::request::ExecutePreparedStatement
- * @return std::optional of ::jogasaki::proto::sql::request::ResultOnly
+ * @return std::optional of ::jogasaki::proto::sql::request::ExecuteResult
  */
     std::optional<::jogasaki::proto::sql::response::ExecuteResult> send(::jogasaki::proto::sql::request::ExecutePreparedStatement& execute_statement_request) {
         tateyama::common::wire::message_header::index_type slot_index{};
@@ -174,7 +180,9 @@ public:
         if (response_opt) {
             auto response_message = response_opt.value();
             if (response_message.has_execute_result()) {
-                return response_message.execute_result();
+                auto response = response_message.execute_result();
+                sql_error_ = response.has_error() ? response.error() : ::jogasaki::proto::sql::response::Error{};
+                return response;
             }
         }
         return std::nullopt;
@@ -197,6 +205,8 @@ public:
                 return response_message.execute_query();
             }
             if (response_message.has_result_only()) {
+                const auto& response = response_message.result_only();
+                sql_error_ = response.has_error() ? response.error() : ::jogasaki::proto::sql::response::Error{};
                 throw std::runtime_error("no body_head message");
             }
         }
@@ -219,6 +229,8 @@ public:
                 return response_message.execute_query();
             }
             if (response_message.has_result_only()) {
+                const auto& response = response_message.result_only();
+                sql_error_ = response.has_error() ? response.error() : ::jogasaki::proto::sql::response::Error{};
                 throw std::runtime_error("no body_head message");
             }
         }
@@ -247,7 +259,9 @@ public:
         if (response_opt) {
             auto response_message = response_opt.value();
             if (response_message.has_result_only()) {
-                return response_message.result_only();
+                auto response = response_message.result_only();
+                sql_error_ = response.has_error() ? response.error() : ::jogasaki::proto::sql::response::Error{};
+                return response;
             }
         }
         return std::nullopt;
@@ -331,6 +345,14 @@ public:
         return std::nullopt;
     }
 
+    // used only by connection
+    ::tateyama::proto::framework::response::Header& last_header() {
+        return response_header_;
+    }
+    ::jogasaki::proto::sql::response::Error& last_sql_error() {
+        return sql_error_;
+    }
+
 private:
     tateyama::common::wire::session_wire_container& wire_;
     ::tateyama::proto::framework::request::Header header_{};
@@ -340,7 +362,9 @@ private:
     std::string query_result_for_the_one_{};
     std::vector<std::string> query_results_{};
     bool closed_{};
-    std::unique_ptr<tateyama::common::wire::timer> timer_{};    
+    std::unique_ptr<tateyama::common::wire::timer> timer_{};
+    ::tateyama::proto::framework::response::Header response_header_{};
+    ::jogasaki::proto::sql::response::Error sql_error_{};
 
     template <typename T>
     std::optional<T> send(::jogasaki::proto::sql::request::Request& request, tateyama::common::wire::message_header::index_type& slot_index) {
@@ -411,10 +435,13 @@ private:
             std::string response_message{};
             wire_.receive(response_message, slot_index);
 
-            ::tateyama::proto::framework::response::Header header{};
+            response_header_ = ::tateyama::proto::framework::response::Header{};
             google::protobuf::io::ArrayInputStream in{response_message.data(), static_cast<int>(response_message.length())};
-            if(auto res = tateyama::utils::ParseDelimitedFromZeroCopyStream(std::addressof(header), std::addressof(in), nullptr); ! res) {
+            if(auto res = tateyama::utils::ParseDelimitedFromZeroCopyStream(std::addressof(response_header_), std::addressof(in), nullptr); ! res) {
                 return std::nullopt;
+            }
+            if (response_header_.payload_type() != ::tateyama::proto::framework::response::Header_PayloadType::Header_PayloadType_SERVICE_RESULT) {
+                throw std::runtime_error("SERVER_DIAGNOSTICS");
             }
             std::string_view payload{};
             if (auto res = tateyama::utils::GetDelimitedBodyFromZeroCopyStream(std::addressof(in), nullptr, payload); ! res) {
@@ -478,10 +505,13 @@ private:
         std::string response_message{};
         wire_.receive(response_message, slot_index);
 
-        ::tateyama::proto::framework::response::Header header{};
+        response_header_ = ::tateyama::proto::framework::response::Header{};
         google::protobuf::io::ArrayInputStream in{response_message.data(), static_cast<int>(response_message.length())};
-        if(auto res = tateyama::utils::ParseDelimitedFromZeroCopyStream(std::addressof(header), std::addressof(in), nullptr); ! res) {
+        if(auto res = tateyama::utils::ParseDelimitedFromZeroCopyStream(std::addressof(response_header_), std::addressof(in), nullptr); ! res) {
             return std::nullopt;
+        }
+        if (response_header_.payload_type() != ::tateyama::proto::framework::response::Header_PayloadType::Header_PayloadType_SERVICE_RESULT) {
+            throw std::runtime_error("SERVER_DIAGNOSTICS");
         }
         std::string_view response{};
         bool eof{};

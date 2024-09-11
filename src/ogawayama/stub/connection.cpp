@@ -1,5 +1,5 @@
 /*
- * Copyright 2019-2023 Project Tsurugi.
+ * Copyright 2019-2024 Project Tsurugi.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -29,6 +29,7 @@
 
 #include <ogawayama/common/bridge.h>
 #include "prepared_statementImpl.h"
+#include "ogawayama/transport/tsurugi_error.h"
 #include "connectionImpl.h"
 
 namespace ogawayama::stub {
@@ -76,17 +77,22 @@ ErrorCode Connection::Impl::hello()
  */
 ErrorCode Connection::Impl::begin(TransactionPtr& transaction)
 {
-    ::jogasaki::proto::sql::request::Begin request{};
-    auto response_opt = transport_.send(request);
-    if (!response_opt) {
-        return ErrorCode::SERVER_FAILURE;
+    try {
+        ::jogasaki::proto::sql::request::Begin request{};
+
+        auto response_opt = transport_.send(request);
+        if (!response_opt) {
+            return ErrorCode::SERVER_FAILURE;
+        }
+        auto response_begin = response_opt.value();
+        if (response_begin.has_success()) {
+            transaction = std::make_unique<Transaction>(std::make_unique<Transaction::Impl>(this, transport_, response_begin.success().transaction_handle()));
+            return ErrorCode::OK;
+        }
+        return ErrorCode::SERVER_ERROR;
+    } catch (std::runtime_error &e) {
+        return ErrorCode::SERVER_ERROR;
     }
-    auto response_begin = response_opt.value();
-    if (response_begin.has_success()) {
-        transaction = std::make_unique<Transaction>(std::make_unique<Transaction::Impl>(this, transport_, response_begin.success().transaction_handle()));
-        return ErrorCode::OK;
-    }
-    return ErrorCode::SERVER_FAILURE;
 }
 
 /**
@@ -143,16 +149,20 @@ ErrorCode Connection::Impl::begin(const boost::property_tree::ptree& option, Tra
         }
     }
 
-    auto response_opt = transport_.send(request);
-    if (!response_opt) {
+    try {
+        auto response_opt = transport_.send(request);
+        if (!response_opt) {
+            return ErrorCode::SERVER_FAILURE;
+        }
+        auto response_begin = response_opt.value();
+        if (response_begin.has_success()) {
+            transaction = std::make_unique<Transaction>(std::make_unique<Transaction::Impl>(this, transport_, response_begin.success().transaction_handle()));
+            return ErrorCode::OK;
+        }
         return ErrorCode::SERVER_FAILURE;
+    } catch (std::runtime_error &e) {
+        return ErrorCode::SERVER_ERROR;
     }
-    auto response_begin = response_opt.value();
-    if (response_begin.has_success()) {
-        transaction = std::make_unique<Transaction>(std::make_unique<Transaction::Impl>(this, transport_, response_begin.success().transaction_handle()));
-        return ErrorCode::OK;
-    }
-    return ErrorCode::SERVER_FAILURE;
 }
 
 /**
@@ -207,19 +217,23 @@ ErrorCode Connection::Impl::prepare(std::string_view sql, const placeholders_typ
         }
     }
 
-    auto response_opt = transport_.send(request);
-    if (!response_opt) {
-        return ErrorCode::SERVER_FAILURE;
+    try {
+        auto response_opt = transport_.send(request);
+        if (!response_opt) {
+            return ErrorCode::SERVER_FAILURE;
+        }
+        auto response_prepare = response_opt.value();
+        if (response_prepare.has_prepared_statement_handle()) {
+            auto& psh = response_prepare.prepared_statement_handle();
+            std::size_t id = psh.handle();
+            bool has_result_records = psh.has_result_records();
+            prepared = std::make_unique<PreparedStatement>(std::make_unique<PreparedStatement::Impl>(this, id, has_result_records));
+            return ErrorCode::OK;
+        }
+        return ErrorCode::SERVER_ERROR;
+    } catch (std::runtime_error &e) {
+        return ErrorCode::SERVER_ERROR;
     }
-    auto response_prepare = response_opt.value();
-    if (response_prepare.has_prepared_statement_handle()) {
-        auto& psh = response_prepare.prepared_statement_handle();
-        std::size_t id = psh.handle();
-        bool has_result_records = psh.has_result_records();
-        prepared = std::make_unique<PreparedStatement>(std::make_unique<PreparedStatement::Impl>(this, id, has_result_records));
-        return ErrorCode::OK;
-    }
-    return ErrorCode::SERVER_FAILURE;
 }
 
 static inline
@@ -448,6 +462,42 @@ ErrorCode Connection::Impl::end_ddl()
     return ERROR_CODE::SERVER_FAILURE;  // service returns std::nullopt
 }
 
+static inline bool handle_sql_error(ogawayama::stub::tsurugi_error_code& code, ::jogasaki::proto::sql::response::Error& sql_error) {
+    if (auto itr = ogawayama::transport::error_map.find(sql_error.code()); itr != ogawayama::transport::error_map.end()) {
+        code.code = itr->second.second;
+        code.name = itr->second.first;
+        code.detail = sql_error.detail();
+        code.supplemental_text = sql_error.supplemental_text();
+        return true;
+    }
+    return false;
+}
+
+/**
+ * @brief get the error of the last SQL executed
+ */
+ErrorCode Connection::Impl::tsurugi_error(tsurugi_error_code& code)
+{
+    switch(transport_.last_header().payload_type()) {
+    case ::tateyama::proto::framework::response::Header_PayloadType::Header_PayloadType_UNKNOWN:
+        return ErrorCode::UNKNOWN;
+    case ::tateyama::proto::framework::response::Header_PayloadType::Header_PayloadType_SERVER_DIAGNOSTICS:
+        code.type = tsurugi_error_code::tsurugi_error_type::framework_error;
+        return ErrorCode::OK;
+    case ::tateyama::proto::framework::response::Header_PayloadType::Header_PayloadType_SERVICE_RESULT:
+        break;
+    }
+
+    auto sql_error = transport_.last_sql_error();
+    if (sql_error.code() == ::jogasaki::proto::sql::error::Code::CODE_UNSPECIFIED) {
+        code.type = tsurugi_error_code::tsurugi_error_type::none;
+        return ErrorCode::OK;
+    }
+    if (handle_sql_error(code, sql_error)) {
+        return ErrorCode::OK;
+    }
+    return ErrorCode::UNKNOWN;
+}
 
 /**
  * @brief constructor of Connection class
@@ -526,6 +576,14 @@ manager::message::Status Connection::receive_drop_index(const manager::metadata:
 {
     ErrorCode reply = impl_->drop_index(static_cast<std::size_t>(object_id));
     return {reply == ErrorCode::OK ? manager::message::ErrorCode::SUCCESS : manager::message::ErrorCode::FAILURE, static_cast<int>(reply)};
+}
+
+/**
+ * @brief get the error of the last SQL executed
+ */
+ErrorCode Connection::tsurugi_error(tsurugi_error_code& code)
+{
+    return impl_->tsurugi_error(code);
 }
 
 }  // namespace ogawayama::stub

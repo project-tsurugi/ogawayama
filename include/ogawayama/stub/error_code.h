@@ -1,5 +1,5 @@
 /*
- * Copyright 2019-2023 Project Tsurugi.
+ * Copyright 2019-2024 Project Tsurugi.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,6 +14,9 @@
  * limitations under the License.
  */
 #pragma once
+
+#include <cstdint>
+#include <string>
 
 namespace ogawayama::stub {
 
@@ -87,6 +90,10 @@ enum class ErrorCode {
      */
     TRANSACTION_ALREADY_STARTED,
 
+    /**
+     * @brief Encountered server error, where you can obtain error detail with Connection::tsurugi_error() API.
+     */
+    SERVER_ERROR,
 };
 
 constexpr std::string_view error_name(ErrorCode code) {
@@ -106,5 +113,23 @@ constexpr std::string_view error_name(ErrorCode code) {
     default: return "This ERROR_CODE is illegal";
     }
 }
+
+struct tsurugi_error_code {
+  public:
+    enum class tsurugi_error_type : std::int32_t {
+      none = 0,
+      framework_error = 1,
+      sql_error = 2
+    };
+    // SQL or framework error
+    tsurugi_error_type type{};        //NOLINT(misc-non-private-member-variables-in-classes)
+    // see SqlServiceCode.java for SQL error
+    std::uint32_t code{};             //NOLINT(misc-non-private-member-variables-in-classes)
+    std::string name{};               //NOLINT(misc-non-private-member-variables-in-classes)
+    std::string detail{};             //NOLINT(misc-non-private-member-variables-in-classes)
+    std::string supplemental_text{};  //NOLINT(misc-non-private-member-variables-in-classes)
+
+    tsurugi_error_code() = default;
+};
 
 }  // namespace ogawayama::stub
