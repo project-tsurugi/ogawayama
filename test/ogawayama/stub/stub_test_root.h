@@ -70,7 +70,7 @@ public:
         jogasaki::proto::sql::response::Response rb{};
         rb.set_allocated_result_only(&ro);
         // set response
-        endpoint_.get_worker()->response_message(rh, resultset_name, resultset, rb);
+        endpoint_.response_message(rh, resultset_name, resultset, rb);
         // release
         (void) rb.release_result_only();
         (void) rh.release_execute_query();
@@ -78,7 +78,7 @@ public:
     }
 
     std::optional<jogasaki::proto::sql::request::Request> request_message() {
-        auto request_packet = endpoint_.get_worker()->request_message();
+        auto request_packet = endpoint_.request_message();
 
         ::tateyama::proto::framework::request::Header header{};
         google::protobuf::io::ArrayInputStream in{request_packet.data(), static_cast<int>(request_packet.length())};
@@ -113,28 +113,28 @@ template<>
 inline void server::response_message<jogasaki::proto::sql::response::Begin>(jogasaki::proto::sql::response::Begin& b) {
     jogasaki::proto::sql::response::Response r{};
     r.set_allocated_begin(&b);
-    endpoint_.get_worker()->response_message(r);
+    endpoint_.response_message(r);
     (void) r.release_begin();
 }
 template<>
 inline void server::response_message<jogasaki::proto::sql::response::ResultOnly>(jogasaki::proto::sql::response::ResultOnly& ro) {
     jogasaki::proto::sql::response::Response r{};
     r.set_allocated_result_only(&ro);
-    endpoint_.get_worker()->response_message(r);
+    endpoint_.response_message(r);
     (void) r.release_result_only();
 }
 template<>
 inline void server::response_message<jogasaki::proto::sql::response::Prepare>(jogasaki::proto::sql::response::Prepare& p) {
     jogasaki::proto::sql::response::Response r{};
     r.set_allocated_prepare(&p);
-    endpoint_.get_worker()->response_message(r);
+    endpoint_.response_message(r);
     (void) r.release_prepare();
 }
 template<>
 inline void server::response_message<jogasaki::proto::sql::response::ExecuteResult>(jogasaki::proto::sql::response::ExecuteResult& er) {
     jogasaki::proto::sql::response::Response r{};
     r.set_allocated_execute_result(&er);
-    endpoint_.get_worker()->response_message(r);
+    endpoint_.response_message(r);
     (void) r.release_execute_result();
 }
 template<>
