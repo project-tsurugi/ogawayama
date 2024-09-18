@@ -66,6 +66,7 @@ TEST_F(ErrorTest, begin) {
         ogawayama::stub::tsurugi_error_code code{};
         EXPECT_EQ(ERROR_CODE::OK, connection->tsurugi_error(code));
 
+        EXPECT_EQ(code.type, ogawayama::stub::tsurugi_error_code::tsurugi_error_type::sql_error);
         EXPECT_EQ(code.code, 1000); // 1000 corresponds to SQL_SERVICE_EXCEPTION
         EXPECT_EQ(code.name, "SQL_SERVICE_EXCEPTION");
         EXPECT_EQ(code.detail, "sql_error_for_test");
@@ -104,6 +105,7 @@ TEST_F(ErrorTest, prepare) {
         ogawayama::stub::tsurugi_error_code code{};
         EXPECT_EQ(ERROR_CODE::OK, connection->tsurugi_error(code));
 
+        EXPECT_EQ(code.type, ogawayama::stub::tsurugi_error_code::tsurugi_error_type::sql_error);
         EXPECT_EQ(code.code, 1000); // 1000 corresponds to SQL_SERVICE_EXCEPTION
         EXPECT_EQ(code.name, "SQL_SERVICE_EXCEPTION");
         EXPECT_EQ(code.detail, "sql_error_for_test");
@@ -167,6 +169,7 @@ TEST_F(ErrorTest, statement) {
         ogawayama::stub::tsurugi_error_code code{};
         EXPECT_EQ(ERROR_CODE::OK, connection->tsurugi_error(code));
 
+        EXPECT_EQ(code.type, ogawayama::stub::tsurugi_error_code::tsurugi_error_type::sql_error);
         EXPECT_EQ(code.code, 1000); // 1000 corresponds to SQL_SERVICE_EXCEPTION
         EXPECT_EQ(code.name, "SQL_SERVICE_EXCEPTION");
         EXPECT_EQ(code.detail, "sql_error_for_test");
@@ -254,6 +257,7 @@ TEST_F(ErrorTest, query) {
         ogawayama::stub::tsurugi_error_code code{};
         EXPECT_EQ(ERROR_CODE::OK, connection->tsurugi_error(code));
 
+        EXPECT_EQ(code.type, ogawayama::stub::tsurugi_error_code::tsurugi_error_type::sql_error);
         EXPECT_EQ(code.code, 1000); // 1000 corresponds to SQL_SERVICE_EXCEPTION
         EXPECT_EQ(code.name, "SQL_SERVICE_EXCEPTION");
         EXPECT_EQ(code.detail, "sql_error_for_test");
@@ -344,6 +348,7 @@ TEST_F(ErrorTest, commit) {
         ogawayama::stub::tsurugi_error_code code{};
         EXPECT_EQ(ERROR_CODE::OK, connection->tsurugi_error(code));
 
+        EXPECT_EQ(code.type, ogawayama::stub::tsurugi_error_code::tsurugi_error_type::sql_error);
         EXPECT_EQ(code.code, 1000); // 1000 corresponds to SQL_SERVICE_EXCEPTION
         EXPECT_EQ(code.name, "SQL_SERVICE_EXCEPTION");
         EXPECT_EQ(code.detail, "sql_error_for_test");

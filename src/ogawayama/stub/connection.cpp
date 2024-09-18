@@ -464,6 +464,7 @@ ErrorCode Connection::Impl::end_ddl()
 
 static inline bool handle_sql_error(ogawayama::stub::tsurugi_error_code& code, ::jogasaki::proto::sql::response::Error& sql_error) {
     if (auto itr = ogawayama::transport::error_map.find(sql_error.code()); itr != ogawayama::transport::error_map.end()) {
+        code.type = tsurugi_error_code::tsurugi_error_type::sql_error;
         code.code = itr->second.second;
         code.name = itr->second.first;
         code.detail = sql_error.detail();
