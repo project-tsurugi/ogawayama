@@ -352,6 +352,9 @@ public:
     ::jogasaki::proto::sql::response::Error& last_sql_error() {
         return sql_error_;
     }
+    ::tateyama::proto::diagnostics::Record& last_framework_error() {
+        return framework_error_;
+    }
 
 private:
     tateyama::common::wire::session_wire_container& wire_;
@@ -365,6 +368,7 @@ private:
     std::unique_ptr<tateyama::common::wire::timer> timer_{};
     ::tateyama::proto::framework::response::Header response_header_{};
     ::jogasaki::proto::sql::response::Error sql_error_{};
+    ::tateyama::proto::diagnostics::Record framework_error_{};
 
     template <typename T>
     std::optional<T> send(::jogasaki::proto::sql::request::Request& request, tateyama::common::wire::message_header::index_type& slot_index) {
@@ -440,8 +444,18 @@ private:
             if(auto res = tateyama::utils::ParseDelimitedFromZeroCopyStream(std::addressof(response_header_), std::addressof(in), nullptr); ! res) {
                 return std::nullopt;
             }
+            if (response_header_.payload_type() == ::tateyama::proto::framework::response::Header_PayloadType::Header_PayloadType_SERVER_DIAGNOSTICS) {
+                std::string_view record{};
+                if (auto res = tateyama::utils::GetDelimitedBodyFromZeroCopyStream(std::addressof(in), nullptr, record); ! res) {
+                    return std::nullopt;
+                }
+                if(auto res = framework_error_.ParseFromArray(record.data(), record.length()); ! res) {
+                    return std::nullopt;
+                }
+                throw std::runtime_error("received SERVER_DIAGNOSTICS");
+            }
             if (response_header_.payload_type() != ::tateyama::proto::framework::response::Header_PayloadType::Header_PayloadType_SERVICE_RESULT) {
-                throw std::runtime_error("SERVER_DIAGNOSTICS");
+                throw std::runtime_error("unknown payload type");
             }
             std::string_view payload{};
             if (auto res = tateyama::utils::GetDelimitedBodyFromZeroCopyStream(std::addressof(in), nullptr, payload); ! res) {
@@ -510,8 +524,18 @@ private:
         if(auto res = tateyama::utils::ParseDelimitedFromZeroCopyStream(std::addressof(response_header_), std::addressof(in), nullptr); ! res) {
             return std::nullopt;
         }
+        if (response_header_.payload_type() == ::tateyama::proto::framework::response::Header_PayloadType::Header_PayloadType_SERVER_DIAGNOSTICS) {
+            std::string_view record{};
+            if (auto res = tateyama::utils::GetDelimitedBodyFromZeroCopyStream(std::addressof(in), nullptr, record); ! res) {
+                return std::nullopt;
+            }
+            if(auto res = framework_error_.ParseFromArray(record.data(), record.length()); ! res) {
+                return std::nullopt;
+            }
+            throw std::runtime_error("received SERVER_DIAGNOSTICS");
+        }
         if (response_header_.payload_type() != ::tateyama::proto::framework::response::Header_PayloadType::Header_PayloadType_SERVICE_RESULT) {
-            throw std::runtime_error("SERVER_DIAGNOSTICS");
+            throw std::runtime_error("unknown payload type");
         }
         std::string_view response{};
         bool eof{};

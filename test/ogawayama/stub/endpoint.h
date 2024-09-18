@@ -225,12 +225,11 @@ public:
             if(auto res = tateyama::utils::SerializeDelimitedToOstream(endpoint_->framework_header_, std::addressof(ss)); ! res) {
                 throw std::runtime_error("error formatting response message");
             }
-            std::ostringstream ofs;
-            boost::archive::binary_oarchive oa(ofs);
-            oa << ERROR_CODE::OK;
-            std::string code = ofs.str();
-            if(auto res = tateyama::utils::PutDelimitedBodyToOstream(code, std::addressof(ss)); ! res) {
-                throw std::runtime_error("error formatting response message");
+            ::tateyama::proto::diagnostics::Record r{};
+            r.set_code(::tateyama::proto::diagnostics::Code::OPERATION_CANCELED);
+            auto record = r.SerializeAsString();
+            if(auto res = tateyama::utils::PutDelimitedBodyToOstream(record, std::addressof(ss)); ! res) {
+                throw std::runtime_error("error formatting record message");
             }
             auto reply_message = ss.str();
             wire_->get_response_wire().write(reply_message.data(), tateyama::common::wire::response_header(index, reply_message.length(), RESPONSE_BODY));

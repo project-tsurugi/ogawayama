@@ -474,6 +474,17 @@ static inline bool handle_sql_error(ogawayama::stub::tsurugi_error_code& code, :
     return false;
 }
 
+static inline bool handle_framework_error(ogawayama::stub::tsurugi_error_code& code, ::tateyama::proto::diagnostics::Record& framework_error) {
+    if (auto itr = ogawayama::transport::framework_error_map.find(framework_error.code()); itr != ogawayama::transport::framework_error_map.end()) {
+        code.type = tsurugi_error_code::tsurugi_error_type::framework_error;
+        code.code = itr->second.second;
+        code.name = itr->second.first;
+        code.detail = framework_error.message();
+        return true;
+    }
+    return false;
+}
+
 /**
  * @brief get the error of the last SQL executed
  */
@@ -481,21 +492,27 @@ ErrorCode Connection::Impl::tsurugi_error(tsurugi_error_code& code)
 {
     switch(transport_.last_header().payload_type()) {
     case ::tateyama::proto::framework::response::Header_PayloadType::Header_PayloadType_UNKNOWN:
-        return ErrorCode::UNKNOWN;
+        break;
     case ::tateyama::proto::framework::response::Header_PayloadType::Header_PayloadType_SERVER_DIAGNOSTICS:
-        code.type = tsurugi_error_code::tsurugi_error_type::framework_error;
-        return ErrorCode::OK;
-    case ::tateyama::proto::framework::response::Header_PayloadType::Header_PayloadType_SERVICE_RESULT:
+    {
+        auto frame_error = transport_.last_framework_error();
+        if (handle_framework_error(code, frame_error)) {
+            return ErrorCode::OK;
+        }
         break;
     }
-
-    auto sql_error = transport_.last_sql_error();
-    if (sql_error.code() == ::jogasaki::proto::sql::error::Code::CODE_UNSPECIFIED) {
-        code.type = tsurugi_error_code::tsurugi_error_type::none;
-        return ErrorCode::OK;
+    case ::tateyama::proto::framework::response::Header_PayloadType::Header_PayloadType_SERVICE_RESULT:
+    {
+        auto sql_error = transport_.last_sql_error();
+        if (sql_error.code() == ::jogasaki::proto::sql::error::Code::CODE_UNSPECIFIED) {
+            code.type = tsurugi_error_code::tsurugi_error_type::none;
+            return ErrorCode::OK;
+        }
+        if (handle_sql_error(code, sql_error)) {
+            return ErrorCode::OK;
+        }
+        break;
     }
-    if (handle_sql_error(code, sql_error)) {
-        return ErrorCode::OK;
     }
     return ErrorCode::UNKNOWN;
 }

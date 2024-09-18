@@ -149,5 +149,45 @@ static const std::map<::jogasaki::proto::sql::error::Code, std::pair<std::string
     {::jogasaki::proto::sql::error::Code::BLOCKED_BY_CONCURRENT_OPERATION_EXCEPTION, {"BLOCKED_BY_CONCURRENT_OPERATION_EXCEPTION", 4007}}
 };
 
+static const std::map<::tateyama::proto::diagnostics::Code, std::pair<std::string, std::int64_t>> framework_error_map = {  // NOLINT
+
+    {::tateyama::proto::diagnostics::Code::UNKNOWN, {"unknown error was occurred in the server.", 0}},
+
+    {::tateyama::proto::diagnostics::Code::SYSTEM_ERROR, {"the server system is something wrong.", 100}},
+
+    {::tateyama::proto::diagnostics::Code::UNSUPPORTED_OPERATION, {"the requested operation is not supported.", 101}},
+
+    {::tateyama::proto::diagnostics::Code::ILLEGAL_STATE, {"I/O error was occurred in the server.", 102}},
+
+    {::tateyama::proto::diagnostics::Code::ILLEGAL_STATE, {"operation was requested in illegal or inappropriate time.", 102}},
+
+    {::tateyama::proto::diagnostics::Code::IO_ERROR, {"I/O error was occurred in the server.", 103}},
+
+    {::tateyama::proto::diagnostics::Code::OUT_OF_MEMORY, {"the server is out of memory.", 104}},
+
+    {::tateyama::proto::diagnostics::Code::RESOURCE_LIMIT_REACHED, {"the server reached resource limit.", 105}},
+
+    {::tateyama::proto::diagnostics::Code::AUTHENTICATION_ERROR, {"authentication was failed.", 201}},
+
+    {::tateyama::proto::diagnostics::Code::PERMISSION_ERROR, {"request is not permitted.", 202}},
+
+    {::tateyama::proto::diagnostics::Code::ACCESS_EXPIRED, {"access right has been expired.", 203}},
+
+    {::tateyama::proto::diagnostics::Code::REFRESH_EXPIRED, {"refresh right has been expired.", 204}},
+
+    {::tateyama::proto::diagnostics::Code::BROKEN_CREDENTIAL, {"credential information is broken.", 205}},
+
+    {::tateyama::proto::diagnostics::Code::SESSION_CLOSED, {"the current session is already closed.", 301}},
+
+    {::tateyama::proto::diagnostics::Code::SESSION_EXPIRED, {"the current session is expired.", 302}},
+
+    {::tateyama::proto::diagnostics::Code::SERVICE_NOT_FOUND, {"the destination service was not found.", 401}},
+
+    {::tateyama::proto::diagnostics::Code::SERVICE_UNAVAILABLE, {"the destination service was not found.", 402}},
+
+    {::tateyama::proto::diagnostics::Code::OPERATION_CANCELED, {"operation was canceled by user or system.", 403}},
+
+    {::tateyama::proto::diagnostics::Code::INVALID_REQUEST, {"the service received a request message with invalid payload.", 501}}
+};
 
 } // namespace ogawayama::transport

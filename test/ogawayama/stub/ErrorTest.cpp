@@ -381,6 +381,8 @@ TEST_F(ErrorTest, framework) {
         ogawayama::stub::tsurugi_error_code code{};
         EXPECT_EQ(ERROR_CODE::OK, connection->tsurugi_error(code));
         EXPECT_EQ(code.type, ogawayama::stub::tsurugi_error_code::tsurugi_error_type::framework_error);
+        EXPECT_EQ(code.code, 403);  // SCD-00403 is OPERATION_CANCELED
+        EXPECT_EQ(code.name, "operation was canceled by user or system.");
     }
 }
 
