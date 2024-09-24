@@ -26,6 +26,7 @@
 #include <jogasaki/proto/sql/common.pb.h>
 #include <jogasaki/proto/sql/request.pb.h>
 #include <jogasaki/proto/sql/response.pb.h>
+#include <tateyama/proto/framework/response.pb.h>
 
 #include "server_wires_impl.h"
 #include "endpoint_proto_utils.h"
@@ -41,10 +42,13 @@ class server {
     constexpr static std::string_view resultset_name_prefix = "resultset_for_test_";  // NOLINT
 
 public:
-    server(std::string name) : name_(name), endpoint_(name_) {
+    server(std::string name) : name_(name), endpoint_(name_), thread_(std::thread(std::ref(endpoint_))) {
     }
     ~server() {
         endpoint_.terminate();
+        if (thread_.joinable()) {
+            thread_.join();
+        }
         remove_shm();
     }
 
@@ -66,7 +70,7 @@ public:
         jogasaki::proto::sql::response::Response rb{};
         rb.set_allocated_result_only(&ro);
         // set response
-        endpoint_.get_worker()->response_message(rh, resultset_name, resultset, rb);
+        endpoint_.response_message(rh, resultset_name, resultset, rb);
         // release
         (void) rb.release_result_only();
         (void) rh.release_execute_query();
@@ -74,7 +78,7 @@ public:
     }
 
     std::optional<jogasaki::proto::sql::request::Request> request_message() {
-        auto request_packet = endpoint_.get_worker()->request_message();
+        auto request_packet = endpoint_.request_message();
 
         ::tateyama::proto::framework::request::Header header{};
         google::protobuf::io::ArrayInputStream in{request_packet.data(), static_cast<int>(request_packet.length())};
@@ -95,6 +99,7 @@ private:
     std::string name_;
     endpoint endpoint_;
     std::size_t resultset_number_{};
+    std::thread thread_;
 
     void remove_shm() {
         std::string cmd = "if [ -f /dev/shm/" + name_ + " ]; then rm -f /dev/shm/" + name_ + "*; fi";
@@ -108,29 +113,33 @@ template<>
 inline void server::response_message<jogasaki::proto::sql::response::Begin>(jogasaki::proto::sql::response::Begin& b) {
     jogasaki::proto::sql::response::Response r{};
     r.set_allocated_begin(&b);
-    endpoint_.get_worker()->response_message(r);
+    endpoint_.response_message(r);
     (void) r.release_begin();
 }
 template<>
 inline void server::response_message<jogasaki::proto::sql::response::ResultOnly>(jogasaki::proto::sql::response::ResultOnly& ro) {
     jogasaki::proto::sql::response::Response r{};
     r.set_allocated_result_only(&ro);
-    endpoint_.get_worker()->response_message(r);
+    endpoint_.response_message(r);
     (void) r.release_result_only();
 }
 template<>
 inline void server::response_message<jogasaki::proto::sql::response::Prepare>(jogasaki::proto::sql::response::Prepare& p) {
     jogasaki::proto::sql::response::Response r{};
     r.set_allocated_prepare(&p);
-    endpoint_.get_worker()->response_message(r);
+    endpoint_.response_message(r);
     (void) r.release_prepare();
 }
 template<>
 inline void server::response_message<jogasaki::proto::sql::response::ExecuteResult>(jogasaki::proto::sql::response::ExecuteResult& er) {
     jogasaki::proto::sql::response::Response r{};
     r.set_allocated_execute_result(&er);
-    endpoint_.get_worker()->response_message(r);
+    endpoint_.response_message(r);
     (void) r.release_execute_result();
+}
+template<>
+inline void server::response_message<tateyama::proto::framework::response::Header>(tateyama::proto::framework::response::Header& h) {
+    endpoint_.framework_error(h);
 }
 
 }  // namespace ogawayama::testing

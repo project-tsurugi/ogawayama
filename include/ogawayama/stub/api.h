@@ -347,6 +347,13 @@ public:
      */
     [[nodiscard]] manager::message::Status receive_drop_index(manager::metadata::ObjectIdType object_id) const override;
 
+    /**
+     * @brief get the error of the last SQL executed
+     * @param code returns the error code reported by the tsurugidb
+     * @return error code defined in error_code.h
+     */
+    ErrorCode tsurugi_error(tsurugi_error_code& code);
+
 private:
     std::unique_ptr<Impl> impl_;
 

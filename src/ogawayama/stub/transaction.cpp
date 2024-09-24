@@ -1,5 +1,5 @@
 /*
- * Copyright 2019-2023 Project Tsurugi.
+ * Copyright 2019-2024 Project Tsurugi.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -67,18 +67,23 @@ ErrorCode Transaction::Impl::execute_statement(std::string_view statement, std::
         ::jogasaki::proto::sql::request::ExecuteStatement request{};
         *(request.mutable_transaction_handle()) = transaction_handle_;
         *(request.mutable_sql()) = statement;
-        auto response_opt = transport_.send(request);
-        request.clear_sql();
-        request.clear_transaction_handle();
-        if (!response_opt) {
-            return ErrorCode::SERVER_FAILURE;
+
+        try {
+            auto response_opt = transport_.send(request);
+            request.clear_sql();
+            request.clear_transaction_handle();
+            if (!response_opt) {
+                return ErrorCode::SERVER_FAILURE;
+            }
+            auto response = response_opt.value();
+            if (response.has_success()) {
+                num_rows = num_rows_processed(response.success());
+                return ErrorCode::OK;
+            }
+            return ErrorCode::SERVER_ERROR;
+        } catch (std::runtime_error &e) {
+            return ErrorCode::SERVER_ERROR;
         }
-        auto response = response_opt.value();
-        if (response.has_success()) {
-            num_rows = num_rows_processed(response.success());
-            return ErrorCode::OK;
-        }
-        return ErrorCode::SERVER_FAILURE;
     }
     return ErrorCode::NO_TRANSACTION;
 }
@@ -200,17 +205,21 @@ ErrorCode Transaction::Impl::execute_statement(PreparedStatementPtr& prepared, c
         for (auto& e : parameters) {
             *(request.add_parameters()) = std::visit(parameter(e.first), e.second);
         }
-        auto response_opt = transport_.send(request);
+        try {
+            auto response_opt = transport_.send(request);
         
-        if (!response_opt) {
-            return ErrorCode::SERVER_FAILURE;
+            if (!response_opt) {
+                return ErrorCode::SERVER_FAILURE;
+            }
+            auto response = response_opt.value();
+            if (response.has_success()) {
+                num_rows = num_rows_processed(response.success());
+                return ErrorCode::OK;
+            }
+            return ErrorCode::SERVER_ERROR;
+        } catch (std::runtime_error &e) {
+            return ErrorCode::SERVER_ERROR;
         }
-        auto response = response_opt.value();
-        if (response.has_success()) {
-            num_rows = num_rows_processed(response.success());
-            return ErrorCode::OK;
-        }
-        return ErrorCode::SERVER_FAILURE;
     }
     return ErrorCode::NO_TRANSACTION;
 }
@@ -245,7 +254,7 @@ ErrorCode Transaction::Impl::execute_query(std::string_view query, std::shared_p
             );
             return ErrorCode::OK;
         } catch (std::runtime_error &e) {
-            return ErrorCode::SERVER_FAILURE;
+            return ErrorCode::SERVER_ERROR;
         }
     }
     return ErrorCode::NO_TRANSACTION;
@@ -292,7 +301,7 @@ ErrorCode Transaction::Impl::execute_query(PreparedStatementPtr& prepared, const
             );
             return ErrorCode::OK;
         } catch (std::runtime_error &e) {
-            return ErrorCode::SERVER_FAILURE;
+            return ErrorCode::SERVER_ERROR;
         }
     }
     return ErrorCode::NO_TRANSACTION;
@@ -318,7 +327,7 @@ ErrorCode Transaction::Impl::commit()
             return dispose_transaction();
         }
         dispose_transaction();
-        return ErrorCode::SERVER_FAILURE;
+        return ErrorCode::SERVER_ERROR;
     }
     return ErrorCode::NO_TRANSACTION;
 }
@@ -342,7 +351,7 @@ ErrorCode Transaction::Impl::rollback()
         if (response.has_success()) {
             return dispose_transaction();
         }
-        return ErrorCode::SERVER_FAILURE;
+        return ErrorCode::SERVER_ERROR;
     }
     return ErrorCode::OK;  // rollback is idempotent
 }
