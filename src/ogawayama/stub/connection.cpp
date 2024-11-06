@@ -91,7 +91,7 @@ ErrorCode Connection::Impl::begin(TransactionPtr& transaction)
         }
         return ErrorCode::SERVER_ERROR;
     } catch (std::runtime_error &e) {
-        return ErrorCode::SERVER_FAILURE;
+        return ErrorCode::SERVER_ERROR;
     }
 }
 
@@ -161,7 +161,7 @@ ErrorCode Connection::Impl::begin(const boost::property_tree::ptree& option, Tra
         }
         return ErrorCode::SERVER_ERROR;
     } catch (std::runtime_error &e) {
-        return ErrorCode::SERVER_FAILURE;
+        return ErrorCode::SERVER_ERROR;
     }
 }
 
@@ -232,7 +232,7 @@ ErrorCode Connection::Impl::prepare(std::string_view sql, const placeholders_typ
         }
         return ErrorCode::SERVER_ERROR;
     } catch (std::runtime_error &e) {
-        return ErrorCode::SERVER_FAILURE;
+        return ErrorCode::SERVER_ERROR;
     }
 }
 

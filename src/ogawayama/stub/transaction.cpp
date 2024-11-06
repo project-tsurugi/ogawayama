@@ -82,7 +82,7 @@ ErrorCode Transaction::Impl::execute_statement(std::string_view statement, std::
             }
             return ErrorCode::SERVER_ERROR;
         } catch (std::runtime_error &e) {
-            return ErrorCode::SERVER_FAILURE;
+            return ErrorCode::SERVER_ERROR;
         }
     }
     return ErrorCode::NO_TRANSACTION;
@@ -218,7 +218,7 @@ ErrorCode Transaction::Impl::execute_statement(PreparedStatementPtr& prepared, c
             }
             return ErrorCode::SERVER_ERROR;
         } catch (std::runtime_error &e) {
-            return ErrorCode::SERVER_FAILURE;
+            return ErrorCode::SERVER_ERROR;
         }
     }
     return ErrorCode::NO_TRANSACTION;
@@ -254,7 +254,7 @@ ErrorCode Transaction::Impl::execute_query(std::string_view query, std::shared_p
             );
             return ErrorCode::OK;
         } catch (std::runtime_error &e) {
-            return ErrorCode::SERVER_FAILURE;
+            return ErrorCode::SERVER_ERROR;
         }
     }
     return ErrorCode::NO_TRANSACTION;
@@ -301,7 +301,7 @@ ErrorCode Transaction::Impl::execute_query(PreparedStatementPtr& prepared, const
             );
             return ErrorCode::OK;
         } catch (std::runtime_error &e) {
-            return ErrorCode::SERVER_FAILURE;
+            return ErrorCode::SERVER_ERROR;
         }
     }
     return ErrorCode::NO_TRANSACTION;
