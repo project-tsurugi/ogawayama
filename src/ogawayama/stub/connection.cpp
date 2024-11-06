@@ -91,7 +91,7 @@ ErrorCode Connection::Impl::begin(TransactionPtr& transaction)
         }
         return ErrorCode::SERVER_ERROR;
     } catch (std::runtime_error &e) {
-        return ErrorCode::SERVER_ERROR;
+        return ErrorCode::SERVER_FAILURE;
     }
 }
 
@@ -159,9 +159,9 @@ ErrorCode Connection::Impl::begin(const boost::property_tree::ptree& option, Tra
             transaction = std::make_unique<Transaction>(std::make_unique<Transaction::Impl>(this, transport_, response_begin.success().transaction_handle()));
             return ErrorCode::OK;
         }
-        return ErrorCode::SERVER_FAILURE;
-    } catch (std::runtime_error &e) {
         return ErrorCode::SERVER_ERROR;
+    } catch (std::runtime_error &e) {
+        return ErrorCode::SERVER_FAILURE;
     }
 }
 
@@ -232,7 +232,7 @@ ErrorCode Connection::Impl::prepare(std::string_view sql, const placeholders_typ
         }
         return ErrorCode::SERVER_ERROR;
     } catch (std::runtime_error &e) {
-        return ErrorCode::SERVER_ERROR;
+        return ErrorCode::SERVER_FAILURE;
     }
 }
 
