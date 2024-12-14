@@ -1,4 +1,4 @@
-# Copyright 2019-2023 Project Tsurugi.
+# Copyright 2019-2024 Project Tsurugi.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -45,7 +45,7 @@ endif()
 
 find_package(Threads REQUIRED)
 find_package(Boost
-        COMPONENTS filesystem thread system container stacktrace_backtrace serialization
+        COMPONENTS filesystem thread system container serialization
         REQUIRED
 )
 find_package(glog REQUIRED)
