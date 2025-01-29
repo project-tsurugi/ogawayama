@@ -28,8 +28,12 @@
 #include <manager/metadata/tables.h>
 
 #include <ogawayama/common/bridge.h>
-#include "prepared_statementImpl.h"
 #include "ogawayama/transport/tsurugi_error.h"
+#include "prepared_statementImpl.h"
+#include "search_path_adapter.h"
+#include "table_list_adapter.h"
+#include "table_metadata_adapter.h"
+
 #include "connectionImpl.h"
 
 namespace ogawayama::stub {
@@ -70,11 +74,6 @@ ErrorCode Connection::Impl::hello()
     return ErrorCode::UNKNOWN;
 }
 
-/**
- * @brief begin transaction
- * @param reference to a TransactionPtr
- * @return error code defined in error_code.h
- */
 ErrorCode Connection::Impl::begin(TransactionPtr& transaction)
 {
     try {
@@ -95,12 +94,6 @@ ErrorCode Connection::Impl::begin(TransactionPtr& transaction)
     }
 }
 
-/**
- * @brief begin transaction
- * @param option the transaction option
- * @param reference to a TransactionPtr
- * @return error code defined in error_code.h
- */
 ErrorCode Connection::Impl::begin(const boost::property_tree::ptree& option, TransactionPtr& transaction)  //NOLINT(readability-function-cognitive-complexity)
 {
     ::jogasaki::proto::sql::request::Begin request{};
@@ -165,9 +158,6 @@ ErrorCode Connection::Impl::begin(const boost::property_tree::ptree& option, Tra
     }
 }
 
-/**
- * @brief prepare statement
- */
 ErrorCode Connection::Impl::prepare(std::string_view sql, const placeholders_type& placeholders, PreparedStatementPtr& prepared)
 {
     ::jogasaki::proto::sql::request::Prepare request{};
@@ -236,8 +226,69 @@ ErrorCode Connection::Impl::prepare(std::string_view sql, const placeholders_typ
     }
 }
 
+ErrorCode Connection::Impl::get_table_metadata(const std::string& table_name, TableMetadataPtr& table_metadata)
+{
+    try {
+        ::jogasaki::proto::sql::request::DescribeTable request{};
+
+        *(request.mutable_name()) = table_name;
+        auto response_opt = transport_.send(request);
+        if (!response_opt) {
+            return ErrorCode::SERVER_FAILURE;
+        }
+        auto response_describe_table = response_opt.value();
+        if (response_describe_table.has_success()) {
+            table_metadata = std::make_unique<table_metadata_adapter>(response_describe_table.success());
+            return ErrorCode::OK;
+        }
+        return ErrorCode::SERVER_ERROR;
+    } catch (std::runtime_error &e) {
+        return ErrorCode::SERVER_ERROR;
+    }
+}
+
+ErrorCode Connection::Impl::get_list_tables(TableListPtr& table_list) {
+    try {
+        ::jogasaki::proto::sql::request::ListTables request{};
+
+        auto response_opt = transport_.send(request);
+        if (!response_opt) {
+            return ErrorCode::SERVER_FAILURE;
+        }
+        auto response = response_opt.value();
+        if (response.has_success()) {
+            table_list = std::make_unique<table_list_adapter>(response.success());
+            return ErrorCode::OK;
+        }
+        return ErrorCode::SERVER_ERROR;
+    } catch (std::runtime_error &e) {
+        return ErrorCode::SERVER_ERROR;
+    }
+}
+
+ErrorCode Connection::Impl::get_search_path(SearchPathPtr& sp) {
+    try {
+        ::jogasaki::proto::sql::request::GetSearchPath request{};
+
+        auto response_opt = transport_.send(request);
+        if (!response_opt) {
+            return ErrorCode::SERVER_FAILURE;
+        }
+        auto response = response_opt.value();
+        if (response.has_success()) {
+            sp = std::make_unique<search_path_adapter>(response.success());
+            return ErrorCode::OK;
+        }
+        return ErrorCode::SERVER_ERROR;
+    } catch (std::runtime_error &e) {
+        return ErrorCode::SERVER_ERROR;
+    }
+}
+
+
+// obsolete from here
 static inline
-ErrorCode get_tables(std::string_view name, std::unique_ptr<manager::metadata::Tables>& tables) {
+ErrorCode get_tables_internal(std::string_view name, std::unique_ptr<manager::metadata::Tables>& tables) {
     tables = std::make_unique<manager::metadata::Tables>(name);
     if (tables->Metadata::load() != manager::metadata::ErrorCode::OK) {
         return ERROR_CODE::FILE_IO_ERROR;
@@ -246,9 +297,9 @@ ErrorCode get_tables(std::string_view name, std::unique_ptr<manager::metadata::T
 }
 
 static inline
-ErrorCode get_table_metadata(std::string_view name, std::size_t id, boost::property_tree::ptree& table) {
+ErrorCode get_table_metadata_internal(std::string_view name, std::size_t id, boost::property_tree::ptree& table) {
     std::unique_ptr<manager::metadata::Tables> tables;
-    if (auto rv = get_tables(name, tables); rv != ERROR_CODE::OK) {
+    if (auto rv = get_tables_internal(name, tables); rv != ERROR_CODE::OK) {
         return rv;
     }
     if (tables->get(static_cast<std::int64_t>(id), table) != manager::metadata::ErrorCode::OK) {
@@ -257,15 +308,10 @@ ErrorCode get_table_metadata(std::string_view name, std::size_t id, boost::prope
     return ERROR_CODE::OK;
 }
 
-/**
- * @brief relay a create table message from the frontend to the server
- * @param table id given by the frontend
- * @return error code defined in error_code.h
- */
 ErrorCode Connection::Impl::create_table(std::size_t id)
 {
     boost::property_tree::ptree table;
-    if (auto rc = get_table_metadata(manager_->get_database_name(), id, table); rc != ErrorCode::OK) {
+    if (auto rc = get_table_metadata_internal(manager_->get_database_name(), id, table); rc != ErrorCode::OK) {
         return rc;
     }
     auto command = ogawayama::common::command::create_table;
@@ -288,15 +334,10 @@ ErrorCode Connection::Impl::create_table(std::size_t id)
     return ERROR_CODE::SERVER_FAILURE;  // service returns std::nullopt
 }
 
-/**
- * @brief relay a drop table message from the frontend to the server
- * @param table id given by the frontend
- * @return error code defined in error_code.h
- */
 ErrorCode Connection::Impl::drop_table(std::size_t id)
 {
     boost::property_tree::ptree table;
-    if (auto rc = get_table_metadata(manager_->get_database_name(), id, table); rc != ErrorCode::OK) {
+    if (auto rc = get_table_metadata_internal(manager_->get_database_name(), id, table); rc != ErrorCode::OK) {
         return rc;
     }
     auto command = ogawayama::common::command::drop_table;
@@ -340,11 +381,6 @@ ErrorCode get_index_metadata(std::string_view name, std::size_t id, boost::prope
     return ERROR_CODE::OK;
 }
 
-/**
- * @brief relay a create index message from the frontend to the server
- * @param index id given by the frontend
- * @return error code defined in error_code.h
- */
 ErrorCode Connection::Impl::create_index(std::size_t id)
 {
     boost::property_tree::ptree index;
@@ -356,7 +392,7 @@ ErrorCode Connection::Impl::create_index(std::size_t id)
         return ERROR_CODE::INVALID_PARAMETER;
     }
     boost::property_tree::ptree table;
-    if (auto rc = get_table_metadata(manager_->get_database_name(), table_id.value(), table); rc != ErrorCode::OK) {
+    if (auto rc = get_table_metadata_internal(manager_->get_database_name(), table_id.value(), table); rc != ErrorCode::OK) {
         return rc;
     }
     auto table_name_opt = table.get_optional<std::string>(manager::metadata::Tables::NAME);
@@ -384,11 +420,6 @@ ErrorCode Connection::Impl::create_index(std::size_t id)
     return ERROR_CODE::SERVER_FAILURE;  // service returns std::nullopt
 }
 
-/**
- * @brief relay a drop index message from the frontend to the server
- * @param index id given by the frontend
- * @return error code defined in error_code.h
- */
 ErrorCode Connection::Impl::drop_index(std::size_t id)
 {
     boost::property_tree::ptree index;
@@ -414,10 +445,6 @@ ErrorCode Connection::Impl::drop_index(std::size_t id)
     return ERROR_CODE::SERVER_FAILURE;  // service returns std::nullopt
 }
 
-/**
- * @brief relay a begin_ddl message from the frontend to the server
- * @return error code defined in error_code.h
- */
 ErrorCode Connection::Impl::begin_ddl()
 {
     auto command = ogawayama::common::command::begin;
@@ -438,10 +465,6 @@ ErrorCode Connection::Impl::begin_ddl()
     return ERROR_CODE::SERVER_FAILURE;  // service returns std::nullopt
 }
 
-/**
- * @brief relay a end_ddl message from the frontend to the server
- * @return error code defined in error_code.h
- */
 ErrorCode Connection::Impl::end_ddl()
 {
     auto command = ogawayama::common::command::commit;
@@ -461,6 +484,8 @@ ErrorCode Connection::Impl::end_ddl()
     }
     return ERROR_CODE::SERVER_FAILURE;  // service returns std::nullopt
 }
+// obsolete to here
+
 
 static inline bool handle_sql_error(ogawayama::stub::tsurugi_error_code& code, ::jogasaki::proto::sql::response::Error& sql_error) {
     if (auto itr = ogawayama::transport::error_map.find(sql_error.code()); itr != ogawayama::transport::error_map.end()) {
@@ -485,9 +510,6 @@ static inline bool handle_framework_error(ogawayama::stub::tsurugi_error_code& c
     return false;
 }
 
-/**
- * @brief get the error of the last SQL executed
- */
 ErrorCode Connection::Impl::tsurugi_error(tsurugi_error_code& code)
 {
     switch(transport_.last_header().payload_type()) {
@@ -541,6 +563,21 @@ ErrorCode Connection::begin(const boost::property_tree::ptree& option, Transacti
  * @brief prepare statement
  */
 ErrorCode Connection::prepare(std::string_view sql, const placeholders_type& placeholders, PreparedStatementPtr &prepared) { return impl_->prepare(sql, placeholders, prepared); }
+
+/**
+ * @brief get table metadata
+ */
+ErrorCode Connection::get_table_metadata(const std::string& table_name, TableMetadataPtr& table_metadata) { return impl_->get_table_metadata(table_name, table_metadata); }
+
+/**
+ * @brief get table list
+ */
+ErrorCode Connection::get_list_tables(TableListPtr& table_list) { return impl_->get_list_tables(table_list); }
+
+/**
+ * @brief get search path
+ */
+ErrorCode Connection::get_search_path(SearchPathPtr& sp) { return impl_->get_search_path(sp); }
 
 /**
  * @brief receive a begin_ddl message from manager

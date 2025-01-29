@@ -1,5 +1,5 @@
 /*
- * Copyright 2019-2023 Project Tsurugi.
+ * Copyright 2019-2025 Project Tsurugi.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -27,6 +27,8 @@
 #include <ogawayama/stub/error_code.h>
 #include <ogawayama/stub/transaction_option.h>
 #include <ogawayama/stub/Command.h>
+#include <ogawayama/stub/table_metadata.h>
+#include <ogawayama/stub/table_list.h>
 
 #include <manager/message/receiver.h>
 #include <manager/message/message.h>
@@ -260,7 +262,9 @@ private:
 }  // namespace ogawayama::stub
 
 using TransactionPtr = std::unique_ptr<ogawayama::stub::Transaction>;
-
+using TableMetadataPtr = std::unique_ptr<ogawayama::stub::table_metadata>;
+using TableListPtr = std::unique_ptr<ogawayama::stub::table_list>;
+using SearchPathPtr = std::unique_ptr<ogawayama::stub::search_path>;
 
 namespace ogawayama::stub {
 
@@ -289,14 +293,14 @@ public:
     Connection& operator=(Connection&&) = delete;
 
     /**
-     * @brief begin a transaction and get Transaction class.
+     * @brief request begin and get Transaction class.
      * @param transaction returns a transaction class
      * @return error code defined in error_code.h
      */
     ErrorCode begin(TransactionPtr&);
 
     /**
-     * @brief begin a transaction and get Transaction class.
+     * @brief request begin with transaction option and get Transaction class.
      * @param ptree the transaction option
      * @param transaction returns a transaction class
      * @return error code defined in error_code.h
@@ -304,7 +308,7 @@ public:
     ErrorCode begin(const boost::property_tree::ptree&, TransactionPtr&);
 
     /**
-     * @brief prepare SQL statement.
+     * @brief request prepare and get PreparedStatement class.
      * @param SQL statement
      * @param prepared statement returns a prepared statement class
      * @return error code defined in error_code.h
@@ -312,39 +316,67 @@ public:
     ErrorCode prepare(std::string_view, const placeholders_type&, PreparedStatementPtr&);
 
     /**
+     * @brief request table metadata and get TableMetadata class.
+     * @param table_name the table name
+     * @param table_metadata returns a table_metadata class
+     * @return error code defined in error_code.h
+     */
+    ErrorCode get_table_metadata(const std::string& table_name, TableMetadataPtr& table_metadata);
+
+    /**
+     * @brief request list tables and get table_list class.
+     * @param table_list returns a table_list class
+     * @return error code defined in error_code.h
+     */
+    ErrorCode get_list_tables(TableListPtr& table_list);
+
+    /**
+     * @brief request get search path and get search_path class.
+     * @param sp returns a search_path class
+     * @return error code defined in error_code.h
+     */
+     ErrorCode get_search_path(SearchPathPtr& sp);
+
+    /**
      * @brief implements begin_ddl() procedure
      * @return Status defined in message-broker/include/manager/message/status.h
      */
+    [[deprecated("No longer supports DDL operations for tsurugidb with this kind of API")]]
     [[nodiscard]] manager::message::Status receive_begin_ddl(int64_t mode) const override;
 
     /**
      * @brief implements end_ddl() procedure
      * @return Status defined in message-broker/include/manager/message/status.h
      */
+    [[deprecated("No longer supports DDL operations for tsurugidb with this kind of API")]]
     [[nodiscard]] manager::message::Status receive_end_ddl() const override;
 
     /**
      * @brief implements receive_create_table() procedure
      * @return Status defined in message-broker/include/manager/message/status.h
      */
+    [[deprecated("No longer supports DDL operations for tsurugidb with this kind of API")]]
     [[nodiscard]] manager::message::Status receive_create_table(manager::metadata::ObjectIdType object_id) const override;
 
     /**
      * @brief implements drop_table() procedure
      * @return Status defined in message-broker/include/manager/message/status.h
      */
+    [[deprecated("No longer supports DDL operations for tsurugidb with this kind of API")]]
     [[nodiscard]] manager::message::Status receive_drop_table(manager::metadata::ObjectIdType object_id) const override;
 
     /**
      * @brief implements receive_create_index() procedure
      * @return Status defined in message-broker/include/manager/message/status.h
      */
+    [[deprecated("No longer supports DDL operations for tsurugidb with this kind of API")]]
     [[nodiscard]] manager::message::Status receive_create_index(manager::metadata::ObjectIdType object_id) const override;
 
     /**
      * @brief implements drop_index() procedure
      * @return Status defined in message-broker/include/manager/message/status.h
      */
+    [[deprecated("No longer supports DDL operations for tsurugidb with this kind of API")]]
     [[nodiscard]] manager::message::Status receive_drop_index(manager::metadata::ObjectIdType object_id) const override;
 
     /**

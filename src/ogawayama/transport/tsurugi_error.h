@@ -21,6 +21,7 @@
 
 #include <ogawayama/stub/error_code.h>
 #include <jogasaki/proto/sql/response.pb.h>
+#include <tateyama/proto/diagnostics.pb.h>
 
 namespace ogawayama::transport {
 
