@@ -1,5 +1,5 @@
 /*
- * Copyright 2019-2024 Project Tsurugi.
+ * Copyright 2019-2025 Project Tsurugi.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,6 +14,8 @@
  * limitations under the License.
  */
 #pragma once
+
+#include <ogawayama/stub/table_metadata_adapter.h>
 
 #include "ogawayama/transport/transport.h"
 
@@ -105,6 +107,28 @@ public:
      * @return error code defined in error_code.h
      */
     ErrorCode tsurugi_error(tsurugi_error_code& code);
+
+    /**
+     * @brief get table metadata
+     * @param table_name the table name
+     * @param table_metadata the std::unique_ptr of table_metadata_adapter (output parameter)
+     * @return error code defined in error_code.h
+     */
+    ErrorCode get_table_metadata(const std::string&, TableMetadataPtr& table_metadata);
+
+    /**
+     * @brief request list tables and get table_list class.
+     * @param table_list returns a table_list_adapter class
+     * @return error code defined in error_code.h
+     */
+    ErrorCode get_list_tables(TableListPtr& table_list);
+
+    /**
+     * @brief request get search path and get search_path class.
+     * @param sp returns a search_path class
+     * @return error code defined in error_code.h
+     */
+     ErrorCode get_search_path(SearchPathPtr& sp);
 
 private:
     Stub::Impl* manager_;
