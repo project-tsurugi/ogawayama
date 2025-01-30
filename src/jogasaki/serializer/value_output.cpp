@@ -1,16 +1,22 @@
-#include <jogasaki/serializer/value_output.h>
-
+#include <algorithm>
+#include <cstdint>
+#include <cstring>
+#include <iterator>
 #include <limits>
 #include <stdexcept>
 #include <tuple>
+#include <boost/assert.hpp>
 
-#include <cstdint>
+#include <takatori/datetime/date_interval.h>
+#include <takatori/datetime/time_interval.h>
+#include <takatori/util/basic_bitset_view.h>
+#include <takatori/util/basic_buffer_view.h>
+#include <takatori/util/exception.h>
+
+#include <jogasaki/serializer/value_output.h>
 
 #include "base128v.h"
 #include "details/value_io_constants.h"
-
-#include <takatori/util/assertion.h>
-#include <takatori/util/exception.h>
 
 namespace jogasaki::serializer {
 
@@ -38,7 +44,7 @@ static void write_fixed8(
         buffer_view::iterator& position,
         buffer_view::const_iterator end) {
     BOOST_ASSERT(position < end); // NOLINT
-	(void) end;
+    (void) end;
     *position = static_cast<byte_type>(value);
     ++position;
 }
@@ -59,7 +65,7 @@ static void write_bytes(
         buffer_view::iterator& position,
         buffer_view::const_iterator end) {
     BOOST_ASSERT(position + count <= end); // NOLINT
-	(void) end;
+    (void) end;
     std::memcpy(position, data, count);
     position += count;
 }
@@ -510,6 +516,38 @@ bool write_row_begin(
         write_fixed8(header_row, position, end);
         base128v::write_unsigned(size, position, end);
     }
+    return true;
+}
+
+bool write_blob(
+        std::uint64_t provider,
+        std::uint64_t object_id,
+        buffer_view::iterator& position,
+        buffer_view::const_iterator end) {
+    if (buffer_remaining(position, end) < 1
+            + sizeof(std::uint64_t)
+            + sizeof(std::uint64_t)) {
+        return false;
+    }
+    write_fixed8(header_blob, position, end);
+    write_fixed(provider, position, end);
+    write_fixed(object_id, position, end);
+    return true;
+}
+
+bool write_clob(
+        std::uint64_t provider,
+        std::uint64_t object_id,
+        buffer_view::iterator& position,
+        buffer_view::const_iterator end) {
+    if (buffer_remaining(position, end) < 1
+            + sizeof(std::uint64_t)
+            + sizeof(std::uint64_t)) {
+        return false;
+    }
+    write_fixed8(header_clob, position, end);
+    write_fixed(provider, position, end);
+    write_fixed(object_id, position, end);
     return true;
 }
 

@@ -1,16 +1,22 @@
-#include <jogasaki/serializer/value_input.h>
-
 #include <algorithm>
+#include <cstring>
+#include <iterator>
+#include <limits>
 #include <optional>
 #include <stdexcept>
+#include <boost/assert.hpp>
+
+#include <takatori/datetime/time_interval.h>
+#include <takatori/util/basic_buffer_view.h>
+#include <takatori/util/exception.h>
+#include <takatori/util/string_builder.h>
+
+#include <jogasaki/serializer/entry_type.h>
+#include <jogasaki/serializer/value_input.h>
+#include <jogasaki/serializer/value_input_exception.h>
 
 #include "base128v.h"
 #include "details/value_io_constants.h"
-
-#include <takatori/util/assertion.h>
-#include <takatori/util/exception.h>
-#include <takatori/util/fail.h>
-#include <takatori/util/string_builder.h>
 
 namespace jogasaki::serializer {
 
@@ -525,6 +531,28 @@ std::size_t read_row_begin(buffer_view::const_iterator& position, buffer_view::c
     return size;
 }
 
-// FIXME: impl blob, clob
+std::pair<std::uint64_t, std::uint64_t> read_blob(buffer_view::const_iterator& position, buffer_view::const_iterator end) {
+    requires_entry(entry_type::blob, position, end);
+    buffer_view::const_iterator iter = position;
+    ++iter;
+    auto provider = read_fixed<std::uint64_t>(iter, end);
+    auto object_id = read_fixed<std::uint64_t>(iter, end);
+    position = iter;
+    return {
+        provider, object_id
+        };
+}
+
+std::pair<std::uint64_t, std::uint64_t> read_clob(buffer_view::const_iterator& position, buffer_view::const_iterator end) {
+    requires_entry(entry_type::clob, position, end);
+    buffer_view::const_iterator iter = position;
+    ++iter;
+    auto provider = read_fixed<std::uint64_t>(iter, end);
+    auto object_id = read_fixed<std::uint64_t>(iter, end);
+    position = iter;
+    return {
+        provider, object_id
+        };
+}
 
 } // namespace jogasaki::serializer
