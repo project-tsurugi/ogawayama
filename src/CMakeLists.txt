@@ -21,6 +21,7 @@ set(SqlProtoFiles
 set(FrameworkProtoFiles
         ${CMAKE_SOURCE_DIR}/src/tateyama/proto/framework/request.proto
         ${CMAKE_SOURCE_DIR}/src/tateyama/proto/framework/response.proto
+        ${CMAKE_SOURCE_DIR}/src/tateyama/proto/framework/common.proto
         ${CMAKE_SOURCE_DIR}/src/tateyama/proto/diagnostics.proto
         ${CMAKE_SOURCE_DIR}/src/tateyama/proto/core/request.proto
         ${CMAKE_SOURCE_DIR}/src/tateyama/proto/core/response.proto
