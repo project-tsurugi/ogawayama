@@ -1,4 +1,4 @@
-# Copyright 2019-2023 tsurugi fin project.
+# Copyright 2019-2025 tsurugi fin project.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -80,7 +80,7 @@ add_dependencies(stub
 
 set_target_properties(stub
     PROPERTIES
-        INSTALL_RPATH "\$ORIGIN/../lib"
+        INSTALL_RPATH "\$ORIGIN"
         LIBRARY_OUTPUT_NAME "ogawayama-stub"
 )
 
