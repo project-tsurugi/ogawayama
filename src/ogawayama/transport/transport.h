@@ -102,13 +102,13 @@ public:
 
 /**
  * @brief send a begin request to the sql service.
- * @param begin_request a begen request message in ::jogasaki::proto::sql::request::Begin
+ * @param req the request message by protocol buffers
  * @return std::optional of ::jogasaki::proto::sql::request::Begin
  */
-    std::optional<::jogasaki::proto::sql::response::Begin> send(::jogasaki::proto::sql::request::Begin& begin_request) {
+    std::optional<::jogasaki::proto::sql::response::Begin> send(::jogasaki::proto::sql::request::Begin& req) {
         tateyama::common::wire::message_header::index_type slot_index{};
         ::jogasaki::proto::sql::request::Request request{};
-        *(request.mutable_begin())= begin_request;
+        *(request.mutable_begin())= req;
         auto response_opt = send<::jogasaki::proto::sql::response::Response>(request, slot_index);
         request.clear_begin();
         if (response_opt) {
@@ -124,13 +124,13 @@ public:
 
 /**
  * @brief send a prepare request to the sql service.
- * @param prepare_request a begen request message in ::jogasaki::proto::sql::request::Prepare
+ * @param req the request message by protocol buffers
  * @return std::optional of ::jogasaki::proto::sql::request::Prepare
  */
-    std::optional<::jogasaki::proto::sql::response::Prepare> send(::jogasaki::proto::sql::request::Prepare& prepare_request) {
+    std::optional<::jogasaki::proto::sql::response::Prepare> send(::jogasaki::proto::sql::request::Prepare& req) {
         tateyama::common::wire::message_header::index_type slot_index{};
         ::jogasaki::proto::sql::request::Request request{};
-        *(request.mutable_prepare())= prepare_request;
+        *(request.mutable_prepare())= req;
         auto response_opt = send<::jogasaki::proto::sql::response::Response>(request, slot_index);
         request.clear_prepare();
         if (response_opt) {
@@ -146,35 +146,13 @@ public:
 
 /**
  * @brief send a execute statement request to the sql service.
- * @param execute_statement_request a execute statement request message in ::jogasaki::proto::sql::request::ExecuteStatement
+ * @param req the request message by protocol buffers
  * @return std::optional of ::jogasaki::proto::sql::request::ExecuteResult
  */
-    std::optional<::jogasaki::proto::sql::response::ExecuteResult> send(::jogasaki::proto::sql::request::ExecuteStatement& execute_statement_request) {
+    std::optional<::jogasaki::proto::sql::response::ExecuteResult> send(::jogasaki::proto::sql::request::ExecuteStatement& req) {
         tateyama::common::wire::message_header::index_type slot_index{};
         ::jogasaki::proto::sql::request::Request request{};
-        *(request.mutable_execute_statement()) = execute_statement_request;
-        auto response_opt = send<::jogasaki::proto::sql::response::Response>(request, slot_index);
-        request.clear_execute_statement();
-        if (response_opt) {
-            auto response_message = response_opt.value();
-            if (response_message.has_execute_result()) {
-                auto response = response_message.execute_result();
-                sql_error_ = response.has_error() ? response.error() : ::jogasaki::proto::sql::response::Error{};
-                return response;
-            }
-        }
-        return std::nullopt;
-    }
-
-/**
- * @brief send a execute statement request to the sql service.
- * @param execute_statement_request a execute statement request message in ::jogasaki::proto::sql::request::ExecutePreparedStatement
- * @return std::optional of ::jogasaki::proto::sql::request::ExecuteResult
- */
-    std::optional<::jogasaki::proto::sql::response::ExecuteResult> send(::jogasaki::proto::sql::request::ExecutePreparedStatement& execute_statement_request) {
-        tateyama::common::wire::message_header::index_type slot_index{};
-        ::jogasaki::proto::sql::request::Request request{};
-        *(request.mutable_execute_prepared_statement()) = execute_statement_request;
+        *(request.mutable_execute_statement()) = req;
         auto response_opt = send<::jogasaki::proto::sql::response::Response>(request, slot_index);
         request.clear_execute_statement();
         if (response_opt) {
@@ -190,12 +168,12 @@ public:
 
 /**
  * @brief send a execute query request to the sql service.
- * @param execute_query_request a execute query request message in ::jogasaki::proto::sql::request::ExecuteQuery
+ * @param req the request message by protocol buffers
  * @return std::optional of ::jogasaki::proto::sql::request::ExecuteQuery
  */
-    std::optional<::jogasaki::proto::sql::response::ExecuteQuery> send(::jogasaki::proto::sql::request::ExecuteQuery& execute_query_request, tateyama::common::wire::message_header::index_type& query_index) {
+    std::optional<::jogasaki::proto::sql::response::ExecuteQuery> send(::jogasaki::proto::sql::request::ExecuteQuery& req, tateyama::common::wire::message_header::index_type& query_index) {
         ::jogasaki::proto::sql::request::Request request{};
-        *(request.mutable_execute_query()) = execute_query_request;
+        *(request.mutable_execute_query()) = req;
 
         auto response_opt = send<::jogasaki::proto::sql::response::Response>(request, query_index);
         request.clear_execute_query();
@@ -214,13 +192,35 @@ public:
     }
 
 /**
- * @brief send a execute query request to the sql service.
- * @param execute_query_request a execute query request message in ::jogasaki::proto::sql::request::ExecutePreparedQuery
+ * @brief send a execute prepared statement request to the sql service.
+ * @param req the request message by protocol buffers
+ * @return std::optional of ::jogasaki::proto::sql::request::ExecuteResult
+ */
+    std::optional<::jogasaki::proto::sql::response::ExecuteResult> send(::jogasaki::proto::sql::request::ExecutePreparedStatement& req) {
+        tateyama::common::wire::message_header::index_type slot_index{};
+        ::jogasaki::proto::sql::request::Request request{};
+        *(request.mutable_execute_prepared_statement()) = req;
+        auto response_opt = send<::jogasaki::proto::sql::response::Response>(request, slot_index);
+        request.clear_execute_prepared_statement();
+        if (response_opt) {
+            auto response_message = response_opt.value();
+            if (response_message.has_execute_result()) {
+                auto response = response_message.execute_result();
+                sql_error_ = response.has_error() ? response.error() : ::jogasaki::proto::sql::response::Error{};
+                return response;
+            }
+        }
+        return std::nullopt;
+    }
+
+/**
+ * @brief send a execute prepared query request to the sql service.
+ * @param req the request message by protocol buffers
  * @return std::optional of ::jogasaki::proto::sql::request::ExecutePreparedQuery
  */
-    std::optional<::jogasaki::proto::sql::response::ExecuteQuery> send(::jogasaki::proto::sql::request::ExecutePreparedQuery& execute_query_request, tateyama::common::wire::message_header::index_type& query_index) {
+    std::optional<::jogasaki::proto::sql::response::ExecuteQuery> send(::jogasaki::proto::sql::request::ExecutePreparedQuery& req, tateyama::common::wire::message_header::index_type& query_index) {
         ::jogasaki::proto::sql::request::Request request{};
-        *(request.mutable_execute_prepared_query()) = execute_query_request;
+        *(request.mutable_execute_prepared_query()) = req;
         auto response_opt = send<::jogasaki::proto::sql::response::Response>(request, query_index);
         request.clear_execute_prepared_query();
         if (response_opt) {
@@ -247,13 +247,13 @@ public:
     
 /**
  * @brief send a commit request to the sql service.
- * @param commit_request a commit request message in ::jogasaki::proto::sql::request::Commit
+ * @param req the request message by protocol buffers
  * @return std::optional of ::jogasaki::proto::sql::request::ResultOnly
  */
-    std::optional<::jogasaki::proto::sql::response::ResultOnly> send(::jogasaki::proto::sql::request::Commit& commit_request) {
+    std::optional<::jogasaki::proto::sql::response::ResultOnly> send(::jogasaki::proto::sql::request::Commit& req) {
         tateyama::common::wire::message_header::index_type slot_index{};
         ::jogasaki::proto::sql::request::Request request{};
-        *(request.mutable_commit()) = commit_request;
+        *(request.mutable_commit()) = req;
         auto response_opt = send<::jogasaki::proto::sql::response::Response>(request, slot_index);
         request.clear_commit();
         if (response_opt) {
@@ -269,13 +269,13 @@ public:
 
 /**
  * @brief send a rollback request to the sql service.
- * @param rollback_request a rollback request message in ::jogasaki::proto::sql::request::Rollback
+ * @param req the request message by protocol buffers
  * @return std::optional of ::jogasaki::proto::sql::request::ResultOnly
  */
-    std::optional<::jogasaki::proto::sql::response::ResultOnly> send(::jogasaki::proto::sql::request::Rollback& rollback_request) {
+    std::optional<::jogasaki::proto::sql::response::ResultOnly> send(::jogasaki::proto::sql::request::Rollback& req) {
         tateyama::common::wire::message_header::index_type slot_index{};
         ::jogasaki::proto::sql::request::Request request{};
-        *(request.mutable_rollback()) = rollback_request;
+        *(request.mutable_rollback()) = req;
         auto response_opt = send<::jogasaki::proto::sql::response::Response>(request, slot_index);
         request.clear_rollback();
         if (response_opt) {
@@ -288,16 +288,16 @@ public:
     }
 
 /**
- * @brief send a dispose transaction to the sql service.
- * @param rollback_request a rollback request message in ::jogasaki::proto::sql::request::Rollback
+ * @brief send a dispose prepared statement request to the sql service.
+ * @param req the request message by protocol buffers
  * @return std::optional of ::jogasaki::proto::sql::request::ResultOnly
  */
-    std::optional<ogawayama::stub::ErrorCode> send(::jogasaki::proto::sql::request::DisposeTransaction& r) {
+    std::optional<ogawayama::stub::ErrorCode> send(::jogasaki::proto::sql::request::DisposePreparedStatement& req) {
         tateyama::common::wire::message_header::index_type slot_index{};
         ::jogasaki::proto::sql::request::Request request{};
-        *(request.mutable_dispose_transaction()) = r;
+        *(request.mutable_dispose_prepared_statement()) = req;
         auto response_opt = send<::jogasaki::proto::sql::response::Response>(request, slot_index);
-        request.clear_rollback();
+        request.clear_dispose_prepared_statement();
         if (response_opt) {
             auto response_message = response_opt.value();
             if (response_message.has_result_only()) {
@@ -311,6 +311,144 @@ public:
                 if (ro.has_success()) {
                     return ogawayama::stub::ErrorCode::OK;
                 }
+            }
+        }
+        return std::nullopt;
+    }
+
+// Explain
+// ExecuteDump
+// ExecuteLoad
+
+/**
+ * @brief send a describe table request to the sql service.
+ * @param req the request message by protocol buffers
+ * @return std::optional of ::jogasaki::proto::sql::response::DescribeTable
+ */
+    std::optional<::jogasaki::proto::sql::response::DescribeTable> send(::jogasaki::proto::sql::request::DescribeTable& req) {
+        tateyama::common::wire::message_header::index_type slot_index{};
+        ::jogasaki::proto::sql::request::Request request{};
+        *(request.mutable_describe_table()) = req;
+        auto response_opt = send<::jogasaki::proto::sql::response::Response>(request, slot_index);
+        request.clear_describe_table();
+        if (response_opt) {
+            auto response_message = response_opt.value();
+            if (response_message.has_describe_table()) {
+                return response_message.describe_table();
+            }
+        }
+        return std::nullopt;
+    }
+
+// Batch
+
+/**
+ * @brief send a list table request to the sql service.
+ * @param req the request message by protocol buffers
+ * @return std::optional of ::jogasaki::proto::sql::response::DescribeTable
+ */
+    std::optional<::jogasaki::proto::sql::response::ListTables> send(::jogasaki::proto::sql::request::ListTables& req) {
+        tateyama::common::wire::message_header::index_type slot_index{};
+        ::jogasaki::proto::sql::request::Request request{};
+        *(request.mutable_listtables()) = req;
+        auto response_opt = send<::jogasaki::proto::sql::response::Response>(request, slot_index);
+        request.clear_listtables();
+        if (response_opt) {
+            auto response_message = response_opt.value();
+            if (response_message.has_list_tables()) {
+                return response_message.list_tables();
+            }
+        }
+        return std::nullopt;
+    }
+
+/**
+ * @brief send a get serch path request to the sql service.
+ * @param req the request message by protocol buffers
+ * @return std::optional of ::jogasaki::proto::sql::response::DescribeTable
+ */
+    std::optional<::jogasaki::proto::sql::response::GetSearchPath> send(::jogasaki::proto::sql::request::GetSearchPath& req) {
+        tateyama::common::wire::message_header::index_type slot_index{};
+        ::jogasaki::proto::sql::request::Request request{};
+        *(request.mutable_getsearchpath()) = req;
+        auto response_opt = send<::jogasaki::proto::sql::response::Response>(request, slot_index);
+        request.clear_getsearchpath();
+        if (response_opt) {
+            auto response_message = response_opt.value();
+            if (response_message.has_get_search_path()) {
+                return response_message.get_search_path();
+            }
+        }
+        return std::nullopt;
+    }
+
+/**
+ * @brief send a get error info request to the sql service.
+ * @param req the request message by protocol buffers
+ * @return std::optional of ::jogasaki::proto::sql::response::DescribeTable
+ */
+    std::optional<::jogasaki::proto::sql::response::GetErrorInfo> send(::jogasaki::proto::sql::request::GetErrorInfo& req) {
+        tateyama::common::wire::message_header::index_type slot_index{};
+        ::jogasaki::proto::sql::request::Request request{};
+        *(request.mutable_get_error_info()) = req;
+        auto response_opt = send<::jogasaki::proto::sql::response::Response>(request, slot_index);
+        request.clear_get_error_info();
+        if (response_opt) {
+            auto response_message = response_opt.value();
+            if (response_message.has_get_error_info()) {
+                return response_message.get_error_info();
+            }
+        }
+        return std::nullopt;
+    }
+
+/**
+ * @brief send a dispose transaction request to the sql service.
+ * @param req the request message by protocol buffers
+ * @return std::optional of ::jogasaki::proto::sql::request::ResultOnly
+ */
+    std::optional<ogawayama::stub::ErrorCode> send(::jogasaki::proto::sql::request::DisposeTransaction& req) {
+        tateyama::common::wire::message_header::index_type slot_index{};
+        ::jogasaki::proto::sql::request::Request request{};
+        *(request.mutable_dispose_transaction()) = req;
+        auto response_opt = send<::jogasaki::proto::sql::response::Response>(request, slot_index);
+        request.clear_dispose_transaction();
+        if (response_opt) {
+            auto response_message = response_opt.value();
+            if (response_message.has_result_only()) {
+                const auto& ro = response_message.result_only();
+                if (ro.has_success()) {
+                    return ogawayama::stub::ErrorCode::OK;
+                }
+            }
+            if (response_message.has_dispose_transaction()) {
+                const auto& ro = response_message.dispose_transaction();
+                if (ro.has_success()) {
+                    return ogawayama::stub::ErrorCode::OK;
+                }
+            }
+        }
+        return std::nullopt;
+    }
+
+// ExplainByText
+// ExtractStatementInfo
+
+/**
+ * @brief send a get large object data request to the sql service.
+ * @param req the request message by protocol buffers
+ * @return std::optional of ::jogasaki::proto::sql::request::ResultOnly
+ */
+    std::optional<::jogasaki::proto::sql::response::GetLargeObjectData> send(::jogasaki::proto::sql::request::GetLargeObjectData& req) {
+        tateyama::common::wire::message_header::index_type slot_index{};
+        ::jogasaki::proto::sql::request::Request request{};
+        *(request.mutable_get_large_object_data()) = req;
+        auto response_opt = send<::jogasaki::proto::sql::response::Response>(request, slot_index);
+        request.clear_get_large_object_data();
+        if (response_opt) {
+            auto response_message = response_opt.value();
+            if (response_message.has_get_large_object_data()) {
+                return response_message.get_large_object_data();
             }
         }
         return std::nullopt;
@@ -449,7 +587,7 @@ private:
                 if (auto res = tateyama::utils::GetDelimitedBodyFromZeroCopyStream(std::addressof(in), nullptr, record); ! res) {
                     return std::nullopt;
                 }
-                if(auto res = framework_error_.ParseFromArray(record.data(), record.length()); ! res) {
+                if(auto res = framework_error_.ParseFromArray(record.data(), static_cast<int>(record.length())); ! res) {
                     return std::nullopt;
                 }
                 throw std::runtime_error("received SERVER_DIAGNOSTICS");
@@ -529,7 +667,7 @@ private:
             if (auto res = tateyama::utils::GetDelimitedBodyFromZeroCopyStream(std::addressof(in), nullptr, record); ! res) {
                 return std::nullopt;
             }
-            if(auto res = framework_error_.ParseFromArray(record.data(), record.length()); ! res) {
+            if(auto res = framework_error_.ParseFromArray(record.data(), static_cast<int>(record.length())); ! res) {
                 return std::nullopt;
             }
             throw std::runtime_error("received SERVER_DIAGNOSTICS");
