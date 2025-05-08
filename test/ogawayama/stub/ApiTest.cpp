@@ -26,17 +26,17 @@ namespace ogawayama::testing {
 static constexpr const char* name_prefix = "api_test";
 
 class ApiTest : public ::testing::Test {
-    virtual void SetUp() {
+    void SetUp() override {
         shm_name_ = std::string(name_prefix);
         shm_name_ += std::to_string(getpid());
         server_ = std::make_unique<server>(shm_name_);
     }
 protected:
-    std::unique_ptr<server> server_{};
-    std::string shm_name_{};
+    std::unique_ptr<server> server_{};  // NOLINT(cppcoreguidelines-non-private-member-variables-in-classes,misc-non-private-member-variables-in-classes)
+    std::string shm_name_{};  // NOLINT(cppcoreguidelines-non-private-member-variables-in-classes,misc-non-private-member-variables-in-classes)
 };
 
-TEST_F(ApiTest, begin_commit) {
+TEST_F(ApiTest, begin_commit) {  // NOLINT(google-readability-avoid-underscore-in-googletest-name)
     StubPtr stub;
     ConnectionPtr connection;
     TransactionPtr transaction;
@@ -94,7 +94,7 @@ TEST_F(ApiTest, begin_commit) {
     }
 }
 
-TEST_F(ApiTest, long_transaction) {
+TEST_F(ApiTest, long_transaction) {  // NOLINT(google-readability-avoid-underscore-in-googletest-name)
     StubPtr stub;
     ConnectionPtr connection;
     TransactionPtr transaction;
@@ -176,7 +176,7 @@ TEST_F(ApiTest, long_transaction) {
     }
 }
 
-TEST_F(ApiTest, long_transaction_inclusive_read_area) {
+TEST_F(ApiTest, long_transaction_inclusive_read_area) {  // NOLINT(google-readability-avoid-underscore-in-googletest-name)
     StubPtr stub;
     ConnectionPtr connection;
     TransactionPtr transaction;
@@ -258,7 +258,7 @@ TEST_F(ApiTest, long_transaction_inclusive_read_area) {
     }
 }
 
-TEST_F(ApiTest, long_transaction_exclusive_read_area) {
+TEST_F(ApiTest, long_transaction_exclusive_read_area) {  // NOLINT(google-readability-avoid-underscore-in-googletest-name)
     StubPtr stub;
     ConnectionPtr connection;
     TransactionPtr transaction;
@@ -340,12 +340,12 @@ TEST_F(ApiTest, long_transaction_exclusive_read_area) {
     }
 }
 
-TEST_F(ApiTest, result_set) {
+TEST_F(ApiTest, result_set) {  // NOLINT(google-readability-avoid-underscore-in-googletest-name)
     StubPtr stub;
     ConnectionPtr connection;
     TransactionPtr transaction;
     ResultSetPtr result_set;
-    MetadataPtr metadata;
+    MetadataPtr metadata{};
 
     EXPECT_EQ(ERROR_CODE::OK, make_stub(stub, shm_name_));
 
@@ -433,10 +433,10 @@ TEST_F(ApiTest, result_set) {
 
         EXPECT_EQ(TYPE::TEXT, md.at(6).get_type());
 
-        std::int32_t i;
-        std::int64_t b;
-        float f;
-        double d;
+        std::int32_t i{};
+        std::int64_t b{};
+        float f{};
+        double d{};
         std::string_view t;
         EXPECT_EQ(ERROR_CODE::OK, result_set->next());
 

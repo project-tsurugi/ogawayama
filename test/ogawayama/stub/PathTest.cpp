@@ -24,10 +24,10 @@
  
 namespace ogawayama::testing {
 
-static constexpr const char* name_prefix = "api_test";
+// static constexpr const char* name_prefix = "api_test";
 
 class PathTest : public ::testing::Test {
-    virtual void SetUp() {
+    void SetUp() override {
         // list_tables_
         {
             auto* table_names = list_tables_.add_table_path_names();
@@ -67,11 +67,11 @@ class PathTest : public ::testing::Test {
         }
     }
 protected:
-    ::jogasaki::proto::sql::response::ListTables::Success list_tables_{};
-    ::jogasaki::proto::sql::response::GetSearchPath::Success search_path_{};
+    ::jogasaki::proto::sql::response::ListTables::Success list_tables_{};  // NOLINT(cppcoreguidelines-non-private-member-variables-in-classes,misc-non-private-member-variables-in-classes)
+    ::jogasaki::proto::sql::response::GetSearchPath::Success search_path_{};  // NOLINT(cppcoreguidelines-non-private-member-variables-in-classes,misc-non-private-member-variables-in-classes)
 };
 
-TEST_F(PathTest, table_list_adapter) {
+TEST_F(PathTest, table_list_adapter) {  // NOLINT(google-readability-avoid-underscore-in-googletest-name)
     std::set<std::string> expected{};
     expected.emplace("databaseName.schema1Name.table1Name");
     expected.emplace("databaseName.schema1Name.table2Name");
@@ -87,7 +87,7 @@ TEST_F(PathTest, table_list_adapter) {
     EXPECT_TRUE(expected.empty());
 }
 
-TEST_F(PathTest, search_path_adapter) {
+TEST_F(PathTest, search_path_adapter) {  // NOLINT(google-readability-avoid-underscore-in-googletest-name)
     std::set<std::string> expected{};
     expected.emplace("databaseName.schema1Name");
     expected.emplace("databaseName.schema3Name");
@@ -101,7 +101,7 @@ TEST_F(PathTest, search_path_adapter) {
     EXPECT_TRUE(expected.empty());
 }
 
-TEST_F(PathTest, table_list_adapter_with_search_path_adapter) {
+TEST_F(PathTest, table_list_adapter_with_search_path_adapter) {  // NOLINT(google-readability-avoid-underscore-in-googletest-name)
     std::set<std::string> expected{};
     expected.emplace("databaseName.schema1Name.table1Name");
     expected.emplace("databaseName.schema1Name.table2Name");

@@ -26,14 +26,14 @@ namespace ogawayama::testing {
 static constexpr const char* name_prefix = "prepared_statement_test";
 
 class PreparedTest : public ::testing::Test {
-    virtual void SetUp() {
+    void SetUp() override {
         shm_name_ = std::string(name_prefix);
         shm_name_ += std::to_string(getpid());
         server_ = std::make_unique<server>(shm_name_);
     }
 protected:
-    std::unique_ptr<server> server_{};
-    std::string shm_name_{};
+    std::unique_ptr<server> server_{};  // NOLINT(cppcoreguidelines-non-private-member-variables-in-classes,misc-non-private-member-variables-in-classes)
+    std::string shm_name_{};  // NOLINT(cppcoreguidelines-non-private-member-variables-in-classes,misc-non-private-member-variables-in-classes)
 };
 
 TEST_F(PreparedTest, prepare) {
@@ -74,7 +74,7 @@ TEST_F(PreparedTest, prepare) {
         auto request = request_opt.value();
         EXPECT_EQ(request.request_case(), ::jogasaki::proto::sql::request::Request::RequestCase::kPrepare);
 
-        auto prepare_request = request.prepare();
+        auto& prepare_request = request.prepare();
         EXPECT_EQ(prepare_request.sql(), sql_for_test);
         EXPECT_EQ(prepare_request.placeholders_size(), 11);
 
@@ -188,7 +188,7 @@ TEST_F(PreparedTest, prepare) {
         auto request = request_opt.value();
         EXPECT_EQ(request.request_case(), jogasaki::proto::sql::request::Request::RequestCase::kExecutePreparedStatement);
 
-        auto eps_request = request.execute_prepared_statement();
+        auto& eps_request = request.execute_prepared_statement();
         EXPECT_EQ(eps_request.prepared_statement_handle().handle(), 1234);
         EXPECT_EQ(eps_request.parameters_size(), 11);
 

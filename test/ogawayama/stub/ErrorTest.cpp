@@ -26,14 +26,14 @@ namespace ogawayama::testing {
 static constexpr const char* name_prefix = "error_test";
 
 class ErrorTest : public ::testing::Test {
-    virtual void SetUp() {
+    void SetUp() override {
         shm_name_ = std::string(name_prefix);
         shm_name_ += std::to_string(getpid());
         server_ = std::make_unique<server>(shm_name_);
     }
 protected:
-    std::unique_ptr<server> server_{};
-    std::string shm_name_{};
+    std::unique_ptr<server> server_{};  // NOLINT(cppcoreguidelines-non-private-member-variables-in-classes,misc-non-private-member-variables-in-classes)
+    std::string shm_name_{};  // NOLINT(cppcoreguidelines-non-private-member-variables-in-classes,misc-non-private-member-variables-in-classes)
 };
 
 TEST_F(ErrorTest, begin) {

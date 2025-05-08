@@ -18,8 +18,7 @@
 
 namespace ogawayama::testing {
 
-database_mock::database_mock() {
-}
+database_mock::database_mock() = default;
 
 [[nodiscard]] jogasaki::status database_mock::start() {
     return jogasaki::status::ok;

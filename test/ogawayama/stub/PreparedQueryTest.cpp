@@ -26,14 +26,14 @@ namespace ogawayama::testing {
 static constexpr const char* name_prefix = "prepared_statement_test";
 
 class PreparedTest : public ::testing::Test {
-    virtual void SetUp() {
+    void SetUp() override {
         shm_name_ = std::string(name_prefix);
         shm_name_ += std::to_string(getpid());
         server_ = std::make_unique<server>(shm_name_);
     }
 protected:
-    std::unique_ptr<server> server_{};
-    std::string shm_name_{};
+    std::unique_ptr<server> server_{};  // NOLINT(cppcoreguidelines-non-private-member-variables-in-classes,misc-non-private-member-variables-in-classes)
+    std::string shm_name_{};  // NOLINT(cppcoreguidelines-non-private-member-variables-in-classes,misc-non-private-member-variables-in-classes)
 };
 
 TEST_F(PreparedTest, prepare) {
@@ -42,7 +42,7 @@ TEST_F(PreparedTest, prepare) {
     PreparedStatementPtr prepared_statement;
     TransactionPtr transaction;
     ResultSetPtr result_set;
-    MetadataPtr metadata;
+    MetadataPtr metadata{};
 
     EXPECT_EQ(ERROR_CODE::OK, make_stub(stub, shm_name_));
 
@@ -76,7 +76,7 @@ TEST_F(PreparedTest, prepare) {
         auto request = request_opt.value();
         EXPECT_EQ(request.request_case(), ::jogasaki::proto::sql::request::Request::RequestCase::kPrepare);
 
-        auto prepare_request = request.prepare();
+        auto& prepare_request = request.prepare();
         EXPECT_EQ(prepare_request.sql(), sql_for_test);
         EXPECT_EQ(prepare_request.placeholders_size(), 11);
 
@@ -228,10 +228,10 @@ TEST_F(PreparedTest, prepare) {
         EXPECT_EQ(TYPE::TEXT, md.at(6).get_type());
 
         // get result set
-        std::int32_t i;
-        std::int64_t b;
-        float f;
-        double d;
+        std::int32_t i{};
+        std::int64_t b{};
+        float f{};
+        double d{};
         std::string_view t;
         EXPECT_EQ(ERROR_CODE::OK, result_set->next());
 
@@ -260,7 +260,7 @@ TEST_F(PreparedTest, prepare) {
         auto request = request_opt.value();
         EXPECT_EQ(request.request_case(), jogasaki::proto::sql::request::Request::RequestCase::kExecutePreparedQuery);
 
-        auto eps_request = request.execute_prepared_query();
+        auto& eps_request = request.execute_prepared_query();
         EXPECT_EQ(eps_request.prepared_statement_handle().handle(), 1234);
         EXPECT_EQ(eps_request.parameters_size(), 10);
 
