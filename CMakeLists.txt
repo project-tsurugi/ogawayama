@@ -31,6 +31,7 @@ option(ENABLE_COVERAGE "enable coverage on debug build" OFF)
 option(BUILD_TESTS "Build test programs" ON)
 option(BUILD_EXAMPLES "Build example programs" ON)
 option(BUILD_SHARED_LIBS "build shared libraries instead of static" ON)
+option(BUILD_STRICT "build with option strictly determine of success" ON)
 option(BUILD_STUB_ONLY "build the stub only" OFF)
 option(BUILD_BRIDGE_ONLY "build the bridge only" OFF)
 
@@ -81,7 +82,7 @@ target_include_directories(api
         $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
         $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}/ogawayama>
 )
-      
+
 add_library(bridge-api INTERFACE)
 
 target_include_directories(bridge-api

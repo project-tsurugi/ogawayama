@@ -61,6 +61,7 @@ available options:
 * `-DBUILD_BRIDGE_ONLY=ON` - build the bridge only
 * `-DBUILD_TESTS=OFF` - never build test programs
 * `-DBUILD_EXAMPLES=ON` - also build example programs
+* `-DBUILD_STRICT=OFF` - don't treat compile warnings as build errors
 * `-DCMAKE_PREFIX_PATH=<installation directory>` - indicate prerequiste installation directory
 * `-DSHARKSFIN_IMPLEMENTATION=<implementation name>` - switch sharksfin implementation. Available options are `memory` and `shirakami` (default: `shirakami`)
 * for debugging only
