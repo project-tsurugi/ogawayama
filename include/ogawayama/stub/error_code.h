@@ -110,6 +110,8 @@ constexpr std::string_view error_name(ErrorCode code) {
     case ErrorCode::UNKNOWN: return "UNKNOWN";
     case ErrorCode::SERVER_FAILURE: return "SERVER_FAILURE";
     case ErrorCode::TIMEOUT: return "TIMEOUT";
+    case ErrorCode::TRANSACTION_ALREADY_STARTED: return "TRANSACTION_ALREADY_STARTED";
+    case ErrorCode::SERVER_ERROR: return "SERVER_ERROR";
     default: return "This ERROR_CODE is illegal";
     }
 }
