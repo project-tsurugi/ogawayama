@@ -20,8 +20,8 @@
 #include <queue>
 #include <stdexcept>
 
+#include <ogawayama/stub/api.h>
 #include "connectionImpl.h"
-#include "result_setImpl.h"
 
 namespace ogawayama::stub {
 

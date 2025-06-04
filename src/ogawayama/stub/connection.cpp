@@ -26,6 +26,8 @@
 #include <boost/archive/binary_iarchive.hpp>
 
 #include "ogawayama/transport/tsurugi_error.h"
+#include "transactionImpl.h"
+#include "result_setImpl.h"
 #include "prepared_statementImpl.h"
 #include "search_path_adapter.h"
 #include "table_list_adapter.h"
@@ -61,7 +63,7 @@ ErrorCode Connection::Impl::begin(TransactionPtr& transaction)
         if (!response_opt) {
             return ErrorCode::SERVER_FAILURE;
         }
-        auto response_begin = response_opt.value();
+        const auto& response_begin = response_opt.value();
         if (response_begin.has_success()) {
             transaction = std::make_unique<Transaction>(std::make_unique<Transaction::Impl>(this, transport_, response_begin.success().transaction_handle()));
             return ErrorCode::OK;
@@ -93,7 +95,7 @@ ErrorCode Connection::Impl::begin(const boost::property_tree::ptree& option, Tra
         BOOST_FOREACH (const auto& wp_node, nodes.value()) {
             auto wp = wp_node.second.get_optional<std::string>(TABLE_NAME);
             if (wp) {
-                if (auto value = wp.value(); !value.empty()) {
+                if (const auto& value = wp.value(); !value.empty()) {
                     topt->add_write_preserves()->set_table_name(value);
                 }
             }
@@ -103,7 +105,7 @@ ErrorCode Connection::Impl::begin(const boost::property_tree::ptree& option, Tra
         BOOST_FOREACH (const auto& ra_node, nodes.value()) {
             auto ra = ra_node.second.get_optional<std::string>(TABLE_NAME);
             if (ra) {
-                if (auto value = ra.value(); !value.empty()) {
+                if (const auto& value = ra.value(); !value.empty()) {
                     topt->add_inclusive_read_areas()->set_table_name(value);
                 }
             }
@@ -113,7 +115,7 @@ ErrorCode Connection::Impl::begin(const boost::property_tree::ptree& option, Tra
         BOOST_FOREACH (const auto& ra_node, nodes.value()) {
             auto ra = ra_node.second.get_optional<std::string>(TABLE_NAME);
             if (ra) {
-                if (auto value = ra.value(); !value.empty()) {
+                if (const auto& value = ra.value(); !value.empty()) {
                     topt->add_exclusive_read_areas()->set_table_name(value);
                 }
             }
@@ -125,7 +127,7 @@ ErrorCode Connection::Impl::begin(const boost::property_tree::ptree& option, Tra
         if (!response_opt) {
             return ErrorCode::SERVER_FAILURE;
         }
-        auto response_begin = response_opt.value();
+        const auto& response_begin = response_opt.value();
         if (response_begin.has_success()) {
             transaction = std::make_unique<Transaction>(std::make_unique<Transaction::Impl>(this, transport_, response_begin.success().transaction_handle()));
             return ErrorCode::OK;
@@ -193,7 +195,7 @@ ErrorCode Connection::Impl::prepare(std::string_view sql, const placeholders_typ
         if (!response_opt) {
             return ErrorCode::SERVER_FAILURE;
         }
-        auto response_prepare = response_opt.value();
+        const auto& response_prepare = response_opt.value();
         if (response_prepare.has_prepared_statement_handle()) {
             auto& psh = response_prepare.prepared_statement_handle();
             std::size_t id = psh.handle();
@@ -217,7 +219,7 @@ ErrorCode Connection::Impl::get_table_metadata(const std::string& table_name, Ta
         if (!response_opt) {
             return ErrorCode::SERVER_FAILURE;
         }
-        auto response_describe_table = response_opt.value();
+        const auto& response_describe_table = response_opt.value();
         if (response_describe_table.has_success()) {
             table_metadata = std::make_unique<table_metadata_adapter>(response_describe_table.success());
             return ErrorCode::OK;
@@ -236,7 +238,7 @@ ErrorCode Connection::Impl::get_list_tables(TableListPtr& table_list) {
         if (!response_opt) {
             return ErrorCode::SERVER_FAILURE;
         }
-        auto response = response_opt.value();
+        const auto& response = response_opt.value();
         if (response.has_success()) {
             table_list = std::make_unique<table_list_adapter>(response.success());
             return ErrorCode::OK;
@@ -255,7 +257,7 @@ ErrorCode Connection::Impl::get_search_path(SearchPathPtr& sp) {
         if (!response_opt) {
             return ErrorCode::SERVER_FAILURE;
         }
-        auto response = response_opt.value();
+        const auto& response = response_opt.value();
         if (response.has_success()) {
             sp = std::make_unique<search_path_adapter>(response.success());
             return ErrorCode::OK;

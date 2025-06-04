@@ -58,7 +58,7 @@ public:
                     if (current_wire_ != nullptr) {
                         std::string_view extrusion{};
                         auto rtnv = current_wire_->get_chunk(current_wire_->get_bip_address(managed_shm_ptr_), extrusion);
-                        if (extrusion.length() == 0) {
+                        if (extrusion.empty()) {
                             return rtnv;
                         }
                         wrap_around_ = rtnv;

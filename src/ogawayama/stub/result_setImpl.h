@@ -17,8 +17,8 @@
 
 #include <jogasaki/serializer/value_input.h>
 
-#include "stubImpl.h"
-#include "transactionImpl.h"
+#include "ogawayama/stub/api.h"
+#include "connectionImpl.h"
 
 namespace ogawayama::stub {
 

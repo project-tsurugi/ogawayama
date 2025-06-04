@@ -174,7 +174,7 @@ public:
      * @brief push a column type.
      * @param t the type of the column
      */
-    void push(ColumnType::Type t) { columns_.emplace_back(ColumnType(t)); } 
+    void push(ColumnType::Type t) { columns_.emplace_back(t); }
 
     /**
      * @brief clear this metadata.

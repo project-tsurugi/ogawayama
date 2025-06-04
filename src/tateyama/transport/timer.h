@@ -17,7 +17,9 @@ class timer {
         its.it_value.tv_nsec = 0;
         its.it_interval.tv_sec = interval;
         its.it_interval.tv_nsec = 0;
-        timerfd_settime(tfd_, 0, &its, nullptr);
+        if (timerfd_settime(tfd_, 0, &its, nullptr) == -1) {
+            std::cerr << "error: timerfd_settime" << std::endl;
+        }
 
         thread_ = std::thread(std::ref(*this));
     }
@@ -29,7 +31,9 @@ class timer {
         its.it_value.tv_nsec = 10L * 1000L * 1000L;
         its.it_interval.tv_sec = 0;
         its.it_interval.tv_nsec = 10L * 1000L * 1000L;
-        timerfd_settime(tfd_, 0, &its, nullptr);
+        if (timerfd_settime(tfd_, 0, &its, nullptr) == -1) {
+            std::cerr << "error: timerfd_settime" << std::endl;
+        }
 
         if (thread_.joinable()) {
             thread_.join();

@@ -15,12 +15,9 @@
  */
 #pragma once
 
-#include <ogawayama/stub/table_metadata_adapter.h>
-
+#include <ogawayama/stub/api.h>
+#include "ogawayama/stub/table_metadata_adapter.h"
 #include "ogawayama/transport/transport.h"
-
-#include "transactionImpl.h"
-#include "stubImpl.h"
 
 namespace ogawayama::stub {
 
