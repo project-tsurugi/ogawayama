@@ -17,7 +17,7 @@ git submodule update --init --recursive
 ```dockerfile
 FROM ubuntu:22.04
 
-RUN apt update -y && apt install -y git build-essential cmake ninja-build libboost-system-dev libboost-thread-dev libboost-serialization-dev libgoogle-glog-dev libgflags-dev
+RUN apt update -y && apt install -y git build-essential cmake ninja-build libboost-system-dev libboost-thread-dev libboost-serialization-dev libgoogle-glog-dev libgflags-dev protobuf-compiler protobuf-c-compiler libprotobuf-dev
 ```
 
 optional packages:
