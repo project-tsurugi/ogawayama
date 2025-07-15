@@ -32,6 +32,7 @@ ResultSet::Impl::Impl(Transaction::Impl* manager, std::unique_ptr<tateyama::comm
 
 ResultSet::Impl::~Impl() {
     try {
+        resultset_wire_->set_closed();
         manager_->receive_body(query_index_);
     } catch (std::exception &ex) {
         std::cerr << ex.what() << std::endl;
