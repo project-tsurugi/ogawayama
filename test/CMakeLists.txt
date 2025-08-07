@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-if(NOT BUILD_BRIDGE_ONLY)
 file(GLOB STUB_TEST_SOURCES
     "ogawayama/stub/*Test.cpp"
 )
@@ -20,7 +19,6 @@ file(GLOB STUB_TEST_SOURCES
 register_tests(
     TARGET stub
     DEPENDS
-      message-manager-interface
       Boost::serialization
       glog::glog
       gflags::gflags
@@ -34,29 +32,3 @@ register_tests(
       ${CMAKE_SOURCE_DIR}/test/include
       ${CMAKE_BINARY_DIR}/src
 )
-endif()
-
-if(NOT BUILD_STUB_ONLY)
-file(GLOB BRIDGE_TEST_SOURCES
-    "ogawayama/bridge/*Test.cpp"
-    "ogawayama/bridge/database_mock.cpp"
-)
-
-register_tests(
-    TARGET bridge
-    DEPENDS
-      jogasaki-${SHARKSFIN_IMPLEMENTATION}-engine
-      Boost::filesystem
-      Boost::serialization
-      glog::glog
-      gflags::gflags
-      rt
-    SOURCES ${BRIDGE_TEST_SOURCES}
-    INCLUDES
-      ${CMAKE_SOURCE_DIR}/include
-      ${CMAKE_SOURCE_DIR}/common/include
-      ${CMAKE_SOURCE_DIR}/bridge/src
-      ${CMAKE_SOURCE_DIR}/bridge/include
-      ${CMAKE_SOURCE_DIR}/third_party/metadata-manager/include
-)
-endif()

@@ -93,8 +93,6 @@ target_include_directories(stub
 
 target_link_libraries(stub
     PUBLIC takatori
-    PRIVATE metadata-manager-api
-    PRIVATE message-manager-interface
     PRIVATE Boost::serialization
     PRIVATE pthread
     PRIVATE rt
