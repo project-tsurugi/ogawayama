@@ -99,8 +99,6 @@ private:
 
     std::vector<ResultSet::Impl> result_sets_{};
 
-    ErrorCode hello();
-
     friend class Stub::Impl;
 };
 
