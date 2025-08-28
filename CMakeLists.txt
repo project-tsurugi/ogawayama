@@ -78,6 +78,14 @@ target_include_directories(api
         $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}/ogawayama>
 )
 
+add_library(bridge-api INTERFACE)
+
+target_include_directories(bridge-api
+    INTERFACE
+        $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/bridge/include>
+        $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}/ogawayama>
+)
+
 set(export_name "ogawayama-${SHARKSFIN_IMPLEMENTATION}")
 set(package_name "ogawayama-${SHARKSFIN_IMPLEMENTATION}")
 
@@ -93,6 +101,7 @@ write_basic_package_version_file(
 )
 
 install_custom(api ${export_name})
+install_custom(bridge-api ${export_name})
 
 install(
     FILES
@@ -113,6 +122,9 @@ install(
 add_subdirectory(src)
 if(BUILD_EXAMPLES)
     add_subdirectory(examples)
+endif()
+if(NOT BUILD_STUB_ONLY)
+    add_subdirectory(bridge)
 endif()
 if(BUILD_TESTS)
     add_subdirectory(third_party)
