@@ -15,6 +15,8 @@
  */
 #pragma once
 
+#include <cstdint>
+
 namespace ogawayama::common {
 
 static constexpr std::uint32_t OGAWAYAMA_MESSAGE_VERSION = 0;

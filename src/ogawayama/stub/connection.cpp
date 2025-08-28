@@ -331,6 +331,8 @@ ErrorCode Connection::Impl::tsurugi_error(tsurugi_error_code& code)
         }
         break;
     }
+    default:
+        break;
     }
     return ErrorCode::UNKNOWN;
 }
