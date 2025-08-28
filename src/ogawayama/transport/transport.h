@@ -470,6 +470,19 @@ public:
         return nullptr;
     }
 
+/**
+ * @brief send a request message to fdw service, to use fdw_service.
+ * @param request a request message in std::string
+ * @return std::optional of std::string
+ */
+    std::optional<std::string> send(std::string_view request) {
+        auto response_opt = send_bridge_request(request);
+        if (response_opt) {
+            return response_opt.value();
+        }
+        return std::nullopt;
+    }
+
     // used only by connection
     ::tateyama::proto::framework::response::Header& last_header() {
         return response_header_;

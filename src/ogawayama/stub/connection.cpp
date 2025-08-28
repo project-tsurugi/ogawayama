@@ -25,6 +25,7 @@
 #include <boost/archive/binary_oarchive.hpp>
 #include <boost/archive/binary_iarchive.hpp>
 
+#include <ogawayama/common/bridge.h>
 #include "ogawayama/transport/tsurugi_error.h"
 #include "prepared_statementImpl.h"
 #include "search_path_adapter.h"
@@ -45,6 +46,30 @@ Connection::Impl::~Impl()
     } catch (std::exception &ex) {
         std::cerr << ex.what() << std::endl;
     }
+}
+
+ErrorCode Connection::Impl::hello() 
+{
+    auto command = ogawayama::common::command::hello;
+
+    std::ostringstream ofs;
+    boost::archive::binary_oarchive oa(ofs);
+    oa << common::OGAWAYAMA_MESSAGE_VERSION;
+    oa << command;
+
+    try {
+        auto response_opt = transport_.send(ofs.str());
+        if (response_opt) {
+            ERROR_CODE rv{};
+            std::istringstream ifs(response_opt.value());
+            boost::archive::binary_iarchive ia(ifs);
+            ia >> rv;
+            return rv;
+        }
+    } catch (std::runtime_error &e) {
+        return ErrorCode::SERVER_FAILURE;
+    }
+    return ErrorCode::UNKNOWN;
 }
 
 ErrorCode Connection::Impl::begin(TransactionPtr& transaction)
