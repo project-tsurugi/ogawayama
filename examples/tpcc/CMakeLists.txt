@@ -34,6 +34,7 @@ target_include_directories(tpcc
 
 target_link_libraries(tpcc
     PUBLIC stub
+    PRIVATE message-manager-interface
     PRIVATE gflags::gflags
     PRIVATE glog::glog
     PRIVATE Boost::thread

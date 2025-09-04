@@ -25,6 +25,7 @@
 DEFINE_string(dbname, std::string(ogawayama::common::param::SHARED_MEMORY_NAME), "database name");  // NOLINT
 DEFINE_string(statement, "", "SQL statement");  // NOLINT
 DEFINE_string(query, "", "SQL query");  // NOLINT
+DEFINE_int32(schema, -1, "object id for recieve_message()");  // NOLINT
 
 void prt_err(int line)
 {
@@ -43,9 +44,24 @@ int main(int argc, char **argv) {
     gflags::ParseCommandLineFlags(&argc, &argv, true);
 
     StubPtr stub;
-    if (FLAGS_statement != "" || FLAGS_query != "") {
+    if (FLAGS_statement != "" || FLAGS_query != "" || FLAGS_schema >= 0) {
         ERROR_CODE err = make_stub(stub, (FLAGS_dbname).c_str());
         if (err != ERROR_CODE::OK) { prt_err(__LINE__, err); return 1; }
+    }
+
+    if (FLAGS_schema >= 0) {
+        ConnectionPtr connection;
+        ERROR_CODE err;
+        manager::message::Status manager_err(manager::message::ErrorCode::SUCCESS, 0);
+
+        err = stub->get_connection(connection, 12);
+        if (err != ERROR_CODE::OK) { prt_err(__LINE__, err); return 1; }
+        manager_err = connection->receive_begin_ddl(0);  // mode 0 is dummy
+        if (manager_err.get_error_code() != manager::message::ErrorCode::SUCCESS) { prt_err(__LINE__, static_cast<ERROR_CODE>(manager_err.get_sub_error_code())); return 1; }
+        manager_err = connection->receive_create_table(static_cast<manager::metadata::ObjectIdType>(FLAGS_schema));
+        if (manager_err.get_error_code() != manager::message::ErrorCode::SUCCESS) { prt_err(__LINE__, static_cast<ERROR_CODE>(manager_err.get_sub_error_code())); return 1; }
+        manager_err = connection->receive_end_ddl();
+        if (manager_err.get_error_code() != manager::message::ErrorCode::SUCCESS) { prt_err(__LINE__, static_cast<ERROR_CODE>(manager_err.get_sub_error_code())); return 1; }
     }
 
     if (FLAGS_statement != "") {

@@ -33,6 +33,7 @@ option(BUILD_EXAMPLES "Build example programs" ON)
 option(BUILD_SHARED_LIBS "build shared libraries instead of static" ON)
 option(BUILD_STRICT "build with option strictly determine of success" ON)
 option(BUILD_STUB_ONLY "build the stub only" OFF)
+option(BUILD_BRIDGE_ONLY "build the bridge only" OFF)
 
 if(NOT DEFINED SHARKSFIN_IMPLEMENTATION)
     set(
@@ -50,7 +51,11 @@ find_package(Boost
 )
 find_package(glog REQUIRED)
 find_package(gflags REQUIRED)
+if(NOT BUILD_BRIDGE_ONLY)
+find_package(metadata-manager REQUIRED)
+find_package(message-manager REQUIRED)
 find_package(Protobuf REQUIRED)
+endif()
 if(NOT BUILD_STUB_ONLY)
 find_package(yugawara REQUIRED)
 find_package(jogasaki-${SHARKSFIN_IMPLEMENTATION} REQUIRED)
@@ -119,9 +124,11 @@ install(
     EXPORT_LINK_INTERFACE_LIBRARIES
 )
 
-add_subdirectory(src)
+if(NOT BUILD_BRIDGE_ONLY)
+    add_subdirectory(src)
 if(BUILD_EXAMPLES)
     add_subdirectory(examples)
+endif()
 endif()
 if(NOT BUILD_STUB_ONLY)
     add_subdirectory(bridge)
