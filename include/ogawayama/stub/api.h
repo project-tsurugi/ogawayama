@@ -30,10 +30,6 @@
 #include <ogawayama/stub/table_metadata.h>
 #include <ogawayama/stub/table_list.h>
 
-#include <manager/message/receiver.h>
-#include <manager/message/message.h>
-#include <manager/message/status.h>
-
 using MetadataPtr = ogawayama::stub::Metadata const*;
 using TYPE = ogawayama::stub::Metadata::ColumnType::Type;
 using ERROR_CODE = ogawayama::stub::ErrorCode;
@@ -273,7 +269,7 @@ using placeholders_type = std::vector<std::pair<std::string, Metadata::ColumnTyp
 /**
  * @brief Information about a connection.
  */
-class Connection : public manager::message::Receiver {
+class Connection {
     class Impl;
 
 public:
@@ -336,48 +332,6 @@ public:
      * @return error code defined in error_code.h
      */
      ErrorCode get_search_path(SearchPathPtr& sp);
-
-    /**
-     * @brief implements begin_ddl() procedure
-     * @return Status defined in message-broker/include/manager/message/status.h
-     */
-    [[deprecated("No longer supports DDL operations for tsurugidb with this kind of API")]]
-    [[nodiscard]] manager::message::Status receive_begin_ddl(int64_t mode) const override;
-
-    /**
-     * @brief implements end_ddl() procedure
-     * @return Status defined in message-broker/include/manager/message/status.h
-     */
-    [[deprecated("No longer supports DDL operations for tsurugidb with this kind of API")]]
-    [[nodiscard]] manager::message::Status receive_end_ddl() const override;
-
-    /**
-     * @brief implements receive_create_table() procedure
-     * @return Status defined in message-broker/include/manager/message/status.h
-     */
-    [[deprecated("No longer supports DDL operations for tsurugidb with this kind of API")]]
-    [[nodiscard]] manager::message::Status receive_create_table(manager::metadata::ObjectIdType object_id) const override;
-
-    /**
-     * @brief implements drop_table() procedure
-     * @return Status defined in message-broker/include/manager/message/status.h
-     */
-    [[deprecated("No longer supports DDL operations for tsurugidb with this kind of API")]]
-    [[nodiscard]] manager::message::Status receive_drop_table(manager::metadata::ObjectIdType object_id) const override;
-
-    /**
-     * @brief implements receive_create_index() procedure
-     * @return Status defined in message-broker/include/manager/message/status.h
-     */
-    [[deprecated("No longer supports DDL operations for tsurugidb with this kind of API")]]
-    [[nodiscard]] manager::message::Status receive_create_index(manager::metadata::ObjectIdType object_id) const override;
-
-    /**
-     * @brief implements drop_index() procedure
-     * @return Status defined in message-broker/include/manager/message/status.h
-     */
-    [[deprecated("No longer supports DDL operations for tsurugidb with this kind of API")]]
-    [[nodiscard]] manager::message::Status receive_drop_index(manager::metadata::ObjectIdType object_id) const override;
 
     /**
      * @brief get the error of the last SQL executed

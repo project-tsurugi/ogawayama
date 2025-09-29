@@ -32,8 +32,6 @@ option(BUILD_TESTS "Build test programs" ON)
 option(BUILD_EXAMPLES "Build example programs" ON)
 option(BUILD_SHARED_LIBS "build shared libraries instead of static" ON)
 option(BUILD_STRICT "build with option strictly determine of success" ON)
-option(BUILD_STUB_ONLY "build the stub only" OFF)
-option(BUILD_BRIDGE_ONLY "build the bridge only" OFF)
 
 if(NOT DEFINED SHARKSFIN_IMPLEMENTATION)
     set(
@@ -45,24 +43,22 @@ if(NOT DEFINED SHARKSFIN_IMPLEMENTATION)
 endif()
 
 find_package(Threads REQUIRED)
-find_package(Boost
-        COMPONENTS filesystem thread system container serialization
-        REQUIRED
-)
+find_package(Boost 1.65
+    COMPONENTS filesystem thread system container serialization
+    OPTIONAL_COMPONENTS stacktrace_backtrace stacktrace_basic
+    REQUIRED)
+if(Boost_STACKTRACE_BACKTRACE_FOUND
+   AND (CMAKE_CXX_COMPILER_ID STREQUAL "GNU" OR CMAKE_CXX_COMPILER_ID MATCHES "Clang"))
+    set(boost_stacktrace_component stacktrace_backtrace)
+elseif(Boost_STACKTRACE_BASIC_FOUND)
+    set(boost_stacktrace_component stacktrace_basic)
+else()
+    message(FATAL_ERROR "No usable Boost stacktrace component")
+endif()
+
 find_package(glog REQUIRED)
 find_package(gflags REQUIRED)
-if(NOT BUILD_BRIDGE_ONLY)
-find_package(metadata-manager REQUIRED)
-find_package(message-manager REQUIRED)
 find_package(Protobuf REQUIRED)
-endif()
-if(NOT BUILD_STUB_ONLY)
-find_package(yugawara REQUIRED)
-find_package(jogasaki-${SHARKSFIN_IMPLEMENTATION} REQUIRED)
-find_package(tateyama-${SHARKSFIN_IMPLEMENTATION} REQUIRED)
-find_package(sharksfin REQUIRED)
-endif()
-find_package(takatori REQUIRED)
 find_package(mpdecpp REQUIRED)
 
 include(GNUInstallDirs)
@@ -83,14 +79,6 @@ target_include_directories(api
         $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}/ogawayama>
 )
 
-add_library(bridge-api INTERFACE)
-
-target_include_directories(bridge-api
-    INTERFACE
-        $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/bridge/include>
-        $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}/ogawayama>
-)
-
 set(export_name "ogawayama-${SHARKSFIN_IMPLEMENTATION}")
 set(package_name "ogawayama-${SHARKSFIN_IMPLEMENTATION}")
 
@@ -106,7 +94,6 @@ write_basic_package_version_file(
 )
 
 install_custom(api ${export_name})
-install_custom(bridge-api ${export_name})
 
 install(
     FILES
@@ -124,14 +111,9 @@ install(
     EXPORT_LINK_INTERFACE_LIBRARIES
 )
 
-if(NOT BUILD_BRIDGE_ONLY)
-    add_subdirectory(src)
+add_subdirectory(src)
 if(BUILD_EXAMPLES)
     add_subdirectory(examples)
-endif()
-endif()
-if(NOT BUILD_STUB_ONLY)
-    add_subdirectory(bridge)
 endif()
 if(BUILD_TESTS)
     add_subdirectory(third_party)

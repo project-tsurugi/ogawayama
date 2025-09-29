@@ -14,6 +14,7 @@
 
 file(GLOB SOURCES
     "*.cpp"
+    "${CMAKE_SOURCE_DIR}/src/takatori/util/*.cpp"
 )
 
 add_executable(cli
@@ -36,10 +37,23 @@ target_include_directories(cli
 
 target_link_libraries(cli
     PRIVATE stub
-    PRIVATE message-manager-interface
     PRIVATE glog::glog
     PRIVATE gflags::gflags
     PRIVATE rt
 )
+
+if (boost_stacktrace_component STREQUAL "stacktrace_backtrace")
+    target_link_libraries(cli
+        PUBLIC Boost::stacktrace_backtrace
+    )
+    target_compile_definitions(cli
+        PUBLIC BOOST_STACKTRACE_USE_BACKTRACE
+    )
+else()
+    target_link_libraries(cli
+        PUBLIC Boost::stacktrace_basic
+    )
+endif()
+
 
 install_custom(cli ${export_name})
