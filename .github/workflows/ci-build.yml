@@ -36,12 +36,6 @@ jobs:
         with:
           submodules: true
 
-      - name: Install_Dependencies
-        uses: ./.github/actions/install-dependencies
-        with:
-          sharksfin_implementation: ${{ env.SHARKSFIN_IMPLEMENTATION }}
-          cmake_build_option: ${{ inputs.cmake_build_option }}
-
       - name: CMake_Build
         run: |
           rm -rf build
@@ -85,12 +79,6 @@ jobs:
         uses: actions/checkout@v4
         with:
           submodules: true
-
-      - name: Install_Dependencies
-        uses: ./.github/actions/install-dependencies
-        with:
-          sharksfin_implementation: ${{ env.SHARKSFIN_IMPLEMENTATION }}
-          cmake_build_option: ${{ inputs.cmake_build_option }}
 
       - name: CMake_Build
         run: |
