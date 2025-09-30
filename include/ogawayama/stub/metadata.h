@@ -105,6 +105,11 @@ public:
              * @brief decimal type.
              */
             DECIMAL = 12,
+
+            /**
+             * @brief binary type.
+             */
+            OCTET = 13,
         };
         
         /**
@@ -186,5 +191,6 @@ using timestamp_type = takatori::datetime::time_point;
 using timetz_type = std::pair<takatori::datetime::time_of_day, std::int32_t>;
 using timestamptz_type = std::pair<takatori::datetime::time_point, std::int32_t>;
 using decimal_type = takatori::decimal::triple;
+using binary_type = std::vector<std::uint8_t>;
 
 }  // namespace ogawayama::stub
