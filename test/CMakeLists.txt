@@ -21,12 +21,6 @@ file(GLOB STUB_TEST_SOURCES
     "${CMAKE_SOURCE_DIR}/src/takatori/datetime/printing.cpp"
 )
 
-if (boost_stacktrace_component STREQUAL "stacktrace_backtrace")
-    set(BOOST_STACK_TRACE Boost::stacktrace_backtrace)
-else()
-    set(BOOST_STACK_TRACE Boost::stacktrace_basic)
-endif()
-
 register_tests(
     TARGET stub
     DEPENDS
