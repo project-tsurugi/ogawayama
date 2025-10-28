@@ -62,46 +62,6 @@ public:
     ErrorCode prepare(std::string_view, const placeholders_type&, PreparedStatementPtr&);
 
     /**
-     * @brief relay a create table message from the frontend to the server
-     * @param table id given by the frontend
-     * @return error code defined in error_code.h
-     */
-    ErrorCode create_table(std::size_t);
-
-    /**
-     * @brief relay a drop table message from the frontend to the server
-     * @param table id given by the frontend
-     * @return error code defined in error_code.h
-     */
-    ErrorCode drop_table(std::size_t);
-
-    /**
-     * @brief relay a create index message from the frontend to the server
-     * @param index id given by the frontend
-     * @return error code defined in error_code.h
-     */
-    ErrorCode create_index(std::size_t);
-
-    /**
-     * @brief relay a drop index message from the frontend to the server
-     * @param index id given by the frontend
-     * @return error code defined in error_code.h
-     */
-    ErrorCode drop_index(std::size_t);
-
-    /**
-     * @brief relay a begin ddl message from the frontend to the server
-     * @return error code defined in error_code.h
-     */
-    ErrorCode begin_ddl();
-
-    /**
-     * @brief relay a end ddl from the frontend to the server
-     * @return error code defined in error_code.h
-     */
-    ErrorCode end_ddl();
-
-    /**
      * @brief get the error of the last SQL executed
      * @param code returns the error code reported by the tsurugidb
      * @return error code defined in error_code.h

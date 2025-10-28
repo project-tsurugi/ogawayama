@@ -14,6 +14,7 @@
 
 file(GLOB SOURCES
     "*.cpp"
+    "${CMAKE_SOURCE_DIR}/src/takatori/util/*.cpp"
 )
 
 add_executable(cli
@@ -36,7 +37,6 @@ target_include_directories(cli
 
 target_link_libraries(cli
     PRIVATE stub
-    PRIVATE message-manager-interface
     PRIVATE glog::glog
     PRIVATE gflags::gflags
     PRIVATE rt

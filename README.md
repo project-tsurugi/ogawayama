@@ -34,11 +34,6 @@ This requires below [tsurugidb](https://github.com/project-tsurugi/tsurugidb) mo
 
 * [metadata-manager](https://github.com/project-tsurugi/metadata-manager)
 * [message-manager](https://github.com/project-tsurugi/message-manager)
-* [takatori](https://github.com/project-tsurugi/takatori)
-* [yugawara](https://github.com/project-tsurugi/yugawara)
-* [jogasaki](https://github.com/project-tsurugi/jogasaki)
-* [tateyama](https://github.com/project-tsurugi/tateyama)
-* [sharksfin](https://github.com/project-tsurugi/sharksfin)
 
 ## How to build
 

@@ -58,6 +58,11 @@ file(GLOB SOURCES
     "tateyama/utils/*.cpp"
     "jogasaki/serializer/*.cpp"
     "jogasaki/utils/*.cpp"
+    "takatori/datetime/date.cpp"
+    "takatori/datetime/time_point.cpp"
+    "takatori/datetime/printing.cpp"
+    "takatori/util/exception.cpp"
+    "takatori/util/string_builder.cpp"
 )
 
 set_source_files_properties(
@@ -92,13 +97,11 @@ target_include_directories(stub
 )
 
 target_link_libraries(stub
-    PUBLIC takatori
-    PRIVATE metadata-manager-api
-    PRIVATE message-manager-interface
     PRIVATE Boost::serialization
     PRIVATE pthread
     PRIVATE rt
     PRIVATE protobuf::libprotobuf
+    PUBLIC mpdecpp
 )
 
 install_custom(stub ${export_name})
