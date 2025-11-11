@@ -59,7 +59,7 @@ ErrorCode ResultSet::Impl::get_metadata(MetadataPtr& metadata)
                 case ::jogasaki::proto::sql::common::AtomType::FLOAT8: ogawayama_metadata_.push(Metadata::ColumnType::Type::FLOAT64); break;
                 case ::jogasaki::proto::sql::common::AtomType::DECIMAL: ogawayama_metadata_.push(Metadata::ColumnType::Type::DECIMAL); break;
                 case ::jogasaki::proto::sql::common::AtomType::CHARACTER: ogawayama_metadata_.push(Metadata::ColumnType::Type::TEXT); break;
-                case ::jogasaki::proto::sql::common::AtomType::OCTET: break;
+                case ::jogasaki::proto::sql::common::AtomType::OCTET: ogawayama_metadata_.push(Metadata::ColumnType::Type::OCTET); break;
                 case ::jogasaki::proto::sql::common::AtomType::BIT: break;
                 case ::jogasaki::proto::sql::common::AtomType::DATE: ogawayama_metadata_.push(Metadata::ColumnType::Type::DATE); break;
                 case ::jogasaki::proto::sql::common::AtomType::TIME_OF_DAY: ogawayama_metadata_.push(Metadata::ColumnType::Type::TIME); break;
@@ -200,6 +200,9 @@ ErrorCode ResultSet::Impl::next_column(std::string_view& value) {
         return ErrorCode::COLUMN_WAS_NULL;
     case jogasaki::serializer::entry_type::character:
         value = jogasaki::serializer::read_character(iter_, buf_.end());
+        return ErrorCode::OK;
+    case jogasaki::serializer::entry_type::octet:
+        value = jogasaki::serializer::read_octet(iter_, buf_.end());
         return ErrorCode::OK;
     default:
         std::cerr << "error: character expected, actually " << jogasaki::serializer::to_string_view(entry_type) << " received" << std::endl;

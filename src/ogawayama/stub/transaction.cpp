@@ -116,6 +116,10 @@ public:
         parameter_.set_character_value(data);
         return parameter_;
     }
+    ::jogasaki::proto::sql::request::Parameter operator()(const binary_type& data) {
+        parameter_.set_octet_value(std::string(reinterpret_cast<const char*>(data.data()), data.size()));
+        return parameter_;
+    }
     ::jogasaki::proto::sql::request::Parameter operator()(const date_type& data) {
         parameter_.set_date_value(data.days_since_epoch());
         return parameter_;
