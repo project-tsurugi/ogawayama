@@ -17,6 +17,7 @@
 #include <stdexcept>
 
 #include "connectionImpl.h"
+#include "tateyama/authentication/authentication.h"
 
 #include "stubImpl.h"
 
@@ -71,6 +72,7 @@ ErrorCode Stub::get_connection(ConnectionPtr & connection, std::size_t pgprocno)
 ERROR_CODE make_stub(StubPtr &stub, std::string_view name)
 {
     try {
+        tateyama::authentication::user_password("tsurugi", "password");
         stub = std::make_unique<ogawayama::stub::Stub>(name);
     }
     catch (std::runtime_error &e) {
