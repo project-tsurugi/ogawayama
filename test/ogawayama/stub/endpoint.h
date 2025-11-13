@@ -36,6 +36,9 @@
 #include "tateyama/framework/component_ids.h"
 #include "server_wires_impl.h"
 #include "endpoint_proto_utils.h"
+#include "tateyama/authentication/crypto/rsa.h"
+#include "tateyama/authentication/crypto/base64.h"
+#include "tateyama/authentication/crypto/key.h"
 #include "ogawayama/stub/stubImpl.h"
 #include "ogawayama/stub/connectionImpl.h"
 #include "ogawayama/stub/transactionImpl.h"
@@ -121,30 +124,42 @@ public:
                     if(auto res = tateyama::utils::ParseDelimitedFromZeroCopyStream(std::addressof(req_header), std::addressof(in), nullptr); ! res) {
                         throw std::runtime_error("error parsing request message");
                     }
-                    if (auto service_id = req_header.service_id(); service_id == tateyama::framework::service_id_fdw) {
-                        std::stringstream ss{};
+                    std::stringstream ss{};
+                    if (auto service_id = req_header.service_id(); service_id == tateyama::framework::service_id_endpoint_broker) {
+                        // obtain request
+                        std::string_view payload{};
+                        if (auto res = tateyama::utils::GetDelimitedBodyFromZeroCopyStream(std::addressof(in), nullptr, payload); ! res) {
+                            throw std::runtime_error("error reading payload");
+                        }
+                        tateyama::proto::endpoint::request::Request rq{};
+                        if(!rq.ParseFromArray(payload.data(), static_cast<int>(payload.size()))) {
+                            throw std::runtime_error("request parse error");
+                        }
+
+                        // prepare for response (framework header)
                         ::tateyama::proto::framework::response::Header header{};
-                        header.set_payload_type(tateyama::proto::framework::response::Header_PayloadType::Header_PayloadType_SERVICE_RESULT);
+                        header.set_payload_type(tateyama::proto::framework::response::Header::SERVICE_RESULT);
                         if(auto res = tateyama::utils::SerializeDelimitedToOstream(header, std::addressof(ss)); ! res) {
                             throw std::runtime_error("error formatting response message");
                         }
-                        std::ostringstream ofs;
-                        boost::archive::binary_oarchive oa(ofs);
-                        oa << ERROR_CODE::OK;
-                        std::string code = ofs.str();
-                        if(auto res = tateyama::utils::PutDelimitedBodyToOstream(code, std::addressof(ss)); ! res) {
-                            throw std::runtime_error("error formatting response message");
+
+                        // EncryptionKey request
+                        if (rq.command_case() == tateyama::proto::endpoint::request::Request::kEncryptionKey) {
+                            tateyama::proto::endpoint::response::EncryptionKey rp{};
+                            auto rs = rp.mutable_success();
+                            rs->set_encryption_key(tateyama::authentication::crypto::base64_decode(tateyama::authentication::crypto::public_key));
+                            auto body = rp.SerializeAsString();
+                            if(auto res = tateyama::utils::PutDelimitedBodyToOstream(body, std::addressof(ss)); ! res) {
+                                throw std::runtime_error("error formatting response message");
+                            }
+                            rp.clear_success();
+
+                            auto reply_message = ss.str();
+                            wire_->get_response_wire().write(reply_message.data(), tateyama::common::wire::response_header(index, reply_message.length(), RESPONSE_BODY));
+                            continue;
                         }
-                        auto reply_message = ss.str();
-                        wire_->get_response_wire().write(reply_message.data(), tateyama::common::wire::response_header(index, reply_message.length(), RESPONSE_HELLO));
-                        continue;
-                    } else if (service_id == tateyama::framework::service_id_endpoint_broker) {
-                        std::stringstream ss{};
-                        ::tateyama::proto::framework::response::Header header{};
-                        header.set_payload_type(tateyama::proto::framework::response::Header_PayloadType::Header_PayloadType_SERVICE_RESULT);
-                        if(auto res = tateyama::utils::SerializeDelimitedToOstream(header, std::addressof(ss)); ! res) {
-                            throw std::runtime_error("error formatting response message");
-                        }
+
+                        // Handshake request
                         tateyama::proto::endpoint::response::Handshake rp{};
                         auto rs = rp.mutable_success();
                         rs->set_session_id(1);  // session id is dummy, as this is a test
@@ -156,8 +171,8 @@ public:
                         auto reply_message = ss.str();
                         wire_->get_response_wire().write(reply_message.data(), tateyama::common::wire::response_header(index, reply_message.length(), RESPONSE_HANDSHAKE));
                         continue;
+
                     } else if (service_id == tateyama::framework::service_id_routing) {
-                        std::stringstream ss{};
                         ::tateyama::proto::framework::response::Header header{};
                         header.set_payload_type(tateyama::proto::framework::response::Header_PayloadType::Header_PayloadType_SERVICE_RESULT);
                         if(auto res = tateyama::utils::SerializeDelimitedToOstream(header, std::addressof(ss)); ! res) {
@@ -173,6 +188,12 @@ public:
                         auto reply_message = ss.str();
                         wire_->get_response_wire().write(reply_message.data(), tateyama::common::wire::response_header(index, reply_message.length(), RESPONSE_HANDSHAKE));
                         continue;
+
+                    }
+                    if (req_header.service_id() != tateyama::framework::service_id_sql) {
+                        std::stringstream ess{};
+                        ess << "unknown service_id: " << req_header.service_id();
+                        throw std::runtime_error(ess.str());
                     }
                 }
 

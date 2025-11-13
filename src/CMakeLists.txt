@@ -55,6 +55,7 @@ add_custom_target(build_protos
 
 file(GLOB SOURCES
     "ogawayama/stub/*.cpp"
+    "tateyama/authentication/*.cpp"
     "tateyama/utils/*.cpp"
     "jogasaki/serializer/*.cpp"
     "jogasaki/utils/*.cpp"
@@ -101,6 +102,7 @@ target_link_libraries(stub
     PRIVATE pthread
     PRIVATE rt
     PRIVATE protobuf::libprotobuf
+    PRIVATE crypto
     PUBLIC mpdecpp
 )
 

@@ -29,7 +29,6 @@ option(ENABLE_SANITIZER "enable sanitizer on debug build" ON)
 option(ENABLE_UB_SANITIZER "enable undefined behavior sanitizer on debug build" OFF)
 option(ENABLE_COVERAGE "enable coverage on debug build" OFF)
 option(BUILD_TESTS "Build test programs" ON)
-option(BUILD_EXAMPLES "Build example programs" ON)
 option(BUILD_SHARED_LIBS "build shared libraries instead of static" ON)
 option(BUILD_STRICT "build with option strictly determine of success" ON)
 
@@ -102,9 +101,6 @@ install(
 )
 
 add_subdirectory(src)
-if(BUILD_EXAMPLES)
-    add_subdirectory(examples)
-endif()
 if(BUILD_TESTS)
     add_subdirectory(third_party)
     add_subdirectory(test)
