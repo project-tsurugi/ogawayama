@@ -47,8 +47,8 @@ class transport {
     constexpr static std::size_t HEADER_MESSAGE_VERSION_MINOR = 1;
     constexpr static std::size_t CORE_MESSAGE_VERSION_MAJOR = 0;
     constexpr static std::size_t CORE_MESSAGE_VERSION_MINOR = 0;
-    constexpr static std::size_t SQL_MESSAGE_VERSION_MAJOR = 1;
-    constexpr static std::size_t SQL_MESSAGE_VERSION_MINOR = 6;
+    constexpr static std::size_t SQL_MESSAGE_VERSION_MAJOR = 2;
+    constexpr static std::size_t SQL_MESSAGE_VERSION_MINOR = 0;
     constexpr static std::size_t ENDPOINT_MESSAGE_VERSION_MAJOR = 0;
     constexpr static std::size_t ENDPOINT_MESSAGE_VERSION_MINOR = 0;
     constexpr static std::uint32_t SERVICE_ID_ROUTING = 0;  // from tateyama/framework/component_ids.h
