@@ -180,6 +180,9 @@ ErrorCode Connection::Impl::prepare(std::string_view sql, const placeholders_typ
         case Metadata::ColumnType::Type::TIMESTAMPTZ:
             ph->set_atom_type(::jogasaki::proto::sql::common::AtomType::TIME_POINT_WITH_TIME_ZONE);
             break;
+        case Metadata::ColumnType::Type::OCTET:
+            ph->set_atom_type(::jogasaki::proto::sql::common::AtomType::OCTET);
+            break;
         default:
             return ErrorCode::UNSUPPORTED;
         }
