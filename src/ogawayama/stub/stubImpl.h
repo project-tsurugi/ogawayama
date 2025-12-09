@@ -18,6 +18,7 @@
 #include <memory>
 
 #include "tateyama/transport/client_wire.h"
+#include "tateyama/authentication/credential_handler.h"
 
 #include "ogawayama/stub/api.h"
 
@@ -44,6 +45,9 @@ private:
     const Stub *envelope_;
     const std::string database_name_;
     tateyama::common::wire::connection_container connection_container_;
+
+    friend class Stub;
+    tateyama::authentication::credential_handler credential_handler_{};
 };
 
 }  // namespace ogawayama::stub

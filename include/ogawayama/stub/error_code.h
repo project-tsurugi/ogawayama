@@ -94,6 +94,11 @@ enum class ErrorCode {
      * @brief Encountered server error, where you can obtain error detail with Connection::tsurugi_error() API.
      */
     SERVER_ERROR,
+
+    /**
+     * @brief Encountered authenticationd error while connecting to tsurugidb.
+     */
+    AUTHENTICATION_ERROR,
 };
 
 constexpr std::string_view error_name(ErrorCode code) {
@@ -112,6 +117,7 @@ constexpr std::string_view error_name(ErrorCode code) {
     case ErrorCode::TIMEOUT: return "TIMEOUT";
     case ErrorCode::TRANSACTION_ALREADY_STARTED: return "TRANSACTION_ALREADY_STARTED";
     case ErrorCode::SERVER_ERROR: return "SERVER_ERROR";
+    case ErrorCode::AUTHENTICATION_ERROR: return "AUTHENTICATION_ERROR";
     default: return "This ERROR_CODE is illegal";
     }
 }

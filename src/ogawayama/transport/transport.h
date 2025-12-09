@@ -30,6 +30,7 @@
 #include <tateyama/proto/core/response.pb.h>
 #include <tateyama/proto/endpoint/request.pb.h>
 #include <tateyama/proto/endpoint/response.pb.h>
+#include <tateyama/proto/diagnostics.pb.h>
 
 #include <jogasaki/proto/sql/request.pb.h>
 #include <jogasaki/proto/sql/common.pb.h>
@@ -37,7 +38,7 @@
 
 #include <ogawayama/stub/error_code.h>
 
-#include "tateyama/authentication/authentication.h"
+#include "tateyama/authentication/credential_handler.h"
 #include "tateyama/transport/client_wire.h"
 #include "tateyama/transport/timer.h"
 
@@ -61,7 +62,9 @@ class transport {
 public:
     transport() = delete;
 
-    explicit transport(tateyama::common::wire::session_wire_container& wire) : wire_(wire) {
+    explicit transport(tateyama::common::wire::session_wire_container& wire,
+                       tateyama::authentication::credential_handler& credential_handler) :
+        wire_(wire), credential_handler_(credential_handler) {
         header_.set_service_message_version_major(HEADER_MESSAGE_VERSION_MAJOR);
         header_.set_service_message_version_minor(HEADER_MESSAGE_VERSION_MINOR);
         header_.set_service_id(SERVICE_ID_SQL);
@@ -70,10 +73,10 @@ public:
         bridge_header_.set_service_id(SERVICE_ID_FDW);
         auto handshake_response = handshake();
         if (!handshake_response) {
-            throw std::runtime_error("handshake error");
+            throw std::runtime_error(std::to_string(tateyama::proto::diagnostics::Code::UNKNOWN));
         }
         if (handshake_response.value().result_case() != tateyama::proto::endpoint::response::Handshake::ResultCase::kSuccess) {
-            throw std::runtime_error("handshake error");
+            throw std::runtime_error(std::to_string(handshake_response.value().error().code()));
         }
 
         timer_ = std::make_unique<tateyama::common::wire::timer>(EXPIRATION_SECONDS, [this](){
@@ -497,6 +500,7 @@ public:
 
 private:
     tateyama::common::wire::session_wire_container& wire_;
+    tateyama::authentication::credential_handler& credential_handler_;
     ::tateyama::proto::framework::request::Header header_{};
     ::tateyama::proto::framework::request::Header bridge_header_{};
     ::jogasaki::proto::sql::common::Session session_{};
@@ -634,7 +638,7 @@ private:
         auto* wire_information = handshake->mutable_wire_information();
         auto* ipc_information = wire_information->mutable_ipc_information();
 
-        tateyama::authentication::add_credential(*client_information, [this](){
+        credential_handler_.add_credential(*client_information, [this](){
             auto key_opt = encryption_key();
             if (key_opt) {
                 const auto& key = key_opt.value();

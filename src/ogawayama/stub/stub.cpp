@@ -17,7 +17,6 @@
 #include <stdexcept>
 
 #include "connectionImpl.h"
-#include "tateyama/authentication/authentication.h"
 
 #include "stubImpl.h"
 
@@ -41,9 +40,20 @@ ErrorCode Stub::Impl::get_connection(ConnectionPtr& connection, std::size_t pgpr
     } catch (std::runtime_error &e) {
         return ErrorCode::SERVER_FAILURE;
     }
-    auto connection_impl = std::make_unique<Connection::Impl>(this, sid, pgprocno);
-    connection = std::make_unique<Connection>(std::move(connection_impl));
-    return connection->get_impl()->hello();
+
+    // set username and password here
+    credential_handler_.set_user_password("tsurugi", "password");
+
+    try {
+        auto connection_impl = std::make_unique<Connection::Impl>(this, sid, pgprocno, credential_handler_);
+        connection = std::make_unique<Connection>(std::move(connection_impl));
+        return connection->get_impl()->hello();
+    } catch (std::runtime_error &e) {
+        if (std::stoi(e.what()) == tateyama::proto::diagnostics::Code::AUTHENTICATION_ERROR){
+            return ErrorCode::AUTHENTICATION_ERROR;
+        }
+        return ErrorCode::SERVER_FAILURE;
+    }
 }
 
 /**
@@ -72,7 +82,6 @@ ErrorCode Stub::get_connection(ConnectionPtr & connection, std::size_t pgprocno)
 ERROR_CODE make_stub(StubPtr &stub, std::string_view name)
 {
     try {
-        tateyama::authentication::user_password("tsurugi", "password");
         stub = std::make_unique<ogawayama::stub::Stub>(name);
     }
     catch (std::runtime_error &e) {

@@ -30,7 +30,7 @@ namespace ogawayama::stub {
 class Connection::Impl
 {
 public:
-    Impl(Stub::Impl*, std::string_view, std::size_t);
+    Impl(Stub::Impl*, std::string_view, std::size_t, tateyama::authentication::credential_handler&);
     ~Impl();
 
     Impl(const Impl&) = delete;
