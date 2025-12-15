@@ -695,7 +695,8 @@ private:
             if(auto res = framework_error_.ParseFromArray(record.data(), static_cast<int>(record.length())); ! res) {
                 return std::nullopt;
             }
-            throw std::runtime_error("received SERVER_DIAGNOSTICS");
+            using std::string_literals::operator""s; // NOLINT(*-unused-using-decls)
+            throw std::runtime_error("received SERVER_DIAGNOSTICS("s + std::to_string(framework_error_.code()) + "), " + framework_error_.message());
         }
         if (response_header_.payload_type() != ::tateyama::proto::framework::response::Header_PayloadType::Header_PayloadType_SERVICE_RESULT) {
             throw std::runtime_error("unknown payload type");
