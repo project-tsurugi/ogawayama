@@ -26,6 +26,7 @@
 #include <jogasaki/proto/sql/common.pb.h>
 #include <jogasaki/proto/sql/request.pb.h>
 #include <jogasaki/proto/sql/response.pb.h>
+#include <tateyama/proto/diagnostics.pb.h>
 #include <tateyama/proto/framework/response.pb.h>
 
 #include "server_wires_impl.h"
@@ -77,6 +78,22 @@ public:
         (void) e.release_record_meta();
     }
 
+    void response_body_head(jogasaki::proto::sql::response::ResultSetMetadata& metadata) {
+        std::string resultset_name{resultset_name_prefix};
+        resultset_name += std::to_string(resultset_number_++);
+        // body_head
+        jogasaki::proto::sql::response::ExecuteQuery e{};
+        jogasaki::proto::sql::response::Response rh{};
+        e.set_name(std::string(resultset_name));
+        e.set_allocated_record_meta(&metadata);
+        rh.set_allocated_execute_query(&e);
+
+        endpoint_.response_body_head(rh, resultset_name);
+        // release
+        (void) rh.release_execute_query();
+        (void) e.release_record_meta();
+    }
+
     std::optional<jogasaki::proto::sql::request::Request> request_message() {
         auto request_packet = endpoint_.request_message();
 
@@ -95,6 +112,11 @@ public:
         }
         return request;
     }
+
+    bool is_response_empty() {
+        return endpoint_.is_response_empty();
+    }
+
 private:
     std::string name_;
     endpoint endpoint_;
@@ -138,8 +160,8 @@ inline void server::response_message<jogasaki::proto::sql::response::ExecuteResu
     (void) r.release_execute_result();
 }
 template<>
-inline void server::response_message<tateyama::proto::framework::response::Header>(tateyama::proto::framework::response::Header& h) {
-    endpoint_.framework_error(h);
+inline void server::response_message<tateyama::proto::diagnostics::Code>(tateyama::proto::diagnostics::Code& code) {
+    endpoint_.response_message(code);
 }
 
 }  // namespace ogawayama::testing

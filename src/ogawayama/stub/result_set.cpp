@@ -32,10 +32,23 @@ ResultSet::Impl::Impl(Transaction::Impl* manager, std::unique_ptr<tateyama::comm
 
 ResultSet::Impl::~Impl() {
     try {
-        resultset_wire_->set_closed();
-        manager_->receive_body(query_index_);
+        if (resultset_wire_) {
+            resultset_wire_->set_closed();
+            manager_->receive_body(query_index_);
+        }
     } catch (std::exception &ex) {
         std::cerr << ex.what() << std::endl;
+    }
+}
+
+ErrorCode ResultSet::Impl::close() {
+    try {
+        resultset_wire_->set_closed();
+        resultset_wire_.reset();
+        manager_->receive_body(query_index_);
+        return ErrorCode::END_OF_ROW;
+    } catch (std::runtime_error &ex) {
+        return ErrorCode::SERVER_ERROR;
     }
 }
 
@@ -96,7 +109,7 @@ ErrorCode ResultSet::Impl::next()
     }
     auto record = resultset_wire_->get_chunk();
     if (record.empty()) {
-        return ErrorCode::END_OF_ROW;
+        return close();
     }
     buf_ = jogasaki::serializer::buffer_view(const_cast<char*>(record.data()), record.size());
     iter_ = buf_.begin();
