@@ -28,6 +28,7 @@ register_tests(
       glog::glog
       gflags::gflags
       rt
+      crypto
       protobuf::libprotobuf
       ${BOOST_STACK_TRACE}      
     SOURCES ${STUB_TEST_SOURCES}

@@ -41,9 +41,6 @@ ErrorCode Stub::Impl::get_connection(ConnectionPtr& connection, std::size_t pgpr
         return ErrorCode::SERVER_FAILURE;
     }
 
-    // set username and password here
-    credential_handler_.set_user_password("tsurugi", "password");
-
     try {
         auto connection_impl = std::make_unique<Connection::Impl>(this, sid, pgprocno, credential_handler_);
         connection = std::make_unique<Connection>(std::move(connection_impl));
@@ -54,6 +51,45 @@ ErrorCode Stub::Impl::get_connection(ConnectionPtr& connection, std::size_t pgpr
         }
         return ErrorCode::SERVER_FAILURE;
     }
+}
+
+/**
+ * @brief connect to the DB and get Connection class with authentication information
+ * @param connecion returns a connection class
+ * @param pgprocno connection returns a connection class
+ * @param ahth the authentication information
+ * @return true in error, otherwise false
+ */
+ErrorCode Stub::Impl::get_connection(ConnectionPtr& connection, std::size_t pgprocno, const Auth& auth)
+{
+    std::string sid{};
+    try {
+        sid = connection_container_.connect();
+    } catch (std::runtime_error &e) {
+        return ErrorCode::SERVER_FAILURE;
+    }
+
+    try {
+        credential_handler_.set_user_password(auth.user(), auth.password());
+        auto connection_impl = std::make_unique<Connection::Impl>(this, sid, pgprocno, credential_handler_);
+        connection = std::make_unique<Connection>(std::move(connection_impl));
+        return connection->get_impl()->hello();
+    } catch (std::runtime_error &e) {
+        if (std::stoi(e.what()) == tateyama::proto::diagnostics::Code::AUTHENTICATION_ERROR){
+            return ErrorCode::AUTHENTICATION_ERROR;
+        }
+        return ErrorCode::SERVER_FAILURE;
+    }
+}
+
+Auth::Auth(const std::string& user, const std::string password) :
+    user_(user), password_(password) {
+}
+const std::string& Auth::user() const {
+    return user_;
+}
+const std::string& Auth::password() const {
+    return password_;
 }
 
 /**
@@ -73,6 +109,14 @@ Stub::~Stub() = default;
 ErrorCode Stub::get_connection(ConnectionPtr & connection, std::size_t pgprocno)
 {    
     return impl_->get_connection(connection, pgprocno);
+}
+
+/**
+ * @brief connect to the DB and get Connection class with authentication information.
+ */
+ErrorCode Stub::get_connection(ConnectionPtr & connection, std::size_t pgprocno, const Auth& auth)
+{
+    return impl_->get_connection(connection, pgprocno, auth);
 }
 
 }  // namespace ogawayama::stub

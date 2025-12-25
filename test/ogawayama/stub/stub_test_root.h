@@ -43,7 +43,9 @@ class server {
     constexpr static std::string_view resultset_name_prefix = "resultset_for_test_";  // NOLINT
 
 public:
-    server(std::string name) : name_(name), endpoint_(name_), thread_(std::thread(std::ref(endpoint_))) {
+    server(std::string name, bool auth) : name_(name), endpoint_(name_, auth), thread_(std::thread(std::ref(endpoint_))) {
+    }
+    explicit server(std::string name) : server(name, false) {
     }
     ~server() {
         endpoint_.terminate();

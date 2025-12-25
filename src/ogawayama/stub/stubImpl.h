@@ -39,6 +39,7 @@ public:
     Impl& operator=(Impl&&) = delete;
 
     ErrorCode get_connection(ConnectionPtr&, std::size_t);
+    ErrorCode get_connection(ConnectionPtr&, std::size_t, const Auth&);
     std::string_view get_database_name() { return database_name_; }
 
 private:

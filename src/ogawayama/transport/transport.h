@@ -73,9 +73,11 @@ public:
         bridge_header_.set_service_id(SERVICE_ID_FDW);
         auto handshake_response = handshake();
         if (!handshake_response) {
+            wire.close();
             throw std::runtime_error(std::to_string(tateyama::proto::diagnostics::Code::UNKNOWN));
         }
         if (handshake_response.value().result_case() != tateyama::proto::endpoint::response::Handshake::ResultCase::kSuccess) {
+            wire.close();
             throw std::runtime_error(std::to_string(handshake_response.value().error().code()));
         }
 
