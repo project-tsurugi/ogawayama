@@ -326,9 +326,6 @@ public:
         }
     };
 
-//    explicit endpoint(std::string name)
-//        : endpoint(name, false) {
-//    }
     endpoint(std::string name, bool auth)
         : name_(name), container_(std::make_unique<tateyama::common::server_wire::connection_container>(name_, 1)), authentication_(auth) {
     }
