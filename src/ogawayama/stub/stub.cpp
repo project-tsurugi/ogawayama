@@ -57,7 +57,7 @@ ErrorCode Stub::Impl::get_connection(ConnectionPtr& connection, std::size_t pgpr
  * @brief connect to the DB and get Connection class with authentication information
  * @param connecion returns a connection class
  * @param pgprocno connection returns a connection class
- * @param ahth the authentication information
+ * @param auth the authentication information
  * @return true in error, otherwise false
  */
 ErrorCode Stub::Impl::get_connection(ConnectionPtr& connection, std::size_t pgprocno, const Auth& auth)

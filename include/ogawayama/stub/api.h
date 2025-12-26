@@ -379,7 +379,7 @@ public:
     [[nodiscard]] const std::string& user() const;
 
     /**
-     * @brief provides the passroed
+     * @brief provides the password
      */
     [[nodiscard]] const std::string& password() const;
 

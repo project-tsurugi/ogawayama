@@ -87,4 +87,4 @@ public:
     jwt_t *jwtp_;
 };
 
-}  // namespace jwt
+}  // namespace tateyama::authentication

@@ -94,7 +94,6 @@ std::string credential_handler::get_json_text(const std::string& user, const std
     if (expiration_.count() > 0) {
         j["expiration_date"] = expiration();
     }
-    j["password"] = password;
 
     ss << j;
     return ss.str();
