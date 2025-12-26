@@ -57,6 +57,9 @@ public:
     std::size_t c_idx_{0};
 
     ErrorCode next_column_common() {
+        if (resultset_wire_->is_eor() && resultset_wire_->active_wire() == nullptr) {
+            return close();
+        }
         if (c_idx_++ < column_number_) {
             return ErrorCode::OK;
         }
@@ -64,6 +67,8 @@ public:
         c_idx_ = 0;
         return ErrorCode::END_OF_COLUMN;
     }
+
+    ErrorCode close();
 };
 
 }  // namespace ogawayama::stub

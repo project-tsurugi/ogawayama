@@ -30,6 +30,7 @@
 #include <tateyama/proto/core/response.pb.h>
 #include <tateyama/proto/endpoint/request.pb.h>
 #include <tateyama/proto/endpoint/response.pb.h>
+#include <tateyama/proto/diagnostics.pb.h>
 
 #include <jogasaki/proto/sql/request.pb.h>
 #include <jogasaki/proto/sql/common.pb.h>
@@ -37,6 +38,7 @@
 
 #include <ogawayama/stub/error_code.h>
 
+#include "tateyama/authentication/credential_handler.h"
 #include "tateyama/transport/client_wire.h"
 #include "tateyama/transport/timer.h"
 
@@ -60,7 +62,9 @@ class transport {
 public:
     transport() = delete;
 
-    explicit transport(tateyama::common::wire::session_wire_container& wire) : wire_(wire) {
+    explicit transport(tateyama::common::wire::session_wire_container& wire,
+                       tateyama::authentication::credential_handler& credential_handler) :
+        wire_(wire), credential_handler_(credential_handler) {
         header_.set_service_message_version_major(HEADER_MESSAGE_VERSION_MAJOR);
         header_.set_service_message_version_minor(HEADER_MESSAGE_VERSION_MINOR);
         header_.set_service_id(SERVICE_ID_SQL);
@@ -69,10 +73,12 @@ public:
         bridge_header_.set_service_id(SERVICE_ID_FDW);
         auto handshake_response = handshake();
         if (!handshake_response) {
-            throw std::runtime_error("handshake error");
+            wire.close();
+            throw std::runtime_error(std::to_string(tateyama::proto::diagnostics::Code::UNKNOWN));
         }
         if (handshake_response.value().result_case() != tateyama::proto::endpoint::response::Handshake::ResultCase::kSuccess) {
-            throw std::runtime_error("handshake error");
+            wire.close();
+            throw std::runtime_error(std::to_string(handshake_response.value().error().code()));
         }
 
         timer_ = std::make_unique<tateyama::common::wire::timer>(EXPIRATION_SECONDS, [this](){
@@ -496,6 +502,7 @@ public:
 
 private:
     tateyama::common::wire::session_wire_container& wire_;
+    tateyama::authentication::credential_handler& credential_handler_;
     ::tateyama::proto::framework::request::Header header_{};
     ::tateyama::proto::framework::request::Header bridge_header_{};
     ::jogasaki::proto::sql::common::Session session_{};
@@ -504,6 +511,7 @@ private:
     std::vector<std::string> query_results_{};
     bool closed_{};
     std::unique_ptr<tateyama::common::wire::timer> timer_{};
+    std::string encrypted_credential_{};
     ::tateyama::proto::framework::response::Header response_header_{};
     ::jogasaki::proto::sql::response::Error sql_error_{};
     ::tateyama::proto::diagnostics::Record framework_error_{};
@@ -626,22 +634,41 @@ private:
     }
 
     std::optional<tateyama::proto::endpoint::response::Handshake> handshake() {
-        tateyama::proto::endpoint::request::ClientInformation information{};
-        information.set_application_name("fdw");
-
-        tateyama::proto::endpoint::request::WireInformation wire_information{};
-        tateyama::proto::endpoint::request::WireInformation::IpcInformation ipc_information{};
-        ipc_information.set_connection_information(std::to_string(getpid()));
-        *(wire_information.mutable_ipc_information()) = ipc_information;
-
-        tateyama::proto::endpoint::request::Handshake handshake{};
-        *(handshake.mutable_client_information()) = information;
-        *(handshake.mutable_wire_information()) = wire_information;
-
         tateyama::proto::endpoint::request::Request request{};
-        *(request.mutable_handshake()) = handshake;
+        auto* handshake = request.mutable_handshake();
+        auto* client_information = handshake->mutable_client_information();
+        auto* wire_information = handshake->mutable_wire_information();
+        auto* ipc_information = wire_information->mutable_ipc_information();
+
+        credential_handler_.add_credential(*client_information, [this](){
+            auto key_opt = encryption_key();
+            if (key_opt) {
+                const auto& key = key_opt.value();
+                if (key.result_case() == tateyama::proto::endpoint::response::EncryptionKey::ResultCase::kSuccess) {
+                    return std::optional<std::string>{key.success().encryption_key()};
+                }
+                if (key.error().code() == tateyama::proto::diagnostics::Code::UNSUPPORTED_OPERATION) {
+                    return std::optional<std::string>{std::nullopt};
+                }
+            }
+            throw std::runtime_error("error in get encryption key");
+        });
+
+        if (client_information->credential().credential_opt_case() == tateyama::proto::endpoint::request::Credential::kEncryptedCredential) {
+            encrypted_credential_ = client_information->credential().encrypted_credential();
+        }
+        client_information->set_application_name("fdw");
+        ipc_information->set_connection_information(std::to_string(getpid()));
 
         return send<tateyama::proto::endpoint::response::Handshake>(request);
+    }
+
+    // EncryptionKey
+    std::optional<tateyama::proto::endpoint::response::EncryptionKey> encryption_key() {
+        tateyama::proto::endpoint::request::Request request{};
+        (void) request.mutable_encryption_key();
+
+        return send<tateyama::proto::endpoint::response::EncryptionKey>(request);
     }
 
     std::optional<tateyama::proto::core::response::UpdateExpirationTime> update_expiration_time() {
@@ -670,7 +697,8 @@ private:
             if(auto res = framework_error_.ParseFromArray(record.data(), static_cast<int>(record.length())); ! res) {
                 return std::nullopt;
             }
-            throw std::runtime_error("received SERVER_DIAGNOSTICS");
+            using std::string_literals::operator""s; // NOLINT(*-unused-using-decls)
+            throw std::runtime_error("received SERVER_DIAGNOSTICS("s + std::to_string(framework_error_.code()) + "), " + framework_error_.message());
         }
         if (response_header_.payload_type() != ::tateyama::proto::framework::response::Header_PayloadType::Header_PayloadType_SERVICE_RESULT) {
             throw std::runtime_error("unknown payload type");

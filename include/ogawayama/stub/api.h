@@ -362,6 +362,33 @@ using ConnectionPtr = std::unique_ptr<ogawayama::stub::Connection>;
 namespace ogawayama::stub {
 
 /**
+ * @brief A class for storing authentication information
+ */
+class Auth {
+public:
+    /**
+     * @brief create Auth object containing user and password
+     * @param user the user name
+     * @param password the password in plain text
+     */
+    Auth(const std::string& user, const std::string password);
+
+    /**
+     * @brief provides the user
+     */
+    [[nodiscard]] const std::string& user() const;
+
+    /**
+     * @brief provides the password
+     */
+    [[nodiscard]] const std::string& password() const;
+
+private:
+    std::string user_;
+    std::string password_;
+};
+
+/**
  * @brief environment for server connection.
  */
 class Stub {
@@ -383,14 +410,28 @@ public:
 
     /**
      * @brief connect to the DB and get Connection class.
-     * @param supposed to be given MyProc->pgprocno for the first param
+     * @param n supposed to be given MyProc->pgprocno for the first param // obsolete
      * @param connection returns a connection class
      * @return error code defined in error_code.h
      */
     ErrorCode get_connection(ConnectionPtr&, std::size_t);
-    ErrorCode get_connection(std::size_t n, ConnectionPtr& connection) { return get_connection(connection, n); }  // only for backwark compatibility
+    ErrorCode get_connection(std::size_t n, ConnectionPtr& connection) {  // only for backwark compatibility
+        return get_connection(connection, n);
+    }
 
- private:
+    /**
+     * @brief connect to the DB and get Connection class.
+     * @param connection returns a connection class
+     * @param n supposed to be given MyProc->pgprocno for the first param // obsolete
+     * @param auth the authentication information
+     * @return error code defined in error_code.h
+     */
+    ErrorCode get_connection(ConnectionPtr& connection, std::size_t n, const Auth& auth);
+    ErrorCode get_connection(std::size_t n, ConnectionPtr& connection, const Auth& auth) {  // only for backwark compatibility
+        return get_connection(connection, n, auth);
+    }
+
+private:
     class Impl;
     std::unique_ptr<Impl> impl_;
 

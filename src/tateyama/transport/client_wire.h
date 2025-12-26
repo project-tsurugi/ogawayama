@@ -81,7 +81,6 @@ public:
                 current_wire_ = nullptr;
                 return;
             }
-            std::abort();  //  This must not happen.
         }
         bool is_eor() noexcept {
             return shm_resultset_wires_->is_eor();
@@ -93,11 +92,11 @@ public:
             return envelope_;
         }
 
-    private:
         shm_resultset_wire* active_wire() {
             return shm_resultset_wires_->active_wire();
         }
 
+    private:
         session_wire_container *envelope_;
         boost::interprocess::managed_shared_memory* managed_shm_ptr_;
         std::string rsw_name_;

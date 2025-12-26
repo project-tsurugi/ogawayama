@@ -35,8 +35,8 @@
 
 namespace ogawayama::stub {
 
-Connection::Impl::Impl(Stub::Impl* manager, std::string_view session_id, std::size_t pgprocno)
-    : manager_(manager), session_id_(session_id), wire_(session_id_), transport_(wire_), pgprocno_(pgprocno) {}
+Connection::Impl::Impl(Stub::Impl* manager, std::string_view session_id, std::size_t pgprocno, tateyama::authentication::credential_handler& credential_handler)
+    : manager_(manager), session_id_(session_id), wire_(session_id_), transport_(wire_, credential_handler), pgprocno_(pgprocno) {}
 
 Connection::Impl::~Impl()
 {
