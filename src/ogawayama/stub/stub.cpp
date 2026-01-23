@@ -31,6 +31,7 @@ Stub::Impl::~Impl() = default;
 /**
  * @brief connect to the DB and get Connection class
  * @param connection returns a connection class
+ * @param n supposed to be given MyProc->pgprocno for the first param // obsolete
  * @return true in error, otherwise false
  */
 ErrorCode Stub::Impl::get_connection(ConnectionPtr& connection, std::size_t n)
@@ -56,8 +57,8 @@ ErrorCode Stub::Impl::get_connection(ConnectionPtr& connection, std::size_t n)
 
 /**
  * @brief connect to the DB and get Connection class with authentication information
- * @param connecion returns a connection class
- * @param n connection returns a connection class
+ * @param connection returns a connection class
+ * @param n supposed to be given MyProc->pgprocno for the first param // obsolete
  * @param auth the authentication information
  * @return true in error, otherwise false
  */
