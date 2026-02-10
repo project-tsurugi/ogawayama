@@ -17,6 +17,7 @@
 #include <iostream>
 #include <exception>
 
+#include "transactionImpl.h"
 #include "result_setImpl.h"
 
 namespace ogawayama::stub {

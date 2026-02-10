@@ -118,9 +118,9 @@ public:
         auto response_opt = send<::jogasaki::proto::sql::response::Response>(request, slot_index);
         request.clear_begin();
         if (response_opt) {
-            auto response_message = response_opt.value();
+            const auto& response_message = response_opt.value();
             if (response_message.has_begin()) {
-                auto response = response_message.begin();
+                const auto& response = response_message.begin();
                 sql_error_ = response.has_error() ? response.error() : ::jogasaki::proto::sql::response::Error{};
                 return response;
             }
@@ -140,9 +140,9 @@ public:
         auto response_opt = send<::jogasaki::proto::sql::response::Response>(request, slot_index);
         request.clear_prepare();
         if (response_opt) {
-            auto response_message = response_opt.value();
+            const auto& response_message = response_opt.value();
             if (response_message.has_prepare()) {
-                auto response = response_message.prepare();
+                const auto& response = response_message.prepare();
                 sql_error_ = response.has_error() ? response.error() : ::jogasaki::proto::sql::response::Error{};
                 return response;
             }
@@ -162,9 +162,9 @@ public:
         auto response_opt = send<::jogasaki::proto::sql::response::Response>(request, slot_index);
         request.clear_execute_statement();
         if (response_opt) {
-            auto response_message = response_opt.value();
+            const auto& response_message = response_opt.value();
             if (response_message.has_execute_result()) {
-                auto response = response_message.execute_result();
+                const auto& response = response_message.execute_result();
                 sql_error_ = response.has_error() ? response.error() : ::jogasaki::proto::sql::response::Error{};
                 return response;
             }
@@ -184,7 +184,7 @@ public:
         auto response_opt = send<::jogasaki::proto::sql::response::Response>(request, query_index);
         request.clear_execute_query();
         if (response_opt) {
-            auto response_message = response_opt.value();
+            const auto& response_message = response_opt.value();
             if (response_message.has_execute_query()) {
                 return response_message.execute_query();
             }
@@ -209,9 +209,9 @@ public:
         auto response_opt = send<::jogasaki::proto::sql::response::Response>(request, slot_index);
         request.clear_execute_prepared_statement();
         if (response_opt) {
-            auto response_message = response_opt.value();
+            const auto& response_message = response_opt.value();
             if (response_message.has_execute_result()) {
-                auto response = response_message.execute_result();
+                const auto& response = response_message.execute_result();
                 sql_error_ = response.has_error() ? response.error() : ::jogasaki::proto::sql::response::Error{};
                 return response;
             }
@@ -230,7 +230,7 @@ public:
         auto response_opt = send<::jogasaki::proto::sql::response::Response>(request, query_index);
         request.clear_execute_prepared_query();
         if (response_opt) {
-            auto response_message = response_opt.value();
+            const auto& response_message = response_opt.value();
             if (response_message.has_execute_query()) {
                 return response_message.execute_query();
             }
@@ -263,9 +263,9 @@ public:
         auto response_opt = send<::jogasaki::proto::sql::response::Response>(request, slot_index);
         request.clear_commit();
         if (response_opt) {
-            auto response_message = response_opt.value();
+            const auto& response_message = response_opt.value();
             if (response_message.has_result_only()) {
-                auto response = response_message.result_only();
+                const auto& response = response_message.result_only();
                 sql_error_ = response.has_error() ? response.error() : ::jogasaki::proto::sql::response::Error{};
                 return response;
             }
@@ -285,7 +285,7 @@ public:
         auto response_opt = send<::jogasaki::proto::sql::response::Response>(request, slot_index);
         request.clear_rollback();
         if (response_opt) {
-            auto response_message = response_opt.value();
+            const auto& response_message = response_opt.value();
             if (response_message.has_result_only()) {
                 return response_message.result_only();
             }
@@ -305,7 +305,7 @@ public:
         auto response_opt = send<::jogasaki::proto::sql::response::Response>(request, slot_index);
         request.clear_dispose_prepared_statement();
         if (response_opt) {
-            auto response_message = response_opt.value();
+            const auto& response_message = response_opt.value();
             if (response_message.has_result_only()) {
                 const auto& ro = response_message.result_only();
                 if (ro.has_success()) {
@@ -338,7 +338,7 @@ public:
         auto response_opt = send<::jogasaki::proto::sql::response::Response>(request, slot_index);
         request.clear_describe_table();
         if (response_opt) {
-            auto response_message = response_opt.value();
+            const auto& response_message = response_opt.value();
             if (response_message.has_describe_table()) {
                 return response_message.describe_table();
             }
@@ -360,7 +360,7 @@ public:
         auto response_opt = send<::jogasaki::proto::sql::response::Response>(request, slot_index);
         request.clear_listtables();
         if (response_opt) {
-            auto response_message = response_opt.value();
+            const auto& response_message = response_opt.value();
             if (response_message.has_list_tables()) {
                 return response_message.list_tables();
             }
@@ -380,7 +380,7 @@ public:
         auto response_opt = send<::jogasaki::proto::sql::response::Response>(request, slot_index);
         request.clear_getsearchpath();
         if (response_opt) {
-            auto response_message = response_opt.value();
+            const auto& response_message = response_opt.value();
             if (response_message.has_get_search_path()) {
                 return response_message.get_search_path();
             }
@@ -400,7 +400,7 @@ public:
         auto response_opt = send<::jogasaki::proto::sql::response::Response>(request, slot_index);
         request.clear_get_error_info();
         if (response_opt) {
-            auto response_message = response_opt.value();
+            const auto& response_message = response_opt.value();
             if (response_message.has_get_error_info()) {
                 return response_message.get_error_info();
             }
@@ -420,7 +420,7 @@ public:
         auto response_opt = send<::jogasaki::proto::sql::response::Response>(request, slot_index);
         request.clear_dispose_transaction();
         if (response_opt) {
-            auto response_message = response_opt.value();
+            const auto& response_message = response_opt.value();
             if (response_message.has_result_only()) {
                 const auto& ro = response_message.result_only();
                 if (ro.has_success()) {
@@ -452,7 +452,7 @@ public:
         auto response_opt = send<::jogasaki::proto::sql::response::Response>(request, slot_index);
         request.clear_get_large_object_data();
         if (response_opt) {
-            auto response_message = response_opt.value();
+            const auto& response_message = response_opt.value();
             if (response_message.has_get_large_object_data()) {
                 return response_message.get_large_object_data();
             }
@@ -482,11 +482,7 @@ public:
  * @return std::optional of std::string
  */
     std::optional<std::string> send(std::string_view request) {
-        auto response_opt = send_bridge_request(request);
-        if (response_opt) {
-            return response_opt.value();
-        }
-        return std::nullopt;
+        return send_bridge_request(request);
     }
 
     // used only by connection

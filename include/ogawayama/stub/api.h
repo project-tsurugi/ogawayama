@@ -371,7 +371,7 @@ public:
      * @param user the user name
      * @param password the password in plain text
      */
-    Auth(const std::string& user, const std::string password);
+    Auth(const std::string& user, const std::string& password);
 
     /**
      * @brief provides the user

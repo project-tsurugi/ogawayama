@@ -828,7 +828,7 @@ public:
             timeout = watch_interval * 1000 * 1000;
         }
 
-        do {
+        do {  //  NOLINT(cppcoreguidelines-avoid-do-while)
             for (auto&& wire: unidirectional_simple_wires_) {
                 if(wire.has_record()) {
                     return &wire;

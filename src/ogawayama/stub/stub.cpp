@@ -17,6 +17,7 @@
 #include <stdexcept>
 
 #include "connectionImpl.h"
+#include "result_setImpl.h"
 
 #include "stubImpl.h"
 
@@ -30,9 +31,10 @@ Stub::Impl::~Impl() = default;
 /**
  * @brief connect to the DB and get Connection class
  * @param connection returns a connection class
+ * @param n supposed to be given MyProc->pgprocno for the first param // obsolete
  * @return true in error, otherwise false
  */
-ErrorCode Stub::Impl::get_connection(ConnectionPtr& connection, std::size_t pgprocno)
+ErrorCode Stub::Impl::get_connection(ConnectionPtr& connection, std::size_t n)
 {
     std::string sid{};
     try {
@@ -42,7 +44,7 @@ ErrorCode Stub::Impl::get_connection(ConnectionPtr& connection, std::size_t pgpr
     }
 
     try {
-        auto connection_impl = std::make_unique<Connection::Impl>(this, sid, pgprocno, credential_handler_);
+        auto connection_impl = std::make_unique<Connection::Impl>(this, sid, n, credential_handler_);
         connection = std::make_unique<Connection>(std::move(connection_impl));
         return connection->get_impl()->hello();
     } catch (std::runtime_error &e) {
@@ -55,12 +57,12 @@ ErrorCode Stub::Impl::get_connection(ConnectionPtr& connection, std::size_t pgpr
 
 /**
  * @brief connect to the DB and get Connection class with authentication information
- * @param connecion returns a connection class
- * @param pgprocno connection returns a connection class
+ * @param connection returns a connection class
+ * @param n supposed to be given MyProc->pgprocno for the first param // obsolete
  * @param auth the authentication information
  * @return true in error, otherwise false
  */
-ErrorCode Stub::Impl::get_connection(ConnectionPtr& connection, std::size_t pgprocno, const Auth& auth)
+ErrorCode Stub::Impl::get_connection(ConnectionPtr& connection, std::size_t n, const Auth& auth)
 {
     std::string sid{};
     try {
@@ -71,7 +73,7 @@ ErrorCode Stub::Impl::get_connection(ConnectionPtr& connection, std::size_t pgpr
 
     try {
         credential_handler_.set_user_password(auth.user(), auth.password());
-        auto connection_impl = std::make_unique<Connection::Impl>(this, sid, pgprocno, credential_handler_);
+        auto connection_impl = std::make_unique<Connection::Impl>(this, sid, n, credential_handler_);
         connection = std::make_unique<Connection>(std::move(connection_impl));
         return connection->get_impl()->hello();
     } catch (std::runtime_error &e) {
@@ -82,7 +84,7 @@ ErrorCode Stub::Impl::get_connection(ConnectionPtr& connection, std::size_t pgpr
     }
 }
 
-Auth::Auth(const std::string& user, const std::string password) :
+Auth::Auth(const std::string& user, const std::string& password) :  // NOLINT(modernize-pass-by-value)
     user_(user), password_(password) {
 }
 const std::string& Auth::user() const {
@@ -106,17 +108,17 @@ Stub::~Stub() = default;
 /**
  * @brief connect to the DB and get Connection class.
  */
-ErrorCode Stub::get_connection(ConnectionPtr & connection, std::size_t pgprocno)
+ErrorCode Stub::get_connection(ConnectionPtr & connection, std::size_t n)
 {    
-    return impl_->get_connection(connection, pgprocno);
+    return impl_->get_connection(connection, n);
 }
 
 /**
  * @brief connect to the DB and get Connection class with authentication information.
  */
-ErrorCode Stub::get_connection(ConnectionPtr & connection, std::size_t pgprocno, const Auth& auth)
+ErrorCode Stub::get_connection(ConnectionPtr & connection, std::size_t n, const Auth& auth)
 {
-    return impl_->get_connection(connection, pgprocno, auth);
+    return impl_->get_connection(connection, n, auth);
 }
 
 }  // namespace ogawayama::stub

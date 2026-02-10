@@ -22,6 +22,7 @@
 #include <boost/multiprecision/cpp_int.hpp>
 
 #include "prepared_statementImpl.h"
+#include "result_setImpl.h"
 #include "transactionImpl.h"
 
 namespace ogawayama::stub {
@@ -75,7 +76,7 @@ ErrorCode Transaction::Impl::execute_statement(std::string_view statement, std::
             if (!response_opt) {
                 return ErrorCode::SERVER_FAILURE;
             }
-            auto response = response_opt.value();
+            const auto& response = response_opt.value();
             if (response.has_success()) {
                 num_rows = num_rows_processed(response.success());
                 return ErrorCode::OK;
@@ -117,7 +118,7 @@ public:
         return parameter_;
     }
     ::jogasaki::proto::sql::request::Parameter operator()(const binary_type& data) {
-        parameter_.set_octet_value(std::string(reinterpret_cast<const char*>(data.data()), data.size()));
+        parameter_.set_octet_value(std::string(reinterpret_cast<const char*>(data.data()), data.size()));  //  NOLINT(cppcoreguidelines-pro-type-reinterpret-cast)
         return parameter_;
     }
     ::jogasaki::proto::sql::request::Parameter operator()(const date_type& data) {
@@ -215,7 +216,7 @@ ErrorCode Transaction::Impl::execute_statement(PreparedStatementPtr& prepared, c
             if (!response_opt) {
                 return ErrorCode::SERVER_FAILURE;
             }
-            auto response = response_opt.value();
+            const auto& response = response_opt.value();
             if (response.has_success()) {
                 num_rows = num_rows_processed(response.success());
                 return ErrorCode::OK;
@@ -247,7 +248,7 @@ ErrorCode Transaction::Impl::execute_query(std::string_view query, std::shared_p
             if (!response_opt) {
                 return ErrorCode::SERVER_FAILURE;
             }
-            auto response = response_opt.value();
+            const auto& response = response_opt.value();
             result_set = std::make_shared<ResultSet>(
                 std::make_unique<ResultSet::Impl>(
                     this,
@@ -294,7 +295,7 @@ ErrorCode Transaction::Impl::execute_query(PreparedStatementPtr& prepared, const
             if (!response_opt) {
                 return ErrorCode::SERVER_FAILURE;
             }
-            auto response = response_opt.value();
+            const auto& response = response_opt.value();
             result_set = std::make_shared<ResultSet>(
                 std::make_unique<ResultSet::Impl>(
                     this,
@@ -326,7 +327,7 @@ ErrorCode Transaction::Impl::commit()
         if (!response_opt) {
             return ErrorCode::SERVER_FAILURE;
         }
-        auto response = response_opt.value();
+        const auto& response = response_opt.value();
         if (response.has_success()) {
             return dispose_transaction();
         }
@@ -351,7 +352,7 @@ ErrorCode Transaction::Impl::rollback()
         if (!response_opt) {
             return ErrorCode::SERVER_FAILURE;
         }
-        auto response = response_opt.value();
+        const auto& response = response_opt.value();
         if (response.has_success()) {
             return dispose_transaction();
         }

@@ -375,7 +375,7 @@ bool write_bit(
     if (number_of_bits > blocks.size() * 8) {
         throw_exception(std::out_of_range("too large number of bits"));
     }
-    const_bitset_view bits { blocks.data(), number_of_bits };
+    const_bitset_view bits { blocks.data(), number_of_bits };  //NOLINT(bugprone-suspicious-stringview-data-usage)
     BOOST_ASSERT(bits.block_size() <= blocks.size()); // NOLINT
     return write_bit(bits, position, end);
 }
@@ -522,6 +522,7 @@ bool write_row_begin(
 bool write_blob(
         std::uint64_t provider,
         std::uint64_t object_id,
+        std::uint64_t reference_tag,
         buffer_view::iterator& position,
         buffer_view::const_iterator end) {
     if (buffer_remaining(position, end) < 1
@@ -532,12 +533,14 @@ bool write_blob(
     write_fixed8(header_blob, position, end);
     write_fixed(provider, position, end);
     write_fixed(object_id, position, end);
+    write_fixed(reference_tag, position, end);
     return true;
 }
 
 bool write_clob(
         std::uint64_t provider,
         std::uint64_t object_id,
+        std::uint64_t reference_tag,
         buffer_view::iterator& position,
         buffer_view::const_iterator end) {
     if (buffer_remaining(position, end) < 1
@@ -548,6 +551,7 @@ bool write_clob(
     write_fixed8(header_clob, position, end);
     write_fixed(provider, position, end);
     write_fixed(object_id, position, end);
+    write_fixed(reference_tag, position, end);
     return true;
 }
 

@@ -15,6 +15,8 @@
  */
 
 #include "connectionImpl.h"
+#include "result_setImpl.h"
+
 #include "prepared_statementImpl.h"
 
 namespace ogawayama::stub {

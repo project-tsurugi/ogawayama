@@ -15,8 +15,7 @@
  */
 #pragma once
 
-#include "transactionImpl.h"
-#include "stubImpl.h"
+#include "ogawayama/stub/api.h"
 
 namespace ogawayama::stub {
 

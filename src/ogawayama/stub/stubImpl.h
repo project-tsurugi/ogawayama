@@ -17,10 +17,10 @@
 
 #include <memory>
 
+#include <ogawayama/stub/api.h>
+
 #include "tateyama/transport/client_wire.h"
 #include "tateyama/authentication/credential_handler.h"
-
-#include "ogawayama/stub/api.h"
 
 namespace ogawayama::stub {
 
