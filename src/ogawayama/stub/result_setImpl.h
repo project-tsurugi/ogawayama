@@ -55,6 +55,7 @@ public:
     jogasaki::serializer::buffer_view::const_iterator iter_{};
 
     std::size_t c_idx_{0};
+    bool has_chunk_{false};
 
     ErrorCode next_column_common() {
         if (resultset_wire_->is_eor() && resultset_wire_->active_wire() == nullptr) {

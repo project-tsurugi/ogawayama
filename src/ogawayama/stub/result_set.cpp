@@ -103,14 +103,16 @@ ErrorCode ResultSet::Impl::get_metadata(MetadataPtr& metadata)
  */
 ErrorCode ResultSet::Impl::next()
 {
-    if (c_idx_ != 0) {
+    if (has_chunk_) {
         resultset_wire_->dispose();
-        c_idx_ = 0;
+        has_chunk_ = false;
     }
+    c_idx_ = 0;
     auto record = resultset_wire_->get_chunk();
     if (record.empty()) {
         return close();
     }
+    has_chunk_ = true;
     buf_ = jogasaki::serializer::buffer_view(const_cast<char*>(record.data()), record.size());
     iter_ = buf_.begin();
     jogasaki::serializer::read_row_begin(iter_, buf_.end());
