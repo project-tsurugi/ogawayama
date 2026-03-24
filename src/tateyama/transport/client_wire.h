@@ -28,7 +28,7 @@ namespace tateyama::common::wire {
 class session_wire_container
 {
     static constexpr std::size_t metadata_size_boundary = 256;
-    static constexpr std::size_t slot_size = 16;
+    static constexpr std::size_t slot_size = 64;
     constexpr static tateyama::common::wire::response_header::msg_type RESPONSE_BODYHEAD = 2;
 
 public:
